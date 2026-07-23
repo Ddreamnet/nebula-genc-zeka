@@ -1,0 +1,321 @@
+@import "tailwindcss";
+
+/* =========================================================================
+   NEBULA GENÇ ZEKA — "Cosmic Intellectual Horizon" design system
+   Dark-first. Amber (#ffb68f) primary accent, cosmic blue (#b7c7eb) secondary.
+   ========================================================================= */
+
+@theme {
+  /* ---- Surfaces (deep space) ---- */
+  --color-surface: #0e1011;
+  --color-surface-dim: #0a0c0d;
+  --color-surface-lowest: #060809;
+  --color-surface-low: #141617;
+  --color-surface-container: #1a1c1d;
+  --color-surface-high: #232526;
+  --color-surface-highest: #2e3031;
+  --color-surface-bright: #37393a;
+
+  /* ---- Content ---- */
+  --color-on-surface: #e8e9ea;
+  --color-on-surface-variant: #b6b8bf;
+  --color-outline: #7d7f88;
+  --color-outline-variant: #3a3d42;
+
+  /* ---- Amber (primary accent — forming stars) ---- */
+  --color-secondary: #ffb68f;
+  --color-secondary-bright: #ffc9ae;
+  --color-on-secondary: #4a1d00;
+  --color-secondary-container: #7a3400;
+  --color-on-secondary-container: #ffdbca;
+
+  /* ---- Cosmic blue (secondary accent) ---- */
+  --color-primary: #b7c7eb;
+  --color-primary-bright: #d7e2ff;
+  --color-on-primary: #1b2a44;
+  --color-primary-container: #0d1e3a;
+  --color-on-primary-container: #7786a8;
+
+  /* ---- Star glow / tertiary ---- */
+  --color-tertiary: #faba74;
+  --color-on-tertiary: #492900;
+
+  /* ---- Semantic ---- */
+  --color-error: #ffb4ab;
+  --color-success: #8fe3b0;
+
+  /* ---- Fonts (wired to next/font variables in layout.tsx) ---- */
+  --font-display: var(--font-space-grotesk), "Space Grotesk", sans-serif;
+  --font-sans: var(--font-manrope), "Manrope", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-jetbrains-mono), "JetBrains Mono", ui-monospace, monospace;
+
+  /* ---- Easing ---- */
+  --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-in-out-soft: cubic-bezier(0.65, 0, 0.35, 1);
+}
+
+/* =========================================================================
+   Base
+   ========================================================================= */
+@layer base {
+  html {
+    scroll-behavior: smooth;
+    -webkit-text-size-adjust: 100%;
+  }
+
+  body {
+    background-color: var(--color-surface);
+    color: var(--color-on-surface);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+    overflow-x: hidden;
+  }
+
+  ::selection {
+    background: color-mix(in oklab, var(--color-secondary) 30%, transparent);
+    color: var(--color-secondary-bright);
+  }
+
+  /* Focus ring — accessible + on-brand */
+  :where(a, button, input, textarea, select, [tabindex]):focus-visible {
+    outline: 2px solid var(--color-secondary);
+    outline-offset: 2px;
+    border-radius: 4px;
+  }
+
+  /* Subtle custom scrollbar */
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: var(--color-surface-highest) transparent;
+  }
+  *::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+  *::-webkit-scrollbar-thumb {
+    background: var(--color-surface-highest);
+    border-radius: 9999px;
+    border: 3px solid var(--color-surface);
+  }
+}
+
+/* =========================================================================
+   Utilities — glass, glow, gradients, cosmic background
+   ========================================================================= */
+@layer utilities {
+  /* Glassmorphism cockpit panels */
+  .glass {
+    background: color-mix(in oklab, var(--color-surface) 62%, transparent);
+    backdrop-filter: blur(18px) saturate(1.2);
+    -webkit-backdrop-filter: blur(18px) saturate(1.2);
+    border: 1px solid color-mix(in oklab, white 7%, transparent);
+  }
+  .glass-strong {
+    background: color-mix(in oklab, var(--color-surface-low) 82%, transparent);
+    backdrop-filter: blur(28px) saturate(1.3);
+    -webkit-backdrop-filter: blur(28px) saturate(1.3);
+    border: 1px solid color-mix(in oklab, white 8%, transparent);
+  }
+
+  /* Hairline top-light on glass edges */
+  .edge-light {
+    box-shadow:
+      inset 0 1px 0 0 color-mix(in oklab, white 10%, transparent),
+      inset 0 0 0 1px color-mix(in oklab, white 4%, transparent);
+  }
+
+  /* Elevated glass card — genuinely translucent (the aurora/starfield behind it
+     should read through the blur), with a soft top sheen + lift shadow so it
+     floats above the page rather than sitting flat like .glass/.glass-strong. */
+  .glass-card {
+    /* Own fill stays deliberately light (~30-40%) — a more opaque fill would
+       sit on top of the backdrop-filter result and mask the liquid warp
+       almost entirely (confirmed by direct comparison while tuning this). */
+    background:
+      radial-gradient(120% 60% at 18% -12%, color-mix(in oklab, white 16%, transparent), transparent 60%),
+      linear-gradient(
+        180deg,
+        color-mix(in oklab, var(--color-surface-low) 38%, transparent) 0%,
+        color-mix(in oklab, var(--color-surface-low) 28%, transparent) 100%
+      );
+    /* Fallback first, real refraction second — unsupported browsers (Safari/
+       Firefox today) simply ignore the url() declaration and keep the blur. */
+    backdrop-filter: blur(32px) saturate(1.7);
+    -webkit-backdrop-filter: blur(32px) saturate(1.7);
+    backdrop-filter: url(#liquid-glass-card) blur(9px) saturate(1.8);
+    border: 1px solid color-mix(in oklab, white 13%, transparent);
+    box-shadow:
+      inset 0 1px 0 0 color-mix(in oklab, white 18%, transparent),
+      0 2px 8px 0 rgba(0, 0, 0, 0.2),
+      0 28px 54px -16px rgba(0, 0, 0, 0.55);
+  }
+
+  /* Glass button — true glassmorphism: translucent tinted fill + backdrop blur,
+     NOT an opaque gradient. A pointer-tracked highlight (--mx/--my, written
+     directly to the DOM — see auth-form.tsx) mimics light sliding across a wet
+     glass surface. Defaults center the highlight so it still looks right
+     before any pointer event fires. */
+  .btn-glass {
+    --mx: 50%;
+    --my: 0%;
+    position: relative;
+    color: var(--color-on-secondary);
+    /* Same masking issue as .glass-card — own fill kept light so the warp
+       actually reads, brand color carried mainly by the border/glow instead. */
+    background:
+      radial-gradient(140px circle at var(--mx) var(--my), color-mix(in oklab, white 60%, transparent), transparent 70%),
+      linear-gradient(
+        160deg,
+        color-mix(in oklab, var(--color-secondary) 68%, white 14%) 0%,
+        color-mix(in oklab, var(--color-secondary) 58%, transparent) 100%
+      );
+    backdrop-filter: blur(18px) saturate(2.2) brightness(1.15);
+    -webkit-backdrop-filter: blur(18px) saturate(2.2) brightness(1.15);
+    backdrop-filter: url(#liquid-glass-btn) blur(7px) saturate(2.6) brightness(1.25);
+    border: 1px solid color-mix(in oklab, white 48%, transparent);
+    box-shadow:
+      inset 0 1px 0 0 color-mix(in oklab, white 65%, transparent),
+      0 10px 26px -10px color-mix(in oklab, var(--color-secondary) 55%, transparent),
+      0 2px 6px -2px rgba(0, 0, 0, 0.2);
+    transition:
+      transform 0.2s var(--ease-out-expo),
+      box-shadow 0.2s var(--ease-out-expo),
+      filter 0.2s;
+  }
+  .btn-glass:hover {
+    filter: brightness(1.08) saturate(1.05);
+    transform: translateY(-1px);
+    box-shadow:
+      inset 0 1px 0 0 color-mix(in oklab, white 72%, transparent),
+      0 14px 32px -10px color-mix(in oklab, var(--color-secondary) 65%, transparent),
+      0 2px 6px -2px rgba(0, 0, 0, 0.2);
+  }
+  .btn-glass:active {
+    transform: translateY(1px) scale(0.98);
+    box-shadow:
+      inset 0 1px 0 0 color-mix(in oklab, white 48%, transparent),
+      0 6px 16px -8px color-mix(in oklab, var(--color-secondary) 45%, transparent),
+      0 1px 3px -1px rgba(0, 0, 0, 0.18);
+  }
+
+  /* Ambient star-glow shadow */
+  .glow-amber {
+    box-shadow: 0 0 40px -8px color-mix(in oklab, var(--color-secondary) 45%, transparent);
+  }
+  .glow-blue {
+    box-shadow: 0 0 40px -8px color-mix(in oklab, var(--color-primary) 40%, transparent);
+  }
+  .text-glow {
+    text-shadow: 0 0 24px color-mix(in oklab, var(--color-secondary) 45%, transparent);
+  }
+
+  /* Gradient text */
+  .text-gradient-amber {
+    background: linear-gradient(100deg, var(--color-secondary-bright), var(--color-tertiary));
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+  .text-gradient-cosmic {
+    background: linear-gradient(100deg, var(--color-primary-bright) 10%, var(--color-secondary) 90%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+
+  /* Eyebrow label */
+  .eyebrow {
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    font-weight: 500;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    color: var(--color-secondary);
+  }
+
+  /* Layered starfield (cheap, GPU-friendly, tiled) */
+  .starfield {
+    background-image:
+      radial-gradient(1.5px 1.5px at 20% 30%, rgba(255, 255, 255, 0.9), transparent 100%),
+      radial-gradient(1.5px 1.5px at 75% 44%, rgba(255, 255, 255, 0.7), transparent 100%),
+      radial-gradient(1px 1px at 50% 70%, rgba(255, 255, 255, 0.8), transparent 100%),
+      radial-gradient(1px 1px at 88% 15%, rgba(215, 226, 255, 0.9), transparent 100%),
+      radial-gradient(1.2px 1.2px at 33% 85%, rgba(255, 201, 174, 0.8), transparent 100%),
+      radial-gradient(1px 1px at 12% 60%, rgba(255, 255, 255, 0.6), transparent 100%);
+    background-size: 320px 320px, 420px 420px, 260px 260px, 500px 500px, 380px 380px, 300px 300px;
+  }
+
+  /* Nebula aurora glows */
+  .aurora {
+    background:
+      radial-gradient(60% 50% at 15% 10%, color-mix(in oklab, var(--color-secondary) 16%, transparent), transparent 70%),
+      radial-gradient(55% 45% at 85% 20%, color-mix(in oklab, var(--color-primary) 14%, transparent), transparent 70%),
+      radial-gradient(50% 50% at 50% 100%, color-mix(in oklab, var(--color-tertiary) 8%, transparent), transparent 70%);
+  }
+}
+
+/* =========================================================================
+   Motion — GPU-cheap (transform/opacity only). Reveal driven by JS.
+   ========================================================================= */
+@keyframes float {
+  0%, 100% { transform: translate3d(0, 0, 0) rotate(0deg); }
+  50% { transform: translate3d(0, -18px, 0) rotate(2deg); }
+}
+@keyframes float-slow {
+  0%, 100% { transform: translate3d(0, 0, 0); }
+  50% { transform: translate3d(0, -12px, 0); }
+}
+@keyframes drift {
+  0%, 100% { transform: translate3d(0, 0, 0) rotate(-3deg); }
+  50% { transform: translate3d(14px, -10px, 0) rotate(3deg); }
+}
+@keyframes twinkle {
+  0%, 100% { opacity: 0.25; }
+  50% { opacity: 1; }
+}
+@keyframes pulse-glow {
+  0%, 100% { opacity: 0.5; transform: scale(1); }
+  50% { opacity: 0.85; transform: scale(1.06); }
+}
+@keyframes spin-slow {
+  to { transform: rotate(360deg); }
+}
+@keyframes shimmer {
+  100% { transform: translateX(100%); }
+}
+
+.animate-float { animation: float 7s var(--ease-in-out-soft) infinite; will-change: transform; }
+.animate-float-slow { animation: float-slow 9s var(--ease-in-out-soft) infinite; will-change: transform; }
+.animate-drift { animation: drift 12s var(--ease-in-out-soft) infinite; will-change: transform; }
+.animate-twinkle { animation: twinkle 4s ease-in-out infinite; }
+.animate-pulse-glow { animation: pulse-glow 6s ease-in-out infinite; will-change: transform, opacity; }
+.animate-spin-slow { animation: spin-slow 60s linear infinite; }
+
+/* Scroll reveal — set by <Reveal>; toggled via [data-show] */
+.reveal {
+  opacity: 0;
+  transform: translate3d(0, 24px, 0);
+  transition:
+    opacity 0.7s var(--ease-out-expo),
+    transform 0.7s var(--ease-out-expo);
+  will-change: opacity, transform;
+}
+.reveal[data-show="true"] {
+  opacity: 1;
+  transform: translate3d(0, 0, 0);
+}
+
+/* Respect user preference — kill all motion */
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
+  .reveal { opacity: 1 !important; transform: none !important; }
+}
