@@ -3,6 +3,15 @@ import Link from "next/link";
 import { PanelThemeScope } from "@/components/site/panel-theme-scope";
 import { AuthProvider } from "@/contexts/auth-context";
 
+// AuthProvider (client component) creates the browser Supabase client in a
+// useMemo initializer, which still runs during the server-rendered pass —
+// including at build time, if Next decides this route is static-eligible.
+// That means `next build` would need real Supabase env vars just to
+// prerender a login page, which some hosts only expose at runtime, not
+// during build. Forcing this dynamic defers all rendering (and the
+// Supabase client creation inside it) to real request time instead.
+export const dynamic = "force-dynamic";
+
 export default function AuthLayout({
   children,
 }: {
