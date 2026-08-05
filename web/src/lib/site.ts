@@ -8,20 +8,27 @@ export const siteConfig = {
   tagline: "Çocuğunuz yapay zekayı izlemesin, kullansın.",
   url: "https://nebulagenczeka.com",
   email: "info@nebulagenczeka.com",
-  // TODO(fatih): Instagram kullanıcı adını doğrula
   instagram: "https://instagram.com/nebulagenczeka",
-  ageRange: "10–16 yaş",
+  ageRange: "10–18 yaş",
   founder: "Fatih Böke",
   price: { amount: "4.000", currency: "TL", period: "ay" },
 
-  /** Public top-nav. On-page sections use hash links; Playground is a real route. */
+  whatsapp: {
+    number: "905462804836",
+    message: "Merhaba, Nebula Genç Zeka hakkında bilgi almak istiyorum.",
+  },
+
+  /** Public top-nav — anchors into the landing page sections. */
   nav: [
-    { label: "Nasıl Çalışır", href: "/#nasil" },
-    { label: "Müfredat", href: "/#mufredat" },
-    { label: "Playground", href: "/playground" },
-    { label: "Fiyat", href: "/#fiyat" },
-    { label: "SSS", href: "/#sss" },
+    { label: "Ne?", href: "/#ne-uretiyor" },
+    { label: "Nasıl?", href: "/#nasil" },
+    { label: "AI", href: "/#ai" },
+    { label: "Güven", href: "/#guven" },
   ],
 } as const;
 
 export type NavItem = (typeof siteConfig.nav)[number];
+
+export function whatsappHref(message: string = siteConfig.whatsapp.message) {
+  return `https://wa.me/${siteConfig.whatsapp.number}?text=${encodeURIComponent(message)}`;
+}

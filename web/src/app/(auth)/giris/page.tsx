@@ -7,5 +7,5 @@ export const metadata: Metadata = {
 };
 
 export default function GirisPage() {
-  return <AuthForm mode="login" />;
+  return <AuthForm />;
 }

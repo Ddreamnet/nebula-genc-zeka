@@ -173,8 +173,12 @@ export function AuthMascot({
           <stop offset="100%" stopColor="#d5dbe4" />
         </linearGradient>
         <linearGradient id="m-suit" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor="#e9ecf1" />
-          <stop offset="100%" stopColor="#c3c9d3" />
+          <stop offset="0%" stopColor="#ff8f45" />
+          <stop offset="100%" stopColor="#d34f10" />
+        </linearGradient>
+        <linearGradient id="m-suit-shade" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor="#e8681c" />
+          <stop offset="100%" stopColor="#b03c0a" />
         </linearGradient>
       </defs>
 
@@ -183,9 +187,24 @@ export function AuthMascot({
 
       {/* Suit shoulders (torso — does not shake with the head) */}
       <path d="M56 220 C56 176 84 158 120 158 C156 158 184 176 184 220 Z" fill="url(#m-suit)" />
-      <path d="M120 158 C104 158 92 168 90 182 L150 182 C148 168 136 158 120 158 Z" fill="#d3d8e0" />
-      <circle cx="120" cy="196" r="9" fill="#0e1011" />
-      <circle cx="120" cy="196" r="4" fill="#8fe3b0" />
+      <path d="M56 220 C56 176 84 158 120 158 L120 220 Z" fill="url(#m-suit-shade)" opacity="0.3" />
+
+      {/* Neck ring — metal disconnect collar where a helmet would seal on */}
+      <path d="M120 158 C104 158 92 168 90 182 L150 182 C148 168 136 158 120 158 Z" fill="#c7ccd3" />
+      <path d="M93 179 L147 179" stroke="#9aa0aa" strokeWidth="2.5" strokeLinecap="round" opacity="0.7" />
+
+      {/* Center zipper */}
+      <line x1="120" y1="183" x2="120" y2="220" stroke="#96330a" strokeWidth="3" strokeLinecap="round" opacity="0.55" />
+
+      {/* Shoulder patches */}
+      <rect x="66" y="188" width="16" height="11" rx="2.5" fill="#f4f6f9" opacity="0.85" />
+      <rect x="158" y="188" width="16" height="11" rx="2.5" fill="#f4f6f9" opacity="0.85" />
+
+      {/* Chest name patch + comm badge */}
+      <rect x="86" y="196" width="22" height="9" rx="2.5" fill="#f4f6f9" opacity="0.85" />
+      <rect x="134" y="188" width="22" height="24" rx="5" fill="#00000018" />
+      <circle cx="145" cy="199" r="8" fill="#0e1011" />
+      <circle cx="145" cy="199" r="3.5" fill="#8fe3b0" />
 
       {/* Head group — antenna, hair, face. Pivots near the neck for the shake gesture. */}
       <g ref={headRef} style={{ transformBox: "fill-box", transformOrigin: "50% 100%" }}>
@@ -248,12 +267,18 @@ export function AuthMascot({
           transition: handTransition,
         }}
       >
-        <rect x="82" y="104" width="34" height="24" rx="12" fill="url(#m-glove)" />
-        <rect x="83.5" y="76" width="6.6" height="38" rx="3.3" fill="url(#m-glove)" />
-        <rect x="91.6" y="74" width="6.6" height="40" rx="3.3" fill="url(#m-glove)" />
-        <rect x="99.7" y="74" width="6.6" height="40" rx="3.3" fill="url(#m-glove)" />
-        <rect x="107.8" y="76" width="6.6" height="38" rx="3.3" fill="url(#m-glove)" />
+        <rect x="82" y="72" width="34" height="58" rx="17" fill="url(#m-glove)" />
+        <rect x="73" y="104" width="12" height="23" rx="6" fill="url(#m-glove)" transform="rotate(-32 79 115.5)" />
+        <ellipse cx="91" cy="83" rx="8" ry="10" fill="#ffffff" opacity="0.25" />
+        <path
+          d="M91 80 L91 116 M99 78 L99 118 M107 80 L107 116"
+          stroke="#b7bcc4"
+          strokeWidth="2"
+          strokeLinecap="round"
+          opacity="0.45"
+        />
         <rect x="80" y="123" width="38" height="11" rx="5.5" fill="#ffb68f" />
+        <rect x="80" y="123" width="38" height="4" rx="2" fill="#ffffff" opacity="0.35" />
       </g>
 
       {/* RIGHT hand (covers right eye) */}
@@ -265,12 +290,18 @@ export function AuthMascot({
           transition: handTransition,
         }}
       >
-        <rect x="124" y="104" width="34" height="24" rx="12" fill="url(#m-glove)" />
-        <rect x="125.6" y="76" width="6.6" height="38" rx="3.3" fill="url(#m-glove)" />
-        <rect x="133.7" y="74" width="6.6" height="40" rx="3.3" fill="url(#m-glove)" />
-        <rect x="141.8" y="74" width="6.6" height="40" rx="3.3" fill="url(#m-glove)" />
-        <rect x="149.9" y="76" width="6.6" height="38" rx="3.3" fill="url(#m-glove)" />
+        <rect x="124" y="72" width="34" height="58" rx="17" fill="url(#m-glove)" />
+        <rect x="155" y="104" width="12" height="23" rx="6" fill="url(#m-glove)" transform="rotate(32 161 115.5)" />
+        <ellipse cx="149" cy="83" rx="8" ry="10" fill="#ffffff" opacity="0.25" />
+        <path
+          d="M133 80 L133 116 M141 78 L141 118 M149 80 L149 116"
+          stroke="#b7bcc4"
+          strokeWidth="2"
+          strokeLinecap="round"
+          opacity="0.45"
+        />
         <rect x="122" y="123" width="38" height="11" rx="5.5" fill="#ffb68f" />
+        <rect x="122" y="123" width="38" height="4" rx="2" fill="#ffffff" opacity="0.35" />
       </g>
     </svg>
   );

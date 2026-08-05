@@ -1,80 +1,115 @@
-import { ArrowRight, Sparkles, Radio, Users, ShieldCheck } from "lucide-react";
-import { Container } from "@/components/ui/container";
-import { Button } from "@/components/ui/button";
-import { Reveal } from "@/components/ui/reveal";
-import { Astronaut } from "@/components/site/astronaut";
+import Image from "next/image";
 import { siteConfig } from "@/lib/site";
-
-const chips = [
-  { icon: Radio, label: "Canlı ders" },
-  { icon: Users, label: "En fazla 2 kişilik grup" },
-  { icon: ShieldCheck, label: "Denetimli ortam" },
-];
 
 export function Hero() {
   return (
-    <section className="relative overflow-hidden pt-28 pb-20 sm:pt-32 sm:pb-28">
-      <Container className="grid items-center gap-12 lg:grid-cols-[1.1fr_0.9fr]">
-        <div className="text-center lg:text-left">
-          <Reveal>
-            <span className="inline-flex items-center gap-2 rounded-full border border-secondary/20 bg-secondary/10 px-3.5 py-1.5 font-mono text-xs font-medium tracking-wide text-secondary-bright">
-              <Sparkles className="size-3.5" /> {siteConfig.ageRange} · Yapay Zeka Akademisi
+    <section
+      id="top"
+      data-navtheme="dark"
+      style={{
+        position: "relative",
+        background: "var(--navy)",
+        color: "var(--on-navy)",
+        // Static value (header height, ~82-94px across breakpoints, + 28px
+        // breathing room) instead of a JS-measured CSS var — the header is
+        // transparent and this section's background already matches it, so
+        // there's no visible seam if this runs slightly taller than the
+        // header on any given viewport; simpler and removes a whole
+        // ResizeObserver+effect that a fixed/condensing header doesn't need.
+        paddingTop: "clamp(110px, 9vw, 124px)",
+        paddingLeft: "clamp(18px,5vw,64px)",
+        paddingRight: "clamp(18px,5vw,64px)",
+        paddingBottom: "clamp(70px,8vw,120px)",
+        overflow: "hidden",
+      }}
+    >
+      <Image src="/landing/hero-bg.webp" alt="" fill priority className="object-cover pointer-events-none" aria-hidden />
+      <div
+        aria-hidden
+        style={{
+          position: "absolute",
+          inset: 0,
+          background: "linear-gradient(180deg,rgba(21,35,67,.34),rgba(15,26,52,.58))",
+          backdropFilter: "blur(4px) saturate(118%)",
+          WebkitBackdropFilter: "blur(4px) saturate(118%)",
+        }}
+      />
+      <div style={{ position: "relative", maxWidth: 1180, margin: "0 auto" }}>
+        <div style={{ maxWidth: 760 }}>
+          <div
+            style={{
+              display: "inline-flex",
+              flexWrap: "wrap",
+              maxWidth: "100%",
+              alignItems: "stretch",
+              marginBottom: 30,
+              fontFamily: "var(--font-plex-mono)",
+              border: "1.5px solid rgba(239,231,214,.34)",
+              clipPath: "polygon(9px 0,100% 0,100% calc(100% - 9px),calc(100% - 9px) 100%,0 100%,0 9px)",
+              background: "rgba(15,26,52,.35)",
+              backdropFilter: "blur(3px)",
+              WebkitBackdropFilter: "blur(3px)",
+            }}
+          >
+            <span
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 8,
+                background: "var(--amber)",
+                color: "#F5F7FF",
+                fontWeight: 600,
+                fontSize: 12,
+                letterSpacing: ".14em",
+                padding: "9px 14px",
+              }}
+            >
+              <span className="nl-live-dot" style={{ width: 8, height: 8, borderRadius: "50%", background: "#F5F7FF", display: "inline-block" }} />
+              CANLI
             </span>
-          </Reveal>
-
-          <Reveal delay={80}>
-            <h1 className="mt-6 font-display text-4xl font-bold leading-[1.05] tracking-tight text-on-surface sm:text-5xl lg:text-6xl">
-              Çocuğunuz yapay zekayı{" "}
-              <span className="text-gradient-amber">izlemesin,</span> kullansın.
-            </h1>
-          </Reveal>
-
-          <Reveal delay={160}>
-            <p className="mx-auto mt-6 max-w-xl text-lg leading-relaxed text-on-surface-variant lg:mx-0">
-              10–16 yaş için canlı, uygulamalı yapay zeka eğitimi. En fazla 2 kişilik
-              gruplar, her derste ekrana çıkan gerçek bir üretim — prompt&apos;tan görsele,
-              videodan oyuna.
-            </p>
-          </Reveal>
-
-          <Reveal delay={240}>
-            <div className="mt-9 flex flex-col items-center justify-center gap-3 sm:flex-row lg:justify-start">
-              <Button href="/kayit" size="lg">
-                Ücretsiz Deneme Dersi <ArrowRight className="size-4" />
-              </Button>
-              <Button href="/playground" variant="ghost" size="lg">
-                Playground&apos;ı Dene
-              </Button>
-            </div>
-          </Reveal>
-
-          <Reveal delay={320}>
-            <ul className="mt-10 flex flex-wrap items-center justify-center gap-3 lg:justify-start">
-              {chips.map((c) => (
-                <li
-                  key={c.label}
-                  className="inline-flex items-center gap-2 rounded-full border border-white/8 bg-surface-high/50 px-3.5 py-2 text-sm text-on-surface-variant"
-                >
-                  <c.icon className="size-4 text-secondary" /> {c.label}
-                </li>
-              ))}
-            </ul>
-          </Reveal>
-        </div>
-
-        {/* Astronaut visual */}
-        <div className="relative mx-auto w-full max-w-sm">
-          <div className="relative aspect-square">
-            <div className="absolute inset-0 rounded-full bg-secondary/10 blur-3xl animate-pulse-glow" />
-            <div className="absolute inset-4 rounded-full border border-white/5" />
-            <div className="absolute inset-12 rounded-full border border-white/5" />
-            <Astronaut className="absolute inset-0 m-auto w-2/3 animate-float [filter:drop-shadow(0_24px_44px_rgba(0,0,0,0.5))]" />
-            <div className="absolute left-1/2 top-1/2 size-full -translate-x-1/2 -translate-y-1/2 animate-spin-slow">
-              <span className="absolute -top-1 left-1/2 size-2 -translate-x-1/2 rounded-full bg-secondary shadow-[0_0_12px_2px_rgba(255,182,143,0.7)]" />
-            </div>
+            <span style={{ display: "inline-flex", flexDirection: "column", justifyContent: "center", padding: "5px 16px", borderLeft: "1.5px solid rgba(239,231,214,.24)" }}>
+              <span style={{ fontSize: 9, letterSpacing: ".24em", color: "var(--on-navy-soft)", lineHeight: 1 }}>YAŞ</span>
+              <span style={{ fontSize: 14, fontWeight: 600, letterSpacing: ".06em", color: "#fff", lineHeight: 1.25 }}>10–18</span>
+            </span>
+            <span style={{ display: "inline-flex", flexDirection: "column", justifyContent: "center", padding: "5px 16px", borderLeft: "1.5px solid rgba(239,231,214,.24)" }}>
+              <span style={{ fontSize: 9, letterSpacing: ".24em", color: "var(--on-navy-soft)", lineHeight: 1 }}>FORMAT</span>
+              <span style={{ fontSize: 14, fontWeight: 600, letterSpacing: ".06em", color: "#fff", lineHeight: 1.25 }}>ONLİNE AKADEMİ</span>
+            </span>
           </div>
+
+          <h1
+            style={{
+              fontFamily: "var(--font-archivo)",
+              fontWeight: 600,
+              lineHeight: 1.1,
+              letterSpacing: "-.02em",
+              marginBottom: 30,
+              fontSize: "clamp(2rem,4.6vw,3.4rem)",
+              color: "var(--on-navy)",
+              textWrap: "balance",
+            }}
+          >
+            Çocuğunuz yapay zekayı izlemesin,{" "}
+            <span style={{ color: "var(--amber)" }}>kullansın.</span>
+          </h1>
+
+          <p style={{ fontSize: "clamp(1.05rem,1.6vw,1.3rem)", lineHeight: 1.55, color: "var(--on-navy-soft)", maxWidth: 600, margin: "0 0 34px", textWrap: "pretty" }}>
+            Haftada bir gün, iki kişilik küçük gruplarda; öğretmen eşliğinde 100&apos;den fazla yapay zeka aracını kullanarak her derste elle tutulur bir şey üretiyorlar — kendi web sitesinden konuşan bir 3D avatara, bir şarkıdan kısa bir filme kadar.
+          </p>
+
+          <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 16 }}>
+            <a href={siteConfig.instagram} target="_blank" rel="noopener noreferrer" className="nl-btn nl-btn--lg nl-btn--amber inline-flex">
+              Instagram&apos;dan yazın →
+            </a>
+            <a href="#nasil" className="nl-btn nl-btn--lg nl-btn--outline-dark inline-flex">
+              Nasıl işliyor
+            </a>
+          </div>
+          <p style={{ fontFamily: "var(--font-plex-mono)", fontSize: 12.5, letterSpacing: ".04em", color: "var(--on-navy-soft)", margin: "22px 0 0" }}>
+            Ücretsiz deneme dersi mevcut · birebir, 30 dk + veli görüşmesi
+          </p>
         </div>
-      </Container>
+      </div>
     </section>
   );
 }

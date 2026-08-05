@@ -6,7 +6,11 @@ export function CosmicBackground() {
   return (
     <div
       aria-hidden
-      className="pointer-events-none fixed inset-0 -z-10 overflow-hidden bg-surface"
+      // Slightly oversized vs. the viewport (not a flush inset-0) so that on
+      // browsers/devices where overscroll-behavior isn't honored, a rubber-band
+      // drag past the top/bottom edge still reveals more background instead of
+      // a hard, obviously-viewport-sized seam.
+      className="pointer-events-none fixed -inset-12 -z-10 overflow-hidden bg-surface"
     >
       {/* Deep radial base — slightly lit from the top */}
       <div

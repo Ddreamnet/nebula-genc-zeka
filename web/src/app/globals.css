@@ -1,4 +1,8 @@
 @import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+
+@custom-variant dark (&:is(.dark *));
 
 /* =========================================================================
    NEBULA GENÇ ZEKA — "Cosmic Intellectual Horizon" design system
@@ -48,6 +52,10 @@
   --font-display: var(--font-space-grotesk), "Space Grotesk", sans-serif;
   --font-sans: var(--font-manrope), "Manrope", ui-sans-serif, system-ui, sans-serif;
   --font-mono: var(--font-jetbrains-mono), "JetBrains Mono", ui-monospace, monospace;
+  /* Playful, rounded display face reserved for kid-facing greeting copy (the
+     dashboard's "Hoş geldin" text) — --font-fredoka is only ever loaded by
+     app/dashboard/layout.tsx, which is the only place font-kid is used. */
+  --font-kid: var(--font-fredoka), "Fredoka", sans-serif;
 
   /* ---- Easing ---- */
   --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
@@ -61,6 +69,9 @@
   html {
     scroll-behavior: smooth;
     -webkit-text-size-adjust: 100%;
+    /* Kill rubber-band overscroll so a drag past the top/bottom edge can't
+       reveal whatever sits behind the current page's fixed background. */
+    overscroll-behavior-y: none;
   }
 
   body {
@@ -102,139 +113,9 @@
 }
 
 /* =========================================================================
-   Utilities — glass, glow, gradients, cosmic background
+   Utilities — cosmic background (starfield/aurora)
    ========================================================================= */
 @layer utilities {
-  /* Glassmorphism cockpit panels */
-  .glass {
-    background: color-mix(in oklab, var(--color-surface) 62%, transparent);
-    backdrop-filter: blur(18px) saturate(1.2);
-    -webkit-backdrop-filter: blur(18px) saturate(1.2);
-    border: 1px solid color-mix(in oklab, white 7%, transparent);
-  }
-  .glass-strong {
-    background: color-mix(in oklab, var(--color-surface-low) 82%, transparent);
-    backdrop-filter: blur(28px) saturate(1.3);
-    -webkit-backdrop-filter: blur(28px) saturate(1.3);
-    border: 1px solid color-mix(in oklab, white 8%, transparent);
-  }
-
-  /* Hairline top-light on glass edges */
-  .edge-light {
-    box-shadow:
-      inset 0 1px 0 0 color-mix(in oklab, white 10%, transparent),
-      inset 0 0 0 1px color-mix(in oklab, white 4%, transparent);
-  }
-
-  /* Elevated glass card — genuinely translucent (the aurora/starfield behind it
-     should read through the blur), with a soft top sheen + lift shadow so it
-     floats above the page rather than sitting flat like .glass/.glass-strong. */
-  .glass-card {
-    /* Own fill stays deliberately light (~30-40%) — a more opaque fill would
-       sit on top of the backdrop-filter result and mask the liquid warp
-       almost entirely (confirmed by direct comparison while tuning this). */
-    background:
-      radial-gradient(120% 60% at 18% -12%, color-mix(in oklab, white 16%, transparent), transparent 60%),
-      linear-gradient(
-        180deg,
-        color-mix(in oklab, var(--color-surface-low) 38%, transparent) 0%,
-        color-mix(in oklab, var(--color-surface-low) 28%, transparent) 100%
-      );
-    /* Fallback first, real refraction second — unsupported browsers (Safari/
-       Firefox today) simply ignore the url() declaration and keep the blur. */
-    backdrop-filter: blur(32px) saturate(1.7);
-    -webkit-backdrop-filter: blur(32px) saturate(1.7);
-    backdrop-filter: url(#liquid-glass-card) blur(9px) saturate(1.8);
-    border: 1px solid color-mix(in oklab, white 13%, transparent);
-    box-shadow:
-      inset 0 1px 0 0 color-mix(in oklab, white 18%, transparent),
-      0 2px 8px 0 rgba(0, 0, 0, 0.2),
-      0 28px 54px -16px rgba(0, 0, 0, 0.55);
-  }
-
-  /* Glass button — true glassmorphism: translucent tinted fill + backdrop blur,
-     NOT an opaque gradient. A pointer-tracked highlight (--mx/--my, written
-     directly to the DOM — see auth-form.tsx) mimics light sliding across a wet
-     glass surface. Defaults center the highlight so it still looks right
-     before any pointer event fires. */
-  .btn-glass {
-    --mx: 50%;
-    --my: 0%;
-    position: relative;
-    color: var(--color-on-secondary);
-    /* Same masking issue as .glass-card — own fill kept light so the warp
-       actually reads, brand color carried mainly by the border/glow instead. */
-    background:
-      radial-gradient(140px circle at var(--mx) var(--my), color-mix(in oklab, white 60%, transparent), transparent 70%),
-      linear-gradient(
-        160deg,
-        color-mix(in oklab, var(--color-secondary) 68%, white 14%) 0%,
-        color-mix(in oklab, var(--color-secondary) 58%, transparent) 100%
-      );
-    backdrop-filter: blur(18px) saturate(2.2) brightness(1.15);
-    -webkit-backdrop-filter: blur(18px) saturate(2.2) brightness(1.15);
-    backdrop-filter: url(#liquid-glass-btn) blur(7px) saturate(2.6) brightness(1.25);
-    border: 1px solid color-mix(in oklab, white 48%, transparent);
-    box-shadow:
-      inset 0 1px 0 0 color-mix(in oklab, white 65%, transparent),
-      0 10px 26px -10px color-mix(in oklab, var(--color-secondary) 55%, transparent),
-      0 2px 6px -2px rgba(0, 0, 0, 0.2);
-    transition:
-      transform 0.2s var(--ease-out-expo),
-      box-shadow 0.2s var(--ease-out-expo),
-      filter 0.2s;
-  }
-  .btn-glass:hover {
-    filter: brightness(1.08) saturate(1.05);
-    transform: translateY(-1px);
-    box-shadow:
-      inset 0 1px 0 0 color-mix(in oklab, white 72%, transparent),
-      0 14px 32px -10px color-mix(in oklab, var(--color-secondary) 65%, transparent),
-      0 2px 6px -2px rgba(0, 0, 0, 0.2);
-  }
-  .btn-glass:active {
-    transform: translateY(1px) scale(0.98);
-    box-shadow:
-      inset 0 1px 0 0 color-mix(in oklab, white 48%, transparent),
-      0 6px 16px -8px color-mix(in oklab, var(--color-secondary) 45%, transparent),
-      0 1px 3px -1px rgba(0, 0, 0, 0.18);
-  }
-
-  /* Ambient star-glow shadow */
-  .glow-amber {
-    box-shadow: 0 0 40px -8px color-mix(in oklab, var(--color-secondary) 45%, transparent);
-  }
-  .glow-blue {
-    box-shadow: 0 0 40px -8px color-mix(in oklab, var(--color-primary) 40%, transparent);
-  }
-  .text-glow {
-    text-shadow: 0 0 24px color-mix(in oklab, var(--color-secondary) 45%, transparent);
-  }
-
-  /* Gradient text */
-  .text-gradient-amber {
-    background: linear-gradient(100deg, var(--color-secondary-bright), var(--color-tertiary));
-    -webkit-background-clip: text;
-    background-clip: text;
-    color: transparent;
-  }
-  .text-gradient-cosmic {
-    background: linear-gradient(100deg, var(--color-primary-bright) 10%, var(--color-secondary) 90%);
-    -webkit-background-clip: text;
-    background-clip: text;
-    color: transparent;
-  }
-
-  /* Eyebrow label */
-  .eyebrow {
-    font-family: var(--font-mono);
-    font-size: 0.75rem;
-    font-weight: 500;
-    letter-spacing: 0.22em;
-    text-transform: uppercase;
-    color: var(--color-secondary);
-  }
-
   /* Layered starfield (cheap, GPU-friendly, tiled) */
   .starfield {
     background-image:
@@ -293,13 +174,28 @@
 .animate-pulse-glow { animation: pulse-glow 6s ease-in-out infinite; will-change: transform, opacity; }
 .animate-spin-slow { animation: spin-slow 60s linear infinite; }
 
+/* One-shot greeting wave (panel welcome banners) — plays once on mount, never loops. */
+@keyframes pn-wave {
+  0%, 60%, 100% { transform: rotate(0deg); }
+  10%, 30% { transform: rotate(14deg); }
+  20% { transform: rotate(-8deg); }
+  40% { transform: rotate(10deg); }
+}
+.animate-wave-once {
+  transform-origin: 70% 70%;
+  animation: pn-wave 1.4s ease-in-out 1;
+}
+
 /* Scroll reveal — set by <Reveal>; toggled via [data-show] */
 .reveal {
   opacity: 0;
-  transform: translate3d(0, 24px, 0);
+  /* 14px/0.5s, not 24px/0.7s — the larger figures made revealed content
+     visibly travel further than the page itself scrolled in that same
+     window, which read as the page "jumping" rather than scrolling. */
+  transform: translate3d(0, 14px, 0);
   transition:
-    opacity 0.7s var(--ease-out-expo),
-    transform 0.7s var(--ease-out-expo);
+    opacity 0.5s var(--ease-out-expo),
+    transform 0.5s var(--ease-out-expo);
   will-change: opacity, transform;
 }
 .reveal[data-show="true"] {
@@ -318,4 +214,325 @@
     transition-duration: 0.001ms !important;
   }
   .reveal { opacity: 1 !important; transform: none !important; }
+}
+
+/* =========================================================================
+   shadcn/ui bridge — for the admin/teacher/student panels only.
+   Deliberately does NOT redefine --color-primary / --color-secondary:
+   those are Nebula's own brand tokens (defined above) and are already
+   used as plain Tailwind utilities (bg-secondary, text-primary, ...) all
+   over the marketing site. shadcn's generated components expect
+   primary/secondary to exist and read as accent colors, which Nebula's
+   tokens already satisfy — we only need to supply the "-foreground"
+   pairing shadcn expects, mapped to Nebula's existing "-on-" tokens, plus
+   the handful of concepts Nebula doesn't have yet (card, popover, muted,
+   accent, destructive, border, input, ring, radius). Panel styling here
+   is a functional placeholder — full visual redesign is a later pass.
+   ========================================================================= */
+@theme inline {
+  --color-sidebar-ring: var(--sidebar-ring);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar: var(--sidebar);
+  --color-chart-5: var(--chart-5);
+  --color-chart-4: var(--chart-4);
+  --color-chart-3: var(--chart-3);
+  --color-chart-2: var(--chart-2);
+  --color-chart-1: var(--chart-1);
+  --color-ring: var(--ring);
+  --color-input: var(--input);
+  --color-border: var(--border);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-destructive: var(--destructive);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent: var(--accent);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-muted: var(--muted);
+  --color-secondary-foreground: var(--color-on-secondary);
+  --color-primary-foreground: var(--color-on-primary);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-popover: var(--popover);
+  --color-card-foreground: var(--card-foreground);
+  --color-card: var(--card);
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.4);
+  --radius-2xl: calc(var(--radius) * 1.8);
+  --radius-3xl: calc(var(--radius) * 2.2);
+  --radius-4xl: calc(var(--radius) * 2.6);
+}
+
+/* Nebula is dark-only (see viewport colorScheme above) — one palette, no .dark toggle. */
+:root {
+  --card: var(--color-surface-container);
+  --card-foreground: var(--color-on-surface);
+  --popover: var(--color-surface-high);
+  --popover-foreground: var(--color-on-surface);
+  --muted: var(--color-surface-high);
+  --muted-foreground: var(--color-on-surface-variant);
+  --accent: var(--color-surface-highest);
+  --accent-foreground: var(--color-on-surface);
+  --destructive: var(--color-error);
+  --destructive-foreground: var(--color-surface-lowest);
+  --border: var(--color-outline-variant);
+  --input: var(--color-outline-variant);
+  --ring: var(--color-secondary);
+  --chart-1: var(--color-secondary);
+  --chart-2: var(--color-primary);
+  --chart-3: var(--color-tertiary);
+  --chart-4: var(--color-secondary-bright);
+  --chart-5: var(--color-primary-bright);
+  --radius: 0.625rem;
+  --sidebar: var(--color-surface-low);
+  --sidebar-foreground: var(--color-on-surface);
+  --sidebar-primary: var(--color-secondary);
+  --sidebar-primary-foreground: var(--color-on-secondary);
+  --sidebar-accent: var(--color-surface-high);
+  --sidebar-accent-foreground: var(--color-on-surface);
+  --sidebar-border: var(--color-outline-variant);
+  --sidebar-ring: var(--color-secondary);
+}
+
+/* =========================================================================
+   Panel & auth theme — navy/space-blue/paper (matches the landing page)
+   Scoped to .panel-theme so it never touches the global dark "Cosmic
+   Intellectual Horizon" tokens above — Playground and anything else stays
+   untouched. Every panel-ui/shadcn component reads --color-* indirectly
+   (via --card/--popover/--muted/etc in :root, which just alias --color-*),
+   so overriding the tokens here is enough to retint every existing
+   component with zero changes to their source.
+   "secondary" is still the accent-token name (kept for minimal diff) but
+   its value is now the "uzay mavisi" space-blue brand accent, not amber.
+   ========================================================================= */
+.panel-theme {
+  /* --color-surface (page bg) is untouched on purpose — only the elevated
+     "card" steps below were the tan/skin-toned ones and got neutralized.
+     Literal card containers (.pn-card, below) go further and use real
+     frosted glass instead of a flat fill; these tokens remain as the
+     fallback/base for non-glass consumers (chips, small stat boxes). */
+  --color-surface: #c1cdec;
+  --color-surface-dim: #aab9e2;
+  --color-surface-lowest: #97a8dc;
+  --color-surface-low: #cad5f0;
+  --color-surface-container: #e0e7f8;
+  --color-surface-high: #d5e0f5;
+  --color-surface-highest: #ffffff;
+  --color-surface-bright: #ffffff;
+
+  --color-on-surface: #10182e;
+  --color-on-surface-variant: #414d78;
+  --color-outline: #6f7cab;
+  --color-outline-variant: #b3c0e6;
+
+  --color-secondary: #3d5fe0;
+  --color-secondary-bright: #7b93f0;
+  --color-on-secondary: #f5f7ff;
+  --color-secondary-container: #26399e;
+  --color-on-secondary-container: #e7ebff;
+
+  --color-primary: #152343;
+  --color-primary-bright: #1e2f58;
+  --color-on-primary: #efe7d6;
+  --color-primary-container: #0f1a34;
+  --color-on-primary-container: #a9b6d4;
+
+  --color-tertiary: #26399e;
+  --color-on-tertiary: #e7ebff;
+
+  --color-error: #b3261e;
+  --color-success: #3f7d53;
+
+  /* shadcn/panel-ui bridge tokens — MUST be redeclared here, not just the
+     --color-* tokens above. `--card: var(--color-surface-container)` in
+     :root gets substituted ONCE at :root's own cascade and that resolved
+     value is what inherits down — overriding --color-surface-container in
+     a nested scope does NOT retroactively change an already-resolved alias
+     declared elsewhere. Aliases must be redeclared at the same scope as
+     the tokens they point to. (Confirmed empirically — this is a real CSS
+     custom-property behavior, not a Tailwind quirk.) */
+  --card: var(--color-surface-container);
+  --card-foreground: var(--color-on-surface);
+  --popover: var(--color-surface-high);
+  --popover-foreground: var(--color-on-surface);
+  --muted: var(--color-surface-high);
+  --muted-foreground: var(--color-on-surface-variant);
+  --accent: var(--color-surface-highest);
+  --accent-foreground: var(--color-on-surface);
+  --destructive: var(--color-error);
+  --destructive-foreground: var(--color-surface-lowest);
+  --border: var(--color-outline-variant);
+  --input: var(--color-outline-variant);
+  --ring: var(--color-secondary);
+  --sidebar: var(--color-surface-low);
+  --sidebar-foreground: var(--color-on-surface);
+  --sidebar-primary: var(--color-secondary);
+  --sidebar-primary-foreground: var(--color-on-secondary);
+  --sidebar-accent: var(--color-surface-high);
+  --sidebar-accent-foreground: var(--color-on-surface);
+  --sidebar-border: var(--color-outline-variant);
+  --sidebar-ring: var(--color-secondary);
+
+  /* Landing-page fonts, scoped — Playground/anything outside .panel-theme
+     keeps the original Space Grotesk/Manrope/JetBrains Mono set above. */
+  --font-display: var(--font-archivo), "Archivo", sans-serif;
+  --font-sans: var(--font-plex-sans), "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-plex-mono), "IBM Plex Mono", ui-monospace, monospace;
+}
+
+/* "Cosmic mist" background — grid-paper texture layered with a cool
+   navy/space-blue wash drifting in from the top and a soft lavender-blue
+   glow rising from the bottom (previously a warm gold/parchment wash —
+   swapped to an all-cool palette, Fatih found the old one too tan/brown).
+   Each glow is a 3-stop gradient (not a hard stop-to-transparent) so it
+   feathers out instead of reading as a blotch. Gives .pn-card's frosted
+   glass some real color/depth to blur+saturate too — a flat fill blurs into
+   nothing. Reused for panel/auth surfaces only (never Playground). */
+.panel-grid-bg {
+  background-image:
+    linear-gradient(rgba(8, 12, 24, 0.07) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(8, 12, 24, 0.07) 1px, transparent 1px),
+    radial-gradient(60% 50% at 18% -6%, rgba(15, 24, 50, 0.24) 0%, rgba(15, 24, 50, 0.07) 45%, transparent 75%),
+    radial-gradient(55% 46% at 88% -4%, rgba(61, 95, 224, 0.22) 0%, rgba(61, 95, 224, 0.06) 45%, transparent 75%),
+    radial-gradient(70% 60% at 50% 116%, rgba(123, 147, 240, 0.3) 0%, rgba(123, 147, 240, 0.08) 50%, transparent 80%);
+  background-size: 34px 34px, 34px 34px, 100% 100%, 100% 100%, 100% 100%;
+}
+
+/* Flat "hard-shadow" pill buttons for the auth page + panel header — same
+   tactile press feel as the landing page's CTAs, built on Nebula's own
+   --color-* tokens (not the landing page's local --amber/--navy vars) so
+   this stays correct wherever .panel-theme is applied, independent of the
+   marketing scope. Fill/shadow/text colors are read from --pn-btn-fill/
+   --pn-btn-shadow/--pn-btn-fg custom properties so every color variant
+   below only has to set those three instead of repeating the whole
+   dot-scatter background — a color modifier is 2-3 lines, not a copy of
+   the gradient stack. */
+.pn-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  font-family: var(--font-mono);
+  font-weight: 600;
+  border-radius: 11px;
+  padding: 14px 24px;
+  color: var(--pn-btn-fg, var(--color-on-secondary));
+  /* Solid fill + a scatter of small static "star" dots — decorative only,
+     never animated/glowing. */
+  background:
+    radial-gradient(1.4px 1.4px at 14% 30%, rgba(255, 255, 255, 0.9), transparent 100%),
+    radial-gradient(1.4px 1.4px at 88% 24%, rgba(255, 255, 255, 0.75), transparent 100%),
+    radial-gradient(1px 1px at 93% 70%, rgba(255, 255, 255, 0.8), transparent 100%),
+    radial-gradient(1px 1px at 7% 74%, rgba(255, 255, 255, 0.65), transparent 100%),
+    radial-gradient(1px 1px at 48% 16%, rgba(255, 255, 255, 0.55), transparent 100%),
+    radial-gradient(1.2px 1.2px at 34% 82%, rgba(255, 255, 255, 0.55), transparent 100%),
+    radial-gradient(1px 1px at 68% 48%, rgba(255, 255, 255, 0.6), transparent 100%),
+    radial-gradient(0.9px 0.9px at 22% 56%, rgba(255, 255, 255, 0.45), transparent 100%),
+    radial-gradient(1px 1px at 78% 86%, rgba(255, 255, 255, 0.5), transparent 100%),
+    radial-gradient(0.8px 0.8px at 60% 6%, rgba(255, 255, 255, 0.45), transparent 100%),
+    radial-gradient(1px 1px at 40% 94%, rgba(255, 255, 255, 0.4), transparent 100%),
+    radial-gradient(0.9px 0.9px at 5% 15%, rgba(255, 255, 255, 0.4), transparent 100%),
+    radial-gradient(0.8px 0.8px at 96% 45%, rgba(255, 255, 255, 0.4), transparent 100%),
+    radial-gradient(1px 1px at 26% 44%, rgba(255, 255, 255, 0.5), transparent 100%),
+    radial-gradient(0.9px 0.9px at 55% 64%, rgba(255, 255, 255, 0.45), transparent 100%),
+    radial-gradient(1.1px 1.1px at 82% 8%, rgba(255, 255, 255, 0.6), transparent 100%),
+    radial-gradient(0.8px 0.8px at 16% 8%, rgba(255, 255, 255, 0.4), transparent 100%),
+    radial-gradient(1px 1px at 44% 38%, rgba(255, 255, 255, 0.45), transparent 100%),
+    radial-gradient(0.9px 0.9px at 70% 78%, rgba(255, 255, 255, 0.5), transparent 100%),
+    radial-gradient(1px 1px at 95% 15%, rgba(255, 255, 255, 0.55), transparent 100%),
+    var(--pn-btn-fill, var(--color-secondary));
+  border: 2px solid var(--pn-btn-shadow, var(--color-secondary-container));
+  box-shadow: 0 6px 0 var(--pn-btn-shadow, var(--color-secondary-container));
+  transition: transform 0.1s cubic-bezier(0.2, 0.8, 0.3, 1), box-shadow 0.1s cubic-bezier(0.2, 0.8, 0.3, 1);
+}
+.pn-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 7px 0 var(--pn-btn-shadow, var(--color-secondary-container));
+  filter: brightness(1.03);
+}
+.pn-btn:active {
+  transform: translateY(4px);
+  box-shadow: 0 2px 0 var(--pn-btn-shadow, var(--color-secondary-container));
+}
+.pn-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* Login button — darkened further off the raw --color-secondary/-container
+   tokens (which stay untouched since links/tabs/badges elsewhere still read
+   them as the brighter accent) so only the button itself reads darker/more
+   navy. */
+.pn-btn--amber {
+  --pn-btn-fill: color-mix(in oklab, var(--color-secondary) 82%, black);
+  --pn-btn-shadow: color-mix(in oklab, var(--color-secondary-container) 85%, black);
+}
+
+/* Header action-button colors — each a distinct dark jewel tone so a row of
+   them reads as varied, not a wall of one color. */
+.pn-btn--red { --pn-btn-fill: #a23636; --pn-btn-shadow: #6b2020; }
+.pn-btn--green { --pn-btn-fill: #2c7a58; --pn-btn-shadow: #194f38; }
+.pn-btn--orange { --pn-btn-fill: #bd6a2c; --pn-btn-shadow: #7a4118; }
+.pn-btn--navy { --pn-btn-fill: #24325c; --pn-btn-shadow: #131b34; }
+.pn-btn--purple { --pn-btn-fill: #5b3d8a; --pn-btn-shadow: #392458; }
+
+/* Compact size for header buttons (vs. the full-size login CTA). */
+.pn-btn--sm {
+  gap: 6px;
+  border-radius: 9px;
+  padding: 8px 14px;
+  font-size: 0.8rem;
+  box-shadow: 0 4px 0 var(--pn-btn-shadow, var(--color-secondary-container));
+}
+.pn-btn--sm:hover {
+  box-shadow: 0 5px 0 var(--pn-btn-shadow, var(--color-secondary-container));
+}
+.pn-btn--sm:active {
+  transform: translateY(3px);
+  box-shadow: 0 1px 0 var(--pn-btn-shadow, var(--color-secondary-container));
+}
+
+/* Circular icon-only size, for the header's notification-bell trigger. */
+.pn-btn--icon {
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  border-radius: 9999px;
+  box-shadow: 0 4px 0 var(--pn-btn-shadow, var(--color-secondary-container));
+}
+.pn-btn--icon:hover {
+  box-shadow: 0 5px 0 var(--pn-btn-shadow, var(--color-secondary-container));
+}
+.pn-btn--icon:active {
+  transform: translateY(3px);
+  box-shadow: 0 1px 0 var(--pn-btn-shadow, var(--color-secondary-container));
+}
+
+/* =========================================================================
+   Liquid-glass cards — panel & auth theme only.
+   Real frosted glass (not a flat tint): translucent white layered over a
+   blurred, saturated view of whatever sits behind (.panel-grid-bg's paper
+   texture, other content scrolled underneath), plus a soft top-left light
+   bloom and an inset hairline to read as a lit glass edge. Replaces the old
+   flat tan/skin-toned --color-surface-container fill for literal cards.
+   backdrop-filter has been supported in every evergreen browser since 2021
+   (Safari 9+, Chrome 76+, Firefox 103+) — no solid-color fallback needed.
+   ========================================================================= */
+.pn-card {
+  background:
+    radial-gradient(120% 60% at 14% 0%, rgba(255, 255, 255, 0.55), transparent 60%),
+    linear-gradient(165deg, rgba(255, 255, 255, 0.6), rgba(255, 255, 255, 0.24));
+  backdrop-filter: blur(22px) saturate(160%);
+  -webkit-backdrop-filter: blur(22px) saturate(160%);
+  border: 1px solid rgba(255, 255, 255, 0.65);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.85),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.12),
+    0 16px 40px -12px rgba(35, 33, 28, 0.16),
+    0 2px 8px rgba(35, 33, 28, 0.06);
 }

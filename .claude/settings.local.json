@@ -1,0 +1,24 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(mkdir -p /home/fatih/.claude/projects/-mnt-c-Users-Fatih-Desktop-Work-nebula-genc-zeka/memory)",
+      "Bash(npm -v)",
+      "Bash(pnpm -v)",
+      "Bash(npx -v)",
+      "Bash(git --version)",
+      "Bash(npx *)",
+      "Bash(pip3 install *)",
+      "Bash(python3 /tmp/claude-1000/-mnt-c-Users-Fatih-Desktop-Work-nebula-genc-zeka/a53eff3e-a161-49d8-92c2-7a2ab20fcd1d/scratchpad/crop_mark.py)",
+      "Bash(npm install *)",
+      "Bash(node /tmp/claude-1000/-mnt-c-Users-Fatih-Desktop-Work-nebula-genc-zeka/a53eff3e-a161-49d8-92c2-7a2ab20fcd1d/scratchpad/crop_mark.js)",
+      "mcp__claude_ai_Supabase__list_projects",
+      "mcp__claude_ai_Supabase__apply_migration",
+      "mcp__claude_ai_Supabase__get_advisors",
+      "mcp__claude_ai_Supabase__execute_sql",
+      "Bash(python3 -c ' *)",
+      "Bash(NODE_PATH=node_modules node -e ' *)",
+      "Bash(npm run *)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\\\\n\" http://localhost:3000/playground)"
+    ]
+  }
+}
