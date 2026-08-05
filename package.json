@@ -4,7 +4,7 @@
   "private": true,
   "main": "web/.next/standalone/server.js",
   "scripts": {
-    "build": "npm --prefix web install && npm --prefix web run build",
+    "build": "npm --prefix web install --include=dev && npm --prefix web run build",
     "start": "npm --prefix web run start"
   }
 }
