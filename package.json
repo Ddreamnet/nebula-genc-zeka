@@ -1,0 +1,10 @@
+{
+  "name": "nebula-genc-zeka",
+  "version": "1.0.0",
+  "private": true,
+  "main": "web/.next/standalone/server.js",
+  "scripts": {
+    "build": "npm --prefix web install && npm --prefix web run build",
+    "start": "npm --prefix web run start"
+  }
+}
