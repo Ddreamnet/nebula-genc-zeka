@@ -5,7 +5,7 @@
   "main": ".next/standalone/server.js",
   "scripts": {
     "dev": "next dev",
-    "build": "rm -rf .next && next build --webpack && cp -r public .next/standalone/ && mkdir -p .next/standalone/.next && cp -r .next/static .next/standalone/.next/",
+    "build": "rm -rf .next && next build --webpack && cp .next/server/middleware.js .next/server/proxy.js && cp .next/server/middleware.js.nft.json .next/server/proxy.js.nft.json && cp -r public .next/standalone/ && mkdir -p .next/standalone/.next && cp -r .next/static .next/standalone/.next/",
     "start": "node .next/standalone/server.js",
     "lint": "eslint"
   },
