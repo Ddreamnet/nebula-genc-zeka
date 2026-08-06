@@ -20,6 +20,17 @@ const nextConfig: NextConfig = {
   // Pinning this to `web/` itself removes the ambiguity regardless of what
   // shows up above it.
   outputFileTracingRoot: path.join(__dirname),
+  // GoDaddy's build sandbox intermittently fails with ENOENT on a page's
+  // .nft.json (e.g. the auto-generated _not-found route) during "Collecting
+  // page data"/"Generating build traces" — that step runs across several
+  // parallel workers (7 locally), and a constrained/slower sandbox
+  // filesystem is the most likely place for a write-then-read race between
+  // them to actually surface. Forcing a single worker serializes it away.
+  // These steps are a small fraction of total build time either way, so the
+  // slowdown here is negligible.
+  experimental: {
+    cpus: 1,
+  },
 };
 
 export default nextConfig;
