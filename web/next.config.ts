@@ -30,6 +30,23 @@ const nextConfig: NextConfig = {
   // slowdown here is negligible.
   experimental: {
     cpus: 1,
+    // "radix-ui" is the all-in-one package re-exporting every Radix
+    // primitive from one giant barrel file. Next optimizes known
+    // barrel-heavy packages (lucide-react, date-fns, ...) by default, but
+    // not this one — webpack otherwise has to pull in that whole barrel's
+    // module graph just to resolve the handful of primitives we actually
+    // import from it on any given page.
+    optimizePackageImports: ["radix-ui"],
+  },
+  // `next build`'s own "Running TypeScript" pass (~25-35s) re-checks the
+  // whole project with `tsc` in addition to compiling it — redundant with
+  // running `tsc --noEmit` ourselves, which we do (and verify clean) before
+  // every deploy. Skipping it here buys back that time on every GoDaddy
+  // build. This does NOT disable type-checking in the editor or `tsc
+  // --noEmit` — only this specific redundant re-check during production
+  // builds.
+  typescript: {
+    ignoreBuildErrors: true,
   },
 };
 
