@@ -1,5 +1,5 @@
 import Image from "next/image";
-import { whatsappHref, siteConfig } from "@/lib/site";
+import { ContactCtas } from "./contact-ctas";
 
 const legal = [
   { label: "KVKK", href: "/kvkk" },
@@ -36,14 +36,7 @@ export function ClosingCta() {
           <p style={{ fontSize: "clamp(1.05rem,1.5vw,1.25rem)", lineHeight: 1.55, color: "var(--on-navy-soft)", maxWidth: 560, margin: "0 0 32px" }}>
             Kayıt için acele etmenize gerek yok. Önce yazın, konuşalım; isterseniz ücretsiz deneme dersiyle çocuğunuz bizzat denesin.
           </p>
-          <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 16 }}>
-            <a href={siteConfig.instagram} target="_blank" rel="noopener noreferrer" className="nl-btn nl-btn--lg nl-btn--amber inline-flex">
-              Instagram · @nebulagenczeka
-            </a>
-            <a href={whatsappHref()} target="_blank" rel="noopener noreferrer" className="nl-btn nl-btn--lg nl-btn--green inline-flex">
-              WhatsApp&apos;tan yazın
-            </a>
-          </div>
+          <ContactCtas />
         </div>
 
         <div style={{ borderTop: "1px solid rgba(169,182,212,.18)", paddingTop: 30, display: "flex", flexWrap: "wrap", alignItems: "center", justifyContent: "space-between", gap: 20 }}>

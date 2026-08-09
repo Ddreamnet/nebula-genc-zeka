@@ -20,6 +20,7 @@ import { EditStudentDialog } from "./admin/edit-student-dialog";
 import { EditTeacherDialog } from "./admin/edit-teacher-dialog";
 import { ManageGroupsDialog } from "./admin/manage-groups-dialog";
 import { BalanceManager } from "./admin/balance-manager";
+import { PlaygroundTreasury } from "./admin/playground-treasury";
 import { WeeklyScheduleGrid } from "./weekly-schedule-grid";
 import { Card, CardContent } from "@/components/panel-ui/card";
 import { AddTopicDialog } from "./admin/add-topic-dialog";
@@ -309,6 +310,10 @@ export function AdminDashboard() {
       </header>
 
       <WelcomeBanner name="Admin" variant="banner" />
+
+      <div className="px-4 pt-4">
+        <PlaygroundTreasury />
+      </div>
 
       <div className="mx-auto grid w-full max-w-6xl grid-cols-1 gap-6 px-4 pt-4 pb-6 lg:grid-cols-[320px_1fr]">
         <TeacherList

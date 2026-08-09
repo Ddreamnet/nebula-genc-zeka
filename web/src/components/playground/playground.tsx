@@ -19,12 +19,17 @@ import {
   Music2,
   Globe,
   Gamepad2,
+  ImagePlus,
+  ChevronDown,
+  ArrowLeft,
+  X,
   type LucideIcon,
 } from "lucide-react";
 import { Logo } from "@/components/site/logo";
 import { cn } from "@/lib/cn";
 import { whatsappHref } from "@/lib/site";
-import { CATEGORIES, FEATURED_TOOL, findTool, type PlaygroundTool } from "@/lib/playground/tools";
+import { WhatsappIcon } from "@/components/ui/brand-icons";
+import { CATEGORIES, FEATURED_TOOL, findTool, generationOreCost, type PlaygroundTool } from "@/lib/playground/tools";
 import { CURRICULUM_MONTHS, weeksInMonth, resolveWeekTools } from "@/lib/playground/curriculum";
 import { ProviderBadge } from "./provider-logos";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/panel-ui/popover";
@@ -34,9 +39,45 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/panel-ui/p
 // its own cap regardless of what the client sends.
 const HISTORY_LIMIT = 20;
 
+// Attached images are downscaled here, in the browser, before they ever hit
+// the network: a phone photo is several MB and would be billed as prompt
+// tokens at full size for no visible gain. 1024px on the long edge is what
+// the per-image ore surcharge in tools.ts is priced against.
+const MAX_IMAGE_EDGE = 1024;
+
+/**
+ * Decodes, downscales and re-encodes a picked/pasted/dropped file to a JPEG
+ * data URL. Returns null for anything that isn't a decodable image, so a
+ * stray PDF drag lands as "ignored" rather than a broken attachment.
+ *
+ * JPEG has no alpha channel, so transparent PNGs are composited onto white
+ * first — otherwise the untouched canvas shows through as solid black.
+ */
+async function toAttachmentDataUrl(file: File): Promise<string | null> {
+  if (!file.type.startsWith("image/")) return null;
+  const bitmap = await createImageBitmap(file).catch(() => null);
+  if (!bitmap) return null;
+  try {
+    const scale = Math.min(1, MAX_IMAGE_EDGE / Math.max(bitmap.width, bitmap.height));
+    const canvas = document.createElement("canvas");
+    canvas.width = Math.max(1, Math.round(bitmap.width * scale));
+    canvas.height = Math.max(1, Math.round(bitmap.height * scale));
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return null;
+    ctx.fillStyle = "#ffffff";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+    return canvas.toDataURL("image/jpeg", 0.85);
+  } finally {
+    bitmap.close();
+  }
+}
+
 type Msg = {
   role: "user" | "assistant";
   content: string;
+  /** Images the student attached to their own message, as data URLs. */
+  attachments?: string[];
   imageUrl?: string;
   videoUrl?: string;
   videoPending?: boolean;
@@ -45,6 +86,16 @@ type Msg = {
 };
 
 type GateReason = "insufficient_balance" | "login_required" | null;
+
+/**
+ * Transient toast above the composer. `soon` explains a locked tool; `reset`
+ * explains that switching models cleared the transcript — without it the
+ * conversation just vanishes and the new model reads as having forgotten
+ * everything, which is exactly how the behaviour was misread in testing.
+ */
+type Notice = { kind: "soon" | "reset"; tool: string };
+
+const NOTICE_MS: Record<Notice["kind"], number> = { soon: 2400, reset: 3400 };
 
 // "Tümü" menu shows everything in one place; the featured tool lives only here, not under any single category.
 const ALL_TOOLS_FLAT: PlaygroundTool[] = [FEATURED_TOOL, ...CATEGORIES.flatMap((c) => c.tools)];
@@ -129,17 +180,34 @@ async function pollVideoStatus(generationId: string, onUpdate: (patch: Partial<M
 
 export function Playground() {
   const [activeTool, setActiveTool] = useState<PlaygroundTool>(FEATURED_TOOL);
-  const [soonNotice, setSoonNotice] = useState<string | null>(null);
+  const [notice, setNotice] = useState<Notice | null>(null);
 
   const [messages, setMessages] = useState<Msg[]>([]);
   const [input, setInput] = useState("");
+  const [attachments, setAttachments] = useState<string[]>([]);
   const [busy, setBusy] = useState(false);
   const [remaining, setRemaining] = useState(20);
   const [gateReason, setGateReason] = useState<GateReason>(null);
   const [composerHeight, setComposerHeight] = useState(0);
   const scrollRef = useRef<HTMLDivElement>(null);
 
-  const gated = gateReason !== null || remaining < activeTool.oreCost;
+  // 0 means this model can't see images at all, which is what hides the
+  // attach button. The server enforces the same ceiling regardless.
+  const maxImages = activeTool.maxImageInputs ?? 0;
+  // Mirrors the server's carry-forward rule (generate/route.ts): the most
+  // recent user turn's images are resent with the next message and billed
+  // again. Counting them here is what keeps the quoted price honest.
+  const carriedCount =
+    activeTool.modality === "text"
+      ? Math.min(
+          [...messages].reverse().find((m) => m.role === "user" && m.content.trim())?.attachments?.length ?? 0,
+          Math.max(0, maxImages - attachments.length),
+        )
+      : 0;
+  // Attached images cost extra, so the balance gate has to price the message
+  // as composed right now — not the tool's bare per-message rate.
+  const pendingCost = generationOreCost(activeTool, attachments.length + carriedCount);
+  const gated = gateReason !== null || remaining < pendingCost;
 
   useEffect(() => {
     fetch("/api/playground/balance")
@@ -162,10 +230,10 @@ export function Playground() {
   }, [messages]);
 
   useEffect(() => {
-    if (!soonNotice) return;
-    const t = setTimeout(() => setSoonNotice(null), 2400);
+    if (!notice) return;
+    const t = setTimeout(() => setNotice(null), NOTICE_MS[notice.kind]);
     return () => clearTimeout(t);
-  }, [soonNotice]);
+  }, [notice]);
 
   function setLastAssistant(patch: Partial<Msg>) {
     setMessages((m) => {
@@ -179,25 +247,33 @@ export function Playground() {
   async function send(text: string) {
     const q = text.trim();
     if (!q || busy || gated) return;
+    const sentImages = attachments;
     setInput("");
+    setAttachments([]);
     setBusy(true);
 
     // Session memory — only makes sense for text chat (image/video/audio
     // tools are one-shot generations, not a conversation). Trimmed to the
     // last HISTORY_LIMIT turns so cost doesn't grow unbounded; server
     // re-enforces the same cap, this is just to keep the payload small.
-    const history =
-      activeTool.modality === "text"
-        ? messages.filter((m) => m.content.trim()).slice(-HISTORY_LIMIT).map((m) => ({ role: m.role, content: m.content }))
-        : [];
+    const priorTurns = activeTool.modality === "text" ? messages.filter((m) => m.content.trim()).slice(-HISTORY_LIMIT) : [];
+    // Only the most recent user turn's images are replayed — that's all the
+    // server will use, and shipping the rest would put megabytes of dead data
+    // URLs on the wire with every single message.
+    const lastUserIndex = priorTurns.map((m) => m.role).lastIndexOf("user");
+    const history = priorTurns.map((m, i) => ({
+      role: m.role,
+      content: m.content,
+      images: i === lastUserIndex ? (m.attachments ?? []) : [],
+    }));
 
-    setMessages((m) => [...m, { role: "user", content: q }, { role: "assistant", content: "" }]);
+    setMessages((m) => [...m, { role: "user", content: q, attachments: sentImages }, { role: "assistant", content: "" }]);
 
     try {
       const res = await fetch("/api/playground/generate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ toolId: activeTool.id, prompt: q, history }),
+        body: JSON.stringify({ toolId: activeTool.id, prompt: q, history, attachments: sentImages }),
       });
       const data = await res.json();
 
@@ -238,12 +314,20 @@ export function Playground() {
 
   function selectTool(tool: PlaygroundTool) {
     if (tool.status === "soon") {
-      setSoonNotice(tool.name);
+      setNotice({ kind: "soon", tool: tool.name });
       return;
     }
     if (tool.id === activeTool.id) return;
+    // Switching models starts a fresh conversation — the new model is sent no
+    // history at all. Say that out loud when there was something to lose:
+    // silently emptying the transcript reads as the model having forgotten,
+    // which is precisely how it was misread while testing.
+    if (messages.length > 0) setNotice({ kind: "reset", tool: tool.name });
     setActiveTool(tool);
     setMessages([]);
+    // The new model may take fewer images than the old one — or none — so
+    // staged attachments don't survive a tool switch.
+    setAttachments([]);
     setGateReason(null);
   }
 
@@ -253,57 +337,56 @@ export function Playground() {
       <div aria-hidden className="pointer-events-none absolute -left-32 top-24 size-72 rounded-full bg-secondary/10 blur-3xl animate-pulse-glow" />
       <div aria-hidden className="pointer-events-none absolute -right-24 top-96 size-80 rounded-full bg-primary/10 blur-3xl animate-pulse-glow [animation-delay:1.5s]" />
 
-      <header className="sticky top-0 z-20 border-b border-white/5 bg-surface/70 backdrop-blur-xl">
-        <div className="mx-auto w-full max-w-4xl px-4">
-          <div className="flex h-16 items-center justify-between sm:h-20">
-            <Logo light disableLink large />
-            <div className="flex items-center gap-2 font-mono text-xs">
-              <span className="inline-flex items-center gap-1.5 rounded-full border border-white/8 bg-surface-high/60 px-3 py-1.5 text-on-surface-variant">
-                <Zap className="size-3.5 text-secondary" />
-                {formatOre(remaining)} cevher
-              </span>
-              <Link
-                href="/dashboard"
-                className="rounded-full bg-secondary px-4 py-1.5 font-semibold text-on-secondary transition hover:brightness-110"
-              >
-                Panele dön
-              </Link>
-            </div>
-          </div>
+      {/* One row: brand · model picker · balance · way out. The picker doubles
+          as the "which AI am I talking to" readout, so no second nav row and
+          no floating badge over the canvas are needed. */}
+      <header className="sticky top-0 z-20 bg-surface/80 backdrop-blur-xl">
+        <div className="mx-auto flex h-14 w-full max-w-4xl items-center gap-2 px-3 sm:h-16 sm:gap-3 sm:px-4">
+          <Logo light disableLink className="shrink-0" />
+          <span aria-hidden className="hidden h-7 w-px shrink-0 bg-white/10 sm:block" />
+          <ModelPicker activeTool={activeTool} onSelect={selectTool} />
 
-          <div className="flex items-center gap-2 pb-3">
-            <CategoryMegaMenu activeToolId={activeTool.id} onSelect={selectTool} />
-            <CurriculumMegaMenu activeToolId={activeTool.id} onSelect={selectTool} />
+          <div className="ml-auto flex shrink-0 items-center gap-1.5 sm:gap-2">
+            <OreMeter remaining={remaining} />
+            <Link
+              href="/dashboard"
+              title="Panele dön"
+              className="inline-flex h-9 shrink-0 items-center gap-1.5 rounded-full border border-white/10 bg-surface-container/50 px-2.5 text-xs font-medium text-on-surface-variant transition hover:border-white/25 hover:bg-surface-container hover:text-on-surface sm:px-3"
+            >
+              <ArrowLeft className="size-3.5 shrink-0" />
+              <span className="hidden sm:inline">Panel</span>
+            </Link>
           </div>
         </div>
+        {/* Hairline that fades out at both ends — a hard full-width rule is
+            what made the old bar read as a stock template block. */}
+        <div aria-hidden className="h-px bg-gradient-to-r from-transparent via-white/18 to-transparent" />
       </header>
 
       <div
         className="relative mx-auto flex w-full max-w-4xl min-h-0 flex-1 flex-col px-4 pt-6"
         style={{ paddingBottom: composerHeight || 16 }}
       >
-        <div className="mb-4 text-center">
-          <h1 className="font-display text-2xl font-semibold tracking-tight sm:text-3xl">Ne üretmek istersin?</h1>
-          <p className="mx-auto mt-1.5 max-w-md text-sm text-on-surface-variant">
-            Üstteki bir kategorinin üzerine gel, o işe yarayan yapay zekaları gör, birini seç.
-          </p>
-        </div>
-
-        <div ref={scrollRef} className="min-h-0 flex-1 overflow-y-auto pb-4">
-          {messages.length === 0 ? null : (
-            <div className="space-y-5">
+        {/* Empty state owns the whole canvas and centres itself; the moment a
+            conversation exists it gets out of the way entirely. */}
+        {messages.length === 0 ? (
+          <div className="flex min-h-0 flex-1 flex-col items-center justify-center pb-8 text-center duration-500 animate-in fade-in-0 slide-in-from-bottom-2">
+            <h1 className="font-display text-2xl font-semibold tracking-tight sm:text-3xl">Ne üretmek istersin?</h1>
+            <p className="mx-auto mt-2 max-w-sm text-sm leading-relaxed text-on-surface-variant">
+              Yukarıdaki model kutusuna dokun — kategorilere ya da müfredat haftalarına göre gez, sana uyan yapay zekayı seç.
+            </p>
+          </div>
+        ) : (
+          <div ref={scrollRef} className="min-h-0 flex-1 overflow-y-auto pb-4">
+            <div className="space-y-6">
               {messages.map((m, i) => (
-                <Bubble key={i} msg={m} busy={busy && i === messages.length - 1} />
+                <Bubble key={i} msg={m} tool={activeTool} busy={busy && i === messages.length - 1} />
               ))}
             </div>
-          )}
-        </div>
+          </div>
+        )}
 
         {gated && <GatedCallout gateReason={gateReason} />}
-
-        <div className="flex justify-end pt-1">
-          <ActiveToolBadge tool={activeTool} />
-        </div>
       </div>
 
       <Composer
@@ -312,16 +395,34 @@ export function Playground() {
         onSend={send}
         busy={busy}
         gated={gated}
+        attachments={attachments}
+        setAttachments={setAttachments}
+        maxImages={maxImages}
+        pendingCost={pendingCost}
+        baseCost={activeTool.oreCost}
         onHeightChange={setComposerHeight}
         placeholder={findTool(activeTool.id)?.category?.id === "web" ? "Hayalindeki siteyi, oyunu tarif et..." : "Bir şeyler hayal et..."}
       />
 
-      {/* "Yakında" toast for locked tools */}
-      {soonNotice && (
-        <div className="pointer-events-none fixed inset-x-0 bottom-24 z-30 flex justify-center px-4">
-          <div className="animate-in fade-in-0 slide-in-from-bottom-2 flex items-center gap-2 rounded-full border border-secondary/25 bg-surface-high/95 px-4 py-2.5 text-sm text-on-surface shadow-lg backdrop-blur-xl">
-            <Lock className="size-3.5 text-secondary" />
-            <strong className="font-medium">{soonNotice}</strong> çok yakında burada olacak.
+      {/* Toast: locked tool, or "switching models cleared the chat" */}
+      {notice && (
+        <div aria-live="polite" className="pointer-events-none fixed inset-x-0 bottom-24 z-30 flex justify-center px-4">
+          <div className="animate-in fade-in-0 slide-in-from-bottom-2 flex items-center gap-2 rounded-full border border-secondary/25 bg-surface-high/95 px-4 py-2.5 text-center text-sm text-on-surface shadow-lg backdrop-blur-xl">
+            {notice.kind === "soon" ? (
+              <>
+                <Lock className="size-3.5 shrink-0 text-secondary" />
+                <span>
+                  <strong className="font-medium">{notice.tool}</strong> çok yakında burada olacak.
+                </span>
+              </>
+            ) : (
+              <>
+                <Sparkles className="size-3.5 shrink-0 text-secondary" />
+                <span>
+                  <strong className="font-medium">{notice.tool}</strong> ile yeni sohbet başladı — önceki konuşmayı görmüyor.
+                </span>
+              </>
+            )}
           </div>
         </div>
       )}
@@ -329,13 +430,47 @@ export function Playground() {
   );
 }
 
-/** Shared trigger pill style for the two header mega-menus — highlights while its box is open. */
-function menuTriggerClass(open: boolean): string {
+/**
+ * Remaining balance. Amber-tinted rather than neutral because this is the
+ * playground's currency, and the number re-mounts on every change so a spend
+ * registers visually instead of silently ticking down.
+ */
+function OreMeter({ remaining }: { remaining: number }) {
+  return (
+    <span
+      title={`${formatOre(remaining)} cevher kaldı`}
+      className="inline-flex h-9 shrink-0 items-center gap-1.5 rounded-full border border-secondary/25 bg-secondary/10 pl-2.5 pr-3"
+    >
+      <Zap className="size-3.5 shrink-0 fill-secondary text-secondary" />
+      <span key={remaining} className="font-mono text-xs font-semibold leading-none tabular-nums text-secondary-bright duration-300 animate-in fade-in-0 zoom-in-95">
+        {formatOre(remaining)}
+      </span>
+      <span className="hidden text-[11px] leading-none text-secondary/70 sm:inline">cevher</span>
+    </span>
+  );
+}
+
+/** Tab in the model picker's header — hover switches, no click needed. */
+function PickerTab({ icon: Icon, label, active, onSelect }: { icon: LucideIcon; label: string; active: boolean; onSelect: () => void }) {
+  return (
+    <button
+      onClick={onSelect}
+      onMouseEnter={onSelect}
+      className={cn(
+        "flex items-center gap-1.5 rounded-full px-3 py-1.5 font-mono text-[11px] transition",
+        active ? "bg-secondary/15 text-secondary-bright" : "text-on-surface-variant hover:bg-surface-container/60 hover:text-on-surface",
+      )}
+    >
+      <Icon className="size-3.5" /> {label}
+    </button>
+  );
+}
+
+/** Row style shared by the picker's left-hand list, whichever tab is showing. */
+function sideItemClass(active: boolean): string {
   return cn(
-    "flex shrink-0 items-center gap-1.5 rounded-full border px-3.5 py-1.5 font-mono text-xs transition",
-    open
-      ? "border-secondary/50 bg-secondary/15 text-secondary-bright"
-      : "border-white/8 bg-surface-container/50 text-on-surface-variant hover:border-white/20 hover:text-on-surface",
+    "rounded-lg px-2.5 py-2 text-left transition",
+    active ? "bg-secondary/15 text-secondary-bright" : "text-on-surface-variant hover:bg-surface-container/60 hover:text-on-surface",
   );
 }
 
@@ -393,191 +528,148 @@ const CATEGORY_MENU_ENTRIES: { id: string; name: string; tools: PlaygroundTool[]
 ];
 
 /**
- * "Kategori" header pill: hovering opens a two-pane box — a category list on
- * the left (live-updates on hover, no click needed) and that category's full
- * model grid on the right (logo, name, description, ore cost). Replaces the
- * old row of separate category pills next to the trigger.
+ * The header's centrepiece: a chip showing which AI is currently answering
+ * (logo, name, what a turn costs) that opens the whole catalog on hover.
+ *
+ * It replaces three separate pieces of UI — a "Kategori" pill, a "Müfredat"
+ * pill, and a floating "selected tool" badge above the composer — because
+ * they were all facets of one question: which model am I talking to. Browsing
+ * by category and browsing by curriculum week are now two tabs of the same
+ * two-pane box: a list on the left (live-updates on hover, no click needed)
+ * and that entry's model grid on the right.
  */
-function CategoryMegaMenu({ activeToolId, onSelect }: { activeToolId: string; onSelect: (tool: PlaygroundTool) => void }) {
+function ModelPicker({ activeTool, onSelect }: { activeTool: PlaygroundTool; onSelect: (tool: PlaygroundTool) => void }) {
   const { open, setOpen, hoverProps } = useHoverPopover();
-  const activeEntryId = CATEGORY_MENU_ENTRIES.find((e) => e.id !== "all" && e.tools.some((t) => t.id === activeToolId))?.id ?? "all";
-  const [hovered, setHovered] = useState(activeEntryId);
-  const shown = CATEGORY_MENU_ENTRIES.find((e) => e.id === hovered) ?? CATEGORY_MENU_ENTRIES[0];
+  const [mode, setMode] = useState<"category" | "curriculum">("category");
 
-  return (
-    <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger asChild>
-        <button
-          onMouseEnter={() => {
-            setHovered(activeEntryId);
-            hoverProps.onMouseEnter();
-          }}
-          onMouseLeave={hoverProps.onMouseLeave}
-          onClick={() => setHovered(activeEntryId)}
-          className={menuTriggerClass(open)}
-        >
-          <LayoutGrid className="size-3.5" /> Kategori
-        </button>
-      </PopoverTrigger>
-      <PopoverContent
-        align="start"
-        {...hoverProps}
-        className="flex h-72 w-[min(560px,92vw)] flex-row gap-0 overflow-hidden rounded-2xl border border-white/10 bg-surface-high/95 p-0 shadow-2xl ring-0 sm:h-80 sm:w-[680px]"
-      >
-        <div className="flex w-28 shrink-0 flex-col gap-0.5 overflow-y-auto border-r border-white/8 p-2 sm:w-36">
-          {CATEGORY_MENU_ENTRIES.map((entry) => {
-            const Icon = CATEGORY_ICONS[entry.id] ?? Layers;
-            return (
-              <button
-                key={entry.id}
-                onMouseEnter={() => setHovered(entry.id)}
-                onFocus={() => setHovered(entry.id)}
-                onClick={() => setHovered(entry.id)}
-                className={cn(
-                  "flex items-center gap-2 rounded-lg px-2.5 py-2 text-left font-mono text-[11px] transition",
-                  hovered === entry.id
-                    ? "bg-secondary/15 text-secondary-bright"
-                    : "text-on-surface-variant hover:bg-surface-container/60 hover:text-on-surface",
-                )}
-              >
-                <Icon className="size-3.5 shrink-0" />
-                <span className="truncate">{entry.name}</span>
-              </button>
-            );
-          })}
-        </div>
-        <div
-          key={shown.id}
-          className="grid flex-1 auto-rows-min grid-cols-2 gap-1.5 overflow-y-auto p-2.5 duration-150 animate-in fade-in-0 slide-in-from-left-1 sm:grid-cols-3"
-        >
-          {shown.tools.map((tool) => (
-            <ToolCard
-              key={tool.id}
-              tool={tool}
-              active={tool.id === activeToolId}
-              onSelect={() => {
-                onSelect(tool);
-                setOpen(false);
-              }}
-            />
-          ))}
-        </div>
-      </PopoverContent>
-    </Popover>
-  );
-}
-
-/**
- * "Müfredat" header pill: same two-pane shape as CategoryMegaMenu, but the
- * left list is months and the right pane groups that month's weeks — each
- * with its own real AI model cards — so a student can find "bu ayın yapay
- * zekaları" without hunting through categories.
- */
-function CurriculumMegaMenu({ activeToolId, onSelect }: { activeToolId: string; onSelect: (tool: PlaygroundTool) => void }) {
-  const { open, setOpen, hoverProps } = useHoverPopover();
+  const activeCategoryId = CATEGORY_MENU_ENTRIES.find((e) => e.id !== "all" && e.tools.some((t) => t.id === activeTool.id))?.id ?? "all";
   const activeMonth =
-    CURRICULUM_MONTHS.find((m) => weeksInMonth(m.month).some((w) => resolveWeekTools(w).some((t) => t.id === activeToolId)))?.month ??
+    CURRICULUM_MONTHS.find((m) => weeksInMonth(m.month).some((w) => resolveWeekTools(w).some((t) => t.id === activeTool.id)))?.month ??
     CURRICULUM_MONTHS[0].month;
-  const [hovered, setHovered] = useState(activeMonth);
-  const weeks = weeksInMonth(hovered);
+
+  const [category, setCategory] = useState(activeCategoryId);
+  const [month, setMonth] = useState(activeMonth);
+  const shownCategory = CATEGORY_MENU_ENTRIES.find((e) => e.id === category) ?? CATEGORY_MENU_ENTRIES[0];
+
+  // Re-opening lands on wherever the current model actually lives, not on
+  // wherever the pointer happened to leave the list last time.
+  function syncToActive() {
+    setCategory(activeCategoryId);
+    setMonth(activeMonth);
+  }
+
+  function pick(tool: PlaygroundTool) {
+    onSelect(tool);
+    setOpen(false);
+  }
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
         <button
           onMouseEnter={() => {
-            setHovered(activeMonth);
+            syncToActive();
             hoverProps.onMouseEnter();
           }}
           onMouseLeave={hoverProps.onMouseLeave}
-          onClick={() => setHovered(activeMonth)}
-          className={menuTriggerClass(open)}
+          onClick={syncToActive}
+          title={`${activeTool.name} — ${activeTool.description}`}
+          className={cn(
+            "flex h-9 min-w-0 items-center gap-2 rounded-full border py-1 pl-1 pr-2 text-left transition sm:pr-2.5",
+            open
+              ? "border-secondary/45 bg-secondary/12"
+              : "border-white/10 bg-surface-container/50 hover:border-white/25 hover:bg-surface-container/80",
+          )}
         >
-          <CalendarDays className="size-3.5" /> Müfredat
+          {activeTool.provider ? (
+            <ProviderBadge provider={activeTool.provider} className="size-7" />
+          ) : (
+            <span className="inline-flex size-7 shrink-0 items-center justify-center rounded-full bg-surface-high text-on-surface-variant">
+              <activeTool.icon className="size-3.5" />
+            </span>
+          )}
+          <span className="flex min-w-0 flex-col gap-1">
+            <span className="truncate text-[13px] font-semibold leading-none text-on-surface">{activeTool.name}</span>
+            <span className="hidden truncate font-mono text-[10px] leading-none text-secondary-bright/70 sm:block">{oreLabel(activeTool)}</span>
+          </span>
+          <ChevronDown className={cn("size-3.5 shrink-0 text-on-surface-variant transition duration-200", open && "rotate-180 text-secondary")} />
         </button>
       </PopoverTrigger>
       <PopoverContent
         align="start"
+        sideOffset={8}
         {...hoverProps}
-        className="flex h-72 w-[min(560px,92vw)] flex-row gap-0 overflow-hidden rounded-2xl border border-white/10 bg-surface-high/95 p-0 shadow-2xl ring-0 sm:h-80 sm:w-[680px]"
+        className="w-[min(680px,94vw)] gap-0 overflow-hidden rounded-2xl border border-white/10 bg-surface-high/95 p-0 shadow-2xl ring-0 backdrop-blur-xl"
       >
-        <div className="flex w-28 shrink-0 flex-col gap-0.5 overflow-y-auto border-r border-white/8 p-2 sm:w-36">
-          {CURRICULUM_MONTHS.map((m) => {
-            const [ayLabel, subtitle] = m.label.split(" · ");
-            return (
-              <button
-                key={m.month}
-                onMouseEnter={() => setHovered(m.month)}
-                onFocus={() => setHovered(m.month)}
-                onClick={() => setHovered(m.month)}
-                className={cn(
-                  "flex flex-col gap-0.5 rounded-lg px-2.5 py-2 text-left transition",
-                  hovered === m.month
-                    ? "bg-secondary/15 text-secondary-bright"
-                    : "text-on-surface-variant hover:bg-surface-container/60 hover:text-on-surface",
-                )}
-              >
-                <span className="font-mono text-[11px] font-semibold">{ayLabel}</span>
-                <span className="line-clamp-2 text-[9px] leading-snug opacity-80">{subtitle}</span>
-              </button>
-            );
-          })}
+        <div className="flex items-center gap-1 border-b border-white/8 px-2 py-1.5">
+          <PickerTab icon={LayoutGrid} label="Kategoriler" active={mode === "category"} onSelect={() => setMode("category")} />
+          <PickerTab icon={CalendarDays} label="Müfredat" active={mode === "curriculum"} onSelect={() => setMode("curriculum")} />
         </div>
-        <div key={hovered} className="flex-1 space-y-3 overflow-y-auto p-2.5 duration-150 animate-in fade-in-0 slide-in-from-left-1">
-          {weeks.map((week) => (
-            <div key={week.week}>
-              <div className="mb-1.5 flex items-baseline gap-1.5">
-                <span className="shrink-0 font-mono text-[9px] uppercase tracking-wide text-secondary">Hafta {week.week}</span>
-                <span className="truncate text-[11px] font-semibold">{week.title}</span>
-              </div>
-              <div className="grid grid-cols-2 gap-1.5 sm:grid-cols-3">
-                {resolveWeekTools(week).map((tool) => (
-                  <ToolCard
-                    key={tool.id}
-                    tool={tool}
-                    active={tool.id === activeToolId}
-                    onSelect={() => {
-                      onSelect(tool);
-                      setOpen(false);
-                    }}
-                  />
-                ))}
-              </div>
+
+        <div className="flex h-72 flex-row sm:h-80">
+          <div className="flex w-28 shrink-0 flex-col gap-0.5 overflow-y-auto border-r border-white/8 p-2 sm:w-36">
+            {mode === "category"
+              ? CATEGORY_MENU_ENTRIES.map((entry) => {
+                  const Icon = CATEGORY_ICONS[entry.id] ?? Layers;
+                  return (
+                    <button
+                      key={entry.id}
+                      onMouseEnter={() => setCategory(entry.id)}
+                      onFocus={() => setCategory(entry.id)}
+                      onClick={() => setCategory(entry.id)}
+                      className={cn("flex items-center gap-2 font-mono text-[11px]", sideItemClass(category === entry.id))}
+                    >
+                      <Icon className="size-3.5 shrink-0" />
+                      <span className="truncate">{entry.name}</span>
+                    </button>
+                  );
+                })
+              : CURRICULUM_MONTHS.map((m) => {
+                  const [ayLabel, subtitle] = m.label.split(" · ");
+                  return (
+                    <button
+                      key={m.month}
+                      onMouseEnter={() => setMonth(m.month)}
+                      onFocus={() => setMonth(m.month)}
+                      onClick={() => setMonth(m.month)}
+                      className={cn("flex flex-col gap-0.5", sideItemClass(month === m.month))}
+                    >
+                      <span className="font-mono text-[11px] font-semibold">{ayLabel}</span>
+                      <span className="line-clamp-2 text-[9px] leading-snug opacity-80">{subtitle}</span>
+                    </button>
+                  );
+                })}
+          </div>
+
+          {mode === "category" ? (
+            <div
+              key={shownCategory.id}
+              className="grid flex-1 auto-rows-min grid-cols-2 gap-1.5 overflow-y-auto p-2.5 duration-150 animate-in fade-in-0 slide-in-from-left-1 sm:grid-cols-3"
+            >
+              {shownCategory.tools.map((tool) => (
+                <ToolCard key={tool.id} tool={tool} active={tool.id === activeTool.id} onSelect={() => pick(tool)} />
+              ))}
             </div>
-          ))}
+          ) : (
+            <div key={month} className="flex-1 space-y-3 overflow-y-auto p-2.5 duration-150 animate-in fade-in-0 slide-in-from-left-1">
+              {weeksInMonth(month).map((week) => (
+                <div key={week.week}>
+                  <div className="mb-1.5 flex items-baseline gap-1.5">
+                    <span className="shrink-0 font-mono text-[9px] uppercase tracking-wide text-secondary">Hafta {week.week}</span>
+                    <span className="truncate text-[11px] font-semibold">{week.title}</span>
+                  </div>
+                  <div className="grid grid-cols-2 gap-1.5 sm:grid-cols-3">
+                    {resolveWeekTools(week).map((tool) => (
+                      <ToolCard key={tool.id} tool={tool} active={tool.id === activeTool.id} onSelect={() => pick(tool)} />
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       </PopoverContent>
     </Popover>
-  );
-}
-
-/** "Currently selected" indicator, tucked in a corner, not a big banner in
- *  the middle of the canvas. Mobile keeps it as plain text (no pill/icon) —
- *  there's less room and a bordered chip reads heavier than it needs to;
- *  desktop keeps the fuller chip with the provider icon. */
-function ActiveToolBadge({ tool }: { tool: PlaygroundTool }) {
-  return (
-    <>
-      <span
-        title={`${tool.description} · ${oreLabel(tool)}`}
-        className="max-w-[10rem] truncate text-[11px] font-medium text-on-surface-variant sm:hidden"
-      >
-        {tool.name}
-      </span>
-      <div
-        title={`${tool.description} · ${oreLabel(tool)}`}
-        className="hidden max-w-[13rem] shrink-0 items-center gap-1.5 rounded-full border border-white/8 bg-surface-container/50 py-1 pl-1 pr-2.5 sm:flex"
-      >
-        {tool.provider ? (
-          <ProviderBadge provider={tool.provider} className="size-5 shrink-0" />
-        ) : (
-          <span className="inline-flex size-5 shrink-0 items-center justify-center rounded-full bg-surface-high text-on-surface-variant">
-            <tool.icon className="size-3" />
-          </span>
-        )}
-        <span className="truncate text-[11px] font-medium text-on-surface-variant">{tool.name}</span>
-      </div>
-    </>
   );
 }
 
@@ -603,8 +695,9 @@ function GatedCallout({ gateReason }: { gateReason: GateReason }) {
           href={whatsappHref()}
           target="_blank"
           rel="noreferrer"
-          className="rounded-full bg-secondary px-4 py-2 font-mono text-sm font-semibold text-on-secondary transition hover:brightness-110"
+          className="inline-flex items-center gap-2 rounded-full bg-secondary px-4 py-2 font-mono text-sm font-semibold text-on-secondary transition hover:brightness-110"
         >
+          <WhatsappIcon className="size-4" />
           WhatsApp&apos;tan yaz
         </Link>
       </div>
@@ -618,6 +711,11 @@ function Composer({
   onSend,
   busy,
   gated,
+  attachments,
+  setAttachments,
+  maxImages,
+  pendingCost,
+  baseCost,
   placeholder,
   onHeightChange,
 }: {
@@ -626,10 +724,41 @@ function Composer({
   onSend: (text: string) => void;
   busy: boolean;
   gated: boolean;
+  attachments: string[];
+  setAttachments: (updater: (prev: string[]) => string[]) => void;
+  maxImages: number;
+  pendingCost: number;
+  baseCost: number;
   placeholder: string;
   onHeightChange: (height: number) => void;
 }) {
   const wrapperRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const [dragging, setDragging] = useState(false);
+  const canAttach = maxImages > 0;
+  const full = attachments.length >= maxImages;
+
+  // Grow the box with the text instead of scrolling a one-line slot. Height
+  // has to go back to `auto` first, otherwise scrollHeight can only ever
+  // report the current (already grown) height and the box never shrinks
+  // again after a delete or a send. The CSS max-height caps it and hands
+  // over to scrolling from there.
+  useEffect(() => {
+    const el = textareaRef.current;
+    if (!el) return;
+    el.style.height = "auto";
+    el.style.height = `${el.scrollHeight}px`;
+  }, [input, attachments.length]);
+
+  /** Shared by the file picker, paste and drop — all three end up here. */
+  async function addFiles(files: FileList | File[]) {
+    const room = maxImages - attachments.length;
+    if (room <= 0) return;
+    const encoded = await Promise.all(Array.from(files).slice(0, room).map(toAttachmentDataUrl));
+    const usable = encoded.filter((v): v is string => v !== null);
+    if (usable.length > 0) setAttachments((prev) => [...prev, ...usable].slice(0, maxImages));
+  }
 
   // Reports its own rendered height (which grows with the textarea, up to
   // max-h-40) so the scrollable message list above can reserve exactly
@@ -655,48 +784,153 @@ function Composer({
             e.preventDefault();
             onSend(input);
           }}
-          className="flex items-end gap-2 rounded-2xl border border-white/10 bg-surface-container/60 p-2 focus-within:border-secondary/50"
+          onDragOver={(e) => {
+            if (!canAttach) return;
+            e.preventDefault();
+            setDragging(true);
+          }}
+          onDragLeave={() => setDragging(false)}
+          onDrop={(e) => {
+            if (!canAttach) return;
+            e.preventDefault();
+            setDragging(false);
+            void addFiles(e.dataTransfer.files);
+          }}
+          className={cn(
+            "flex flex-col gap-2 rounded-2xl border bg-surface-container/60 p-2 transition-colors focus-within:border-secondary/50",
+            dragging ? "border-secondary/60 bg-secondary/8" : "border-white/10",
+          )}
         >
-          <textarea
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" && !e.shiftKey) {
+          {attachments.length > 0 && (
+            <div className="flex flex-wrap gap-2 px-1 pt-1">
+              {attachments.map((src, i) => (
+                <div key={i} className="group/thumb relative animate-in fade-in-0 zoom-in-95">
+                  {/* eslint-disable-next-line @next/next/no-img-element -- client-side data URL, never a remote asset */}
+                  <img src={src} alt="" className="size-16 rounded-lg border border-white/10 object-cover" />
+                  <button
+                    type="button"
+                    onClick={() => setAttachments((prev) => prev.filter((_, idx) => idx !== i))}
+                    aria-label="Görseli kaldır"
+                    className="absolute -right-1.5 -top-1.5 inline-flex size-5 items-center justify-center rounded-full border border-white/10 bg-surface text-on-surface-variant transition hover:text-on-surface"
+                  >
+                    <X className="size-3" />
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+
+          <div className="flex items-end gap-2">
+            {canAttach && (
+              <>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/png,image/jpeg,image/webp"
+                  multiple={maxImages > 1}
+                  className="hidden"
+                  onChange={(e) => {
+                    if (e.target.files) void addFiles(e.target.files);
+                    // Reset so picking the same file twice in a row still fires onChange.
+                    e.target.value = "";
+                  }}
+                />
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={full || busy}
+                  aria-label="Görsel ekle"
+                  title={full ? `En fazla ${maxImages} görsel` : "Görsel ekle"}
+                  className="inline-flex size-10 shrink-0 items-center justify-center rounded-xl border border-white/10 text-on-surface-variant transition hover:border-secondary/40 hover:text-on-surface disabled:opacity-40"
+                >
+                  <ImagePlus className="size-4" />
+                </button>
+              </>
+            )}
+            <textarea
+              ref={textareaRef}
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              onPaste={(e) => {
+                if (!canAttach) return;
+                const files = Array.from(e.clipboardData.files).filter((f) => f.type.startsWith("image/"));
+                if (files.length === 0) return;
+                // Only swallow the paste when it really carried an image —
+                // otherwise a normal text paste would be eaten.
                 e.preventDefault();
-                onSend(input);
-              }
-            }}
-            rows={1}
-            placeholder={placeholder}
-            className="max-h-40 flex-1 resize-none bg-transparent px-3 py-2 text-sm text-on-surface outline-none placeholder:text-on-surface-variant/40"
-          />
-          <button
-            type="submit"
-            disabled={!input.trim() || busy}
-            aria-label="Gönder"
-            className="inline-flex size-10 shrink-0 items-center justify-center rounded-xl bg-secondary text-on-secondary transition hover:brightness-110 disabled:opacity-40"
-          >
-            <Send className="size-4" />
-          </button>
+                void addFiles(files);
+              }}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && !e.shiftKey) {
+                  e.preventDefault();
+                  onSend(input);
+                }
+              }}
+              rows={1}
+              placeholder={placeholder}
+              // leading-6 + py-2 makes one line exactly 40px — the same height
+              // as the attach/send buttons it sits between.
+              className="max-h-40 min-h-10 flex-1 resize-none overflow-y-auto bg-transparent px-3 py-2 text-sm leading-6 text-on-surface outline-none placeholder:text-on-surface-variant/40"
+            />
+            <button
+              type="submit"
+              disabled={!input.trim() || busy}
+              aria-label="Gönder"
+              className="inline-flex size-10 shrink-0 items-center justify-center rounded-xl bg-secondary text-on-secondary transition hover:brightness-110 disabled:opacity-40"
+            >
+              <Send className="size-4" />
+            </button>
+          </div>
         </form>
-        <p className="mt-2 text-center font-mono text-[11px] text-on-surface-variant/50">Gerçek yapay zeka ile üretiliyor — biraz zaman alabilir</p>
+        <p className="mt-2 text-center font-mono text-[11px] text-on-surface-variant/50">
+          {pendingCost > baseCost
+            ? `Görselli mesaj — ${formatOre(pendingCost)} cevher`
+            : "Gerçek yapay zeka ile üretiliyor — biraz zaman alabilir"}
+        </p>
       </div>
     </div>
   );
 }
 
-function Bubble({ msg, busy }: { msg: Msg; busy: boolean }) {
+function Bubble({ msg, tool, busy }: { msg: Msg; tool: PlaygroundTool; busy: boolean }) {
   const isUser = msg.role === "user";
   const [copied, setCopied] = useState(false);
   const hasMedia = !!msg.imageUrl || !!msg.videoUrl || !!msg.audioUrl;
 
   return (
-    <div className={cn("flex", isUser ? "justify-end" : "justify-start")}>
-      <div className={cn("group relative max-w-[85%]", !isUser && "w-full sm:max-w-[85%]")}>
+    <div
+      className={cn(
+        "flex gap-2.5",
+        isUser ? "justify-end animate-msg-in-right" : "justify-start animate-msg-in-left",
+      )}
+    >
+      {/* Who is answering, shown once per turn. Switching models wipes the
+          transcript, so every message on screen belongs to this tool. */}
+      {!isUser &&
+        (tool.provider ? (
+          <ProviderBadge provider={tool.provider} className="mt-0.5 size-7 ring-1 ring-white/10" />
+        ) : (
+          <span className="mt-0.5 inline-flex size-7 shrink-0 items-center justify-center rounded-full bg-surface-high text-on-surface-variant">
+            <tool.icon className="size-3.5" />
+          </span>
+        ))}
+      <div className={cn("group relative min-w-0 max-w-[85%]", !isUser && "flex-1 sm:w-auto sm:max-w-[85%] sm:flex-none")}>
+        {msg.attachments && msg.attachments.length > 0 && (
+          <div className="mb-1.5 flex flex-wrap justify-end gap-1.5">
+            {msg.attachments.map((src, i) => (
+              // eslint-disable-next-line @next/next/no-img-element -- client-side data URL, never a remote asset
+              <img key={i} src={src} alt="" className="size-24 rounded-xl border border-white/10 object-cover" />
+            ))}
+          </div>
+        )}
         {msg.imageUrl ? (
-          <img src={msg.imageUrl} alt="" className="max-h-96 rounded-2xl rounded-bl-sm border border-white/8 object-contain" />
+          <img
+            src={msg.imageUrl}
+            alt=""
+            className="max-h-96 rounded-2xl rounded-tl-sm border border-white/8 object-contain shadow-lg shadow-black/30 transition duration-300 hover:scale-[1.01]"
+          />
         ) : msg.videoUrl ? (
-          <video src={msg.videoUrl} controls className="max-h-96 rounded-2xl rounded-bl-sm border border-white/8" />
+          <video src={msg.videoUrl} controls className="max-h-96 rounded-2xl rounded-tl-sm border border-white/8 shadow-lg shadow-black/30" />
         ) : msg.audioUrl ? (
           <audio src={msg.audioUrl} controls className="w-full max-w-xs rounded-full" />
         ) : msg.kind === "code" && msg.content ? (
@@ -704,11 +938,23 @@ function Bubble({ msg, busy }: { msg: Msg; busy: boolean }) {
         ) : (
           <div
             className={cn(
-              "whitespace-pre-wrap rounded-2xl px-4 py-3 text-sm leading-relaxed",
-              isUser ? "rounded-br-sm bg-secondary/15 text-secondary-bright" : "rounded-bl-sm border border-white/8 bg-surface-high/50 text-on-surface",
+              // 62ch keeps a reply at a readable measure instead of letting it
+              // run the full 85% of a wide desktop canvas.
+              "max-w-[62ch] whitespace-pre-wrap break-words rounded-2xl px-4 py-3 text-sm leading-relaxed",
+              isUser
+                ? "rounded-br-sm border border-secondary/20 bg-secondary/12 text-secondary-bright"
+                : "rounded-tl-sm border border-white/8 bg-surface-high/60 text-on-surface",
             )}
           >
-            {msg.content || (busy && (msg.videoPending ? <VideoWaitNotice /> : <TypingDots />))}
+            {msg.content ? (
+              // Keyed so the answer fades in as it replaces the dots, rather
+              // than snapping into place.
+              <span key="content" className="duration-300 animate-in fade-in-0">
+                {msg.content}
+              </span>
+            ) : (
+              busy && (msg.videoPending ? <VideoWaitNotice /> : <TypingDots />)
+            )}
           </div>
         )}
         {!isUser && !busy && msg.kind !== "code" && (msg.content || hasMedia) && (
@@ -726,7 +972,7 @@ function Bubble({ msg, busy }: { msg: Msg; busy: boolean }) {
             // Touch devices have no hover state — opacity-0 there would make this
             // permanently unreachable, so it's always visible below sm and only
             // hides-until-hover on pointer/desktop sizes.
-            className="absolute -bottom-2 left-3 inline-flex items-center gap-1 rounded-full border border-white/8 bg-surface px-2 py-1 font-mono text-[10px] text-on-surface-variant opacity-100 transition sm:opacity-0 sm:group-hover:opacity-100"
+            className="absolute -bottom-2.5 left-3 inline-flex items-center gap-1 rounded-full border border-white/10 bg-surface px-2 py-1 font-mono text-[10px] text-on-surface-variant opacity-100 shadow-sm transition duration-200 hover:border-secondary/40 hover:text-on-surface sm:translate-y-1 sm:opacity-0 sm:group-hover:translate-y-0 sm:group-hover:opacity-100"
           >
             {hasMedia ? (
               <>
@@ -826,10 +1072,10 @@ function VideoWaitNotice() {
 
 function TypingDots() {
   return (
-    <span className="inline-flex gap-1 py-1">
-      <span className="size-1.5 animate-pulse rounded-full bg-on-surface-variant/60" />
-      <span className="size-1.5 animate-pulse rounded-full bg-on-surface-variant/60 [animation-delay:150ms]" />
-      <span className="size-1.5 animate-pulse rounded-full bg-on-surface-variant/60 [animation-delay:300ms]" />
+    <span className="inline-flex items-center gap-1 py-1">
+      <span className="size-1.5 animate-typing-dot rounded-full bg-secondary" />
+      <span className="size-1.5 animate-typing-dot rounded-full bg-secondary [animation-delay:160ms]" />
+      <span className="size-1.5 animate-typing-dot rounded-full bg-secondary [animation-delay:320ms]" />
     </span>
   );
 }

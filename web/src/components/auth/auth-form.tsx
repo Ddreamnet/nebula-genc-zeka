@@ -8,6 +8,7 @@ import { AuthMascot, type MascotState } from "./auth-mascot";
 import { useAuth } from "@/contexts/auth-context";
 import { mapSupabaseError } from "@/lib/supabase/auth-errors";
 import { whatsappHref } from "@/lib/site";
+import { WhatsappIcon } from "@/components/ui/brand-icons";
 
 function Field({
   label,
@@ -158,8 +159,9 @@ export function AuthForm() {
             href={whatsappHref()}
             target="_blank"
             rel="noreferrer"
-            className="font-medium text-[#25D366] hover:underline"
+            className="inline-flex items-center gap-1.5 align-middle font-medium text-[#25D366] hover:underline"
           >
+            <WhatsappIcon className="size-4" />
             WhatsApp&apos;tan yaz
           </Link>
         </p>

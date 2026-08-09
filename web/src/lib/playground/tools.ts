@@ -73,6 +73,48 @@ export interface PlaygroundTool {
   /** Video only — most models default to 4s/720p; a few need an override (verified against OpenRouter's live catalog, never assumed). */
   videoDuration?: number;
   videoResolution?: string;
+  /**
+   * How many images a student may attach to one message. Absent/0 means the
+   * model is text-only and the composer hides its attach button entirely.
+   *
+   * Two different mechanisms hide behind this one number, both verified live
+   * against OpenRouter (never assumed — see the file header):
+   *  - text tools send images as `image_url` content parts on
+   *    /chat/completions; eligibility comes from the model's
+   *    `architecture.input_modalities` containing "image". DeepSeek R1,
+   *    Llama 3.3 70B and Qwen3 Max are text-only and stay unset.
+   *  - image tools send them as `input_references` on /images (image-to-image
+   *    / editing); the ceiling comes from
+   *    `supported_parameters.input_references.max`.
+   *
+   * Several models allow far more than we expose (gpt-image-* 16, Seedream 14,
+   * Gemini 3 14) — 3 is a deliberate product cap so a kid can't quietly run up
+   * a 16-image bill. Where the model's own ceiling is lower than 3 it wins:
+   * Recraft V4, MAI-Image and Krea 2 accept exactly 1.
+   */
+  maxImageInputs?: number;
+}
+
+/**
+ * Extra ore per attached image, on top of the tool's base cost. Grounded in
+ * measured cost at the catalog's ~$0.04/cevher ratio:
+ *  - text: a 1024px image is ~1600 prompt tokens, worst case Claude Sonnet 5
+ *    at $2/M ≈ $0.0032 → 0.1 cevher. (Gemini Flash is ~8x cheaper; like the
+ *    flat 0.05 base cost, we don't price per-model.)
+ *  - image: OpenRouter bills a flat $0.01 per input image (verified live on
+ *    grok-imagine: $0.05 output + $0.01 input = $0.06) → 0.25 cevher.
+ */
+const IMAGE_INPUT_ORE = { text: 0.1, image: 0.25 } as const;
+
+/**
+ * Authoritative ore price for one generation. The server charges with this;
+ * the client calls it too, purely so the balance gate and the composer hint
+ * agree with what's about to be billed.
+ */
+export function generationOreCost(tool: PlaygroundTool, imageCount: number): number {
+  if (imageCount <= 0) return tool.oreCost;
+  const perImage = tool.modality === "image" ? IMAGE_INPUT_ORE.image : IMAGE_INPUT_ORE.text;
+  return Math.round((tool.oreCost + imageCount * perImage) * 100) / 100;
 }
 
 export interface PlaygroundCategory {
@@ -92,6 +134,7 @@ export const FEATURED_TOOL: PlaygroundTool = {
   provider: "anthropic",
   providerModel: "anthropic/claude-haiku-4.5",
   oreCost: 0.05,
+  maxImageInputs: 3,
 };
 
 export const CATEGORIES: PlaygroundCategory[] = [
@@ -110,6 +153,7 @@ export const CATEGORIES: PlaygroundCategory[] = [
         provider: "anthropic",
         providerModel: "anthropic/claude-sonnet-5",
         oreCost: 0.05,
+        maxImageInputs: 3,
       },
       {
         id: "gpt-5-mini",
@@ -121,6 +165,7 @@ export const CATEGORIES: PlaygroundCategory[] = [
         provider: "openai",
         providerModel: "openai/gpt-5-mini",
         oreCost: 0.05,
+        maxImageInputs: 3,
       },
       {
         id: "gemini-2-5-flash",
@@ -132,6 +177,7 @@ export const CATEGORIES: PlaygroundCategory[] = [
         provider: "gemini",
         providerModel: "google/gemini-2.5-flash",
         oreCost: 0.05,
+        maxImageInputs: 3,
       },
       {
         id: "deepseek-r1",
@@ -176,6 +222,7 @@ export const CATEGORIES: PlaygroundCategory[] = [
         provider: "xai",
         providerModel: "x-ai/grok-4.5",
         oreCost: 0.05,
+        maxImageInputs: 3,
       },
       {
         id: "nova-pro",
@@ -187,6 +234,7 @@ export const CATEGORIES: PlaygroundCategory[] = [
         provider: "amazon",
         providerModel: "amazon/nova-pro-v1",
         oreCost: 0.05,
+        maxImageInputs: 3,
       },
       {
         id: "mistral-large",
@@ -198,6 +246,7 @@ export const CATEGORIES: PlaygroundCategory[] = [
         provider: "mistral",
         providerModel: "mistralai/mistral-large-2512",
         oreCost: 0.05,
+        maxImageInputs: 3,
       },
       {
         id: "perplexity-sonar",
@@ -209,6 +258,7 @@ export const CATEGORIES: PlaygroundCategory[] = [
         provider: "perplexity",
         providerModel: "perplexity/sonar",
         oreCost: 0.05,
+        maxImageInputs: 3,
       },
     ],
   },
@@ -227,6 +277,7 @@ export const CATEGORIES: PlaygroundCategory[] = [
         provider: "gemini",
         providerModel: "google/gemini-2.5-flash-image",
         oreCost: 1,
+        maxImageInputs: 3,
       },
       {
         id: "gpt-image-1",
@@ -238,6 +289,7 @@ export const CATEGORIES: PlaygroundCategory[] = [
         provider: "openai",
         providerModel: "openai/gpt-image-1",
         oreCost: 1,
+        maxImageInputs: 3,
       },
       {
         id: "seedream",
@@ -249,6 +301,7 @@ export const CATEGORIES: PlaygroundCategory[] = [
         provider: "bytedance",
         providerModel: "bytedance-seed/seedream-4.5",
         oreCost: 1,
+        maxImageInputs: 3,
       },
       {
         id: "flux-2-pro",
@@ -260,6 +313,7 @@ export const CATEGORIES: PlaygroundCategory[] = [
         provider: "blackforest",
         providerModel: "black-forest-labs/flux.2-pro",
         oreCost: 1,
+        maxImageInputs: 3,
       },
       {
         id: "recraft-v4",
@@ -271,6 +325,7 @@ export const CATEGORIES: PlaygroundCategory[] = [
         provider: "recraft",
         providerModel: "recraft/recraft-v4",
         oreCost: 1,
+        maxImageInputs: 1,
       },
       {
         id: "grok-imagine-image",
@@ -282,6 +337,7 @@ export const CATEGORIES: PlaygroundCategory[] = [
         provider: "xai",
         providerModel: "x-ai/grok-imagine-image-quality",
         oreCost: 1,
+        maxImageInputs: 3,
       },
       {
         id: "nano-banana-2",
@@ -293,6 +349,7 @@ export const CATEGORIES: PlaygroundCategory[] = [
         provider: "gemini",
         providerModel: "google/gemini-3.1-flash-image",
         oreCost: 2,
+        maxImageInputs: 3,
       },
       {
         id: "gpt-image-2",
@@ -304,6 +361,7 @@ export const CATEGORIES: PlaygroundCategory[] = [
         provider: "openai",
         providerModel: "openai/gpt-image-2",
         oreCost: 1,
+        maxImageInputs: 3,
       },
       {
         id: "nano-banana-pro",
@@ -315,6 +373,7 @@ export const CATEGORIES: PlaygroundCategory[] = [
         provider: "gemini",
         providerModel: "google/gemini-3-pro-image",
         oreCost: 3,
+        maxImageInputs: 3,
       },
       {
         id: "microsoft-mai-image",
@@ -326,6 +385,7 @@ export const CATEGORIES: PlaygroundCategory[] = [
         provider: "microsoft",
         providerModel: "microsoft/mai-image-2.5-pro",
         oreCost: 3,
+        maxImageInputs: 1,
       },
       {
         id: "krea-2",
@@ -337,6 +397,7 @@ export const CATEGORIES: PlaygroundCategory[] = [
         provider: "krea",
         providerModel: "krea/krea-2-large",
         oreCost: 2,
+        maxImageInputs: 1,
       },
       {
         id: "ideogram",

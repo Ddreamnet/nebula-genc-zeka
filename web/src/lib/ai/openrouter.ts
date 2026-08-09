@@ -7,9 +7,20 @@ function headers() {
   };
 }
 
+/**
+ * A chat message is either plain text or OpenAI-style content parts. The parts
+ * form is how images reach a vision model — verified live against OpenRouter
+ * (google/gemini-2.5-flash correctly described a test PNG sent this way):
+ *   content: [{ type: "text", text }, { type: "image_url", image_url: { url } }]
+ * `url` takes an http(s) URL or a `data:image/...;base64,...` data URL.
+ */
+export type ContentPart =
+  | { type: "text"; text: string }
+  | { type: "image_url"; image_url: { url: string } };
+
 export interface ChatMessage {
   role: "system" | "user" | "assistant";
-  content: string;
+  content: string | ContentPart[];
 }
 
 export async function generateText(
@@ -28,14 +39,31 @@ export async function generateText(
   return { content, costUsd: data.usage?.cost ?? 0 };
 }
 
+/**
+ * `references` turns a plain text-to-image call into image-to-image / editing.
+ * Note this is a *different* mechanism from the chat `image_url` content parts
+ * above — the /images endpoint takes its own `input_references` array, and the
+ * per-model ceiling lives in `supported_parameters.input_references.max`
+ * (`maxImageInputs` in the tool catalog mirrors it). Verified live on
+ * x-ai/grok-imagine-image-quality: a reference PNG plus "turn this into a
+ * planet" returned an edited image and billed $0.05 output + $0.01 per input.
+ */
 export async function generateImage(
   prompt: string,
   model: string,
+  references: string[] = [],
 ): Promise<{ b64: string; mediaType: string; costUsd: number }> {
   const res = await fetch(`${BASE_URL}/images`, {
     method: "POST",
     headers: headers(),
-    body: JSON.stringify({ model, prompt, n: 1 }),
+    body: JSON.stringify({
+      model,
+      prompt,
+      n: 1,
+      ...(references.length > 0
+        ? { input_references: references.map((url) => ({ type: "image_url", image_url: { url } })) }
+        : {}),
+    }),
   });
   if (!res.ok) throw new Error(`OpenRouter image generation failed: ${res.status} ${await res.text()}`);
   const data = await res.json();

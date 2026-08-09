@@ -1,5 +1,5 @@
 import Image from "next/image";
-import { siteConfig } from "@/lib/site";
+import { ContactCtas } from "./contact-ctas";
 
 export function Hero() {
   return (
@@ -97,14 +97,11 @@ export function Hero() {
             Haftada bir gün, iki kişilik küçük gruplarda; öğretmen eşliğinde 100&apos;den fazla yapay zeka aracını kullanarak her derste elle tutulur bir şey üretiyorlar — kendi web sitesinden konuşan bir 3D avatara, bir şarkıdan kısa bir filme kadar.
           </p>
 
-          <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 16 }}>
-            <a href={siteConfig.instagram} target="_blank" rel="noopener noreferrer" className="nl-btn nl-btn--lg nl-btn--amber inline-flex">
-              Instagram&apos;dan yazın →
-            </a>
+          <ContactCtas>
             <a href="#nasil" className="nl-btn nl-btn--lg nl-btn--outline-dark inline-flex">
               Nasıl işliyor
             </a>
-          </div>
+          </ContactCtas>
           <p style={{ fontFamily: "var(--font-plex-mono)", fontSize: 12.5, letterSpacing: ".04em", color: "var(--on-navy-soft)", margin: "22px 0 0" }}>
             Ücretsiz deneme dersi mevcut · birebir, 30 dk + veli görüşmesi
           </p>
