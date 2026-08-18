@@ -33,7 +33,7 @@ export function SortableResource({ resource, isAdmin, onEditResource, onDeleteRe
           </button>
         )}
         <div className="flex-shrink-0">{getResourceIcon(resource.resource_type)}</div>
-        <div className="flex-1 cursor-pointer min-w-0" onClick={() => window.open(resource.resource_url, "_blank")}>
+        <div className="flex-1 cursor-pointer min-w-0" onClick={() => window.open(resource.resource_url, "_blank", "noopener,noreferrer")}>
           <p className="font-medium text-sm hover:text-primary transition-colors truncate">{resource.title}</p>
           {resource.description && <p className="text-xs text-muted-foreground truncate">{resource.description}</p>}
         </div>
@@ -49,7 +49,7 @@ export function SortableResource({ resource, isAdmin, onEditResource, onDeleteRe
             </Button>
           </>
         )}
-        <Button size="sm" variant="ghost" aria-label="Aç" onClick={() => window.open(resource.resource_url, "_blank")} className="h-7 w-7 p-0">
+        <Button size="sm" variant="ghost" aria-label="Aç" onClick={() => window.open(resource.resource_url, "_blank", "noopener,noreferrer")} className="h-7 w-7 p-0">
           <ExternalLink className="h-3 w-3" />
         </Button>
       </div>

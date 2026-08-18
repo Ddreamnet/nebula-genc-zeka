@@ -143,7 +143,10 @@ export async function POST(request: Request) {
   });
 
   if (startError) {
-    return NextResponse.json({ error: "start_failed", message: startError.message }, { status: 500 });
+    // Detail stays server-side: these messages carry Postgres/RPC internals and
+    // the browser can't do anything useful with them anyway.
+    console.error("[playground] rpc_start_generation failed", startError.message);
+    return NextResponse.json({ error: "start_failed" }, { status: 500 });
   }
 
   const result = startRows?.[0];
@@ -249,9 +252,10 @@ export async function POST(request: Request) {
       p_generation_id: generationId,
       p_status: "failed",
     });
-    return NextResponse.json(
-      { error: "generation_failed", message: err instanceof Error ? err.message : "unknown" },
-      { status: 502 },
-    );
+    // Same reasoning as above, with an extra edge: this one wraps OpenRouter's
+    // raw response body, which would otherwise put upstream provider internals
+    // in front of a 10-year-old.
+    console.error("[playground] generation failed", tool.id, err instanceof Error ? err.message : err);
+    return NextResponse.json({ error: "generation_failed" }, { status: 502 });
   }
 }

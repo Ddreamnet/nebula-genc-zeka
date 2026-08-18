@@ -32,3 +32,4 @@ BEGIN
   RETURN json_build_object('success', true, 'deleted_planned_instances', v_deleted_planned);
 END;
 $function$;
+;

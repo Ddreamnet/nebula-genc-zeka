@@ -1,0 +1,33 @@
+
+REVOKE EXECUTE ON ALL FUNCTIONS IN SCHEMA public FROM authenticated;
+
+GRANT EXECUTE ON FUNCTION public.admin_create_student_relationship(student_user_id uuid, teacher_user_id uuid) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.create_student_relationship(student_user_id uuid) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.has_role(_user_id uuid, _role app_role) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.rpc_admin_archive_student(p_student_record_id uuid, p_student_user_id uuid, p_teacher_id uuid) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.rpc_admin_complete_lesson(p_instance_id uuid, p_teacher_id uuid) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.rpc_admin_complete_trial_lesson(p_trial_id uuid, p_teacher_id uuid) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.rpc_admin_delete_student(p_student_record_id uuid, p_student_user_id uuid, p_teacher_id uuid) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.rpc_admin_grant_playground_ore(p_student_id uuid, p_amount numeric) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.rpc_admin_reset_package(p_student_id uuid, p_teacher_id uuid, p_template_slots jsonb) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.rpc_admin_restore_student(p_student_record_id uuid, p_student_user_id uuid, p_teacher_id uuid) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.rpc_admin_sync_student_schedule(p_student_id uuid, p_teacher_id uuid, p_slots jsonb, p_lessons_per_week integer) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.rpc_admin_undo_complete_lesson(p_instance_id uuid, p_teacher_id uuid) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.rpc_admin_undo_trial_lesson(p_trial_id uuid, p_teacher_id uuid) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.rpc_archive_student(p_student_record_id uuid, p_student_user_id uuid) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.rpc_attach_video_job(p_generation_id uuid, p_job_id text) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.rpc_complete_lesson(p_instance_id uuid) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.rpc_complete_trial_lesson(p_trial_id uuid) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.rpc_delete_student(p_student_record_id uuid, p_student_user_id uuid) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.rpc_finalize_generation(p_generation_id uuid, p_status text, p_real_cost_usd numeric, p_output_path text) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.rpc_manual_balance_adjust(p_teacher_id uuid, p_amount_minutes integer, p_notes text) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.rpc_reset_package(p_student_id uuid, p_template_slots jsonb) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.rpc_restore_student(p_student_record_id uuid, p_student_user_id uuid) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.rpc_start_generation(p_tool_id text, p_modality text, p_provider_model text, p_ore_cost numeric, p_prompt text) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.rpc_sync_student_schedule(p_student_id uuid, p_slots jsonb, p_lessons_per_week integer) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.rpc_undo_complete_lesson(p_instance_id uuid) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.rpc_undo_trial_lesson(p_trial_id uuid) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.teacher_owns_student(_teacher_id uuid, _student_id uuid) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.update_global_resources_order(resource_orders jsonb) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.update_global_topics_order(topic_orders jsonb) TO authenticated;
+;

@@ -333,3 +333,4 @@ GRANT EXECUTE ON FUNCTION public.rpc_admin_remove_student_from_group(uuid, uuid)
 GRANT EXECUTE ON FUNCTION public.rpc_admin_delete_group(uuid, uuid) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.rpc_toggle_topic_completion(uuid, boolean) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.rpc_admin_toggle_topic_completion(uuid, uuid, boolean) TO authenticated;
+;

@@ -162,11 +162,11 @@ export function TeacherStudentTopics({ members, groupName, teacherId }: TeacherS
                           onCheckedChange={() => toggleResourceCompletion(resource, resource.is_completed ?? false, topic.ownerStudentId, topic.isGlobal ?? false)}
                         />
                         {getResourceIcon(resource.resource_type)}
-                        <div className="flex-1 cursor-pointer" onClick={() => window.open(resource.resource_url, "_blank")}>
+                        <div className="flex-1 cursor-pointer" onClick={() => window.open(resource.resource_url, "_blank", "noopener,noreferrer")}>
                           <p className="font-medium text-sm hover:text-primary transition-colors">{resource.title}</p>
                           {resource.description && <p className="text-xs text-muted-foreground">{resource.description}</p>}
                         </div>
-                        <Button size="sm" variant="ghost" onClick={() => window.open(resource.resource_url, "_blank")}>
+                        <Button size="sm" variant="ghost" onClick={() => window.open(resource.resource_url, "_blank", "noopener,noreferrer")}>
                           <ExternalLink className="h-3 w-3" />
                         </Button>
                       </div>

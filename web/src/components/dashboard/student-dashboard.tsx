@@ -172,12 +172,12 @@ export function StudentDashboard({ userId }: { userId: string }) {
                                       {resource.is_completed ? <CheckCircle className="h-4 w-4 text-green-600" /> : <Clock className="h-4 w-4 text-muted-foreground" />}
                                       {getResourceIcon(resource.resource_type)}
                                       <div className="flex-1">
-                                        <button className="font-medium text-sm text-left hover:underline cursor-pointer" onClick={() => window.open(resource.resource_url, "_blank")}>
+                                        <button className="font-medium text-sm text-left hover:underline cursor-pointer" onClick={() => window.open(resource.resource_url, "_blank", "noopener,noreferrer")}>
                                           {resource.title}
                                         </button>
                                         {resource.description && <p className="text-xs text-muted-foreground">{resource.description}</p>}
                                       </div>
-                                      <Button size="sm" variant="ghost" onClick={() => window.open(resource.resource_url, "_blank")}>
+                                      <Button size="sm" variant="ghost" onClick={() => window.open(resource.resource_url, "_blank", "noopener,noreferrer")}>
                                         <ExternalLink className="h-3 w-3" />
                                       </Button>
                                     </div>

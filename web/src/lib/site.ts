@@ -11,7 +11,9 @@ export const siteConfig = {
   instagram: "https://instagram.com/nebulagenczeka",
   ageRange: "10–18 yaş",
   founder: "Fatih Böke",
-  price: { amount: "4.000", currency: "TL", period: "ay" },
+  // No `price` here on purpose. Pricing is deliberately not published — the
+  // funnel is "write to us first" — and a stale number sitting in config is
+  // exactly how a wrong price ends up on the page later.
 
   whatsapp: {
     number: "905462804836",

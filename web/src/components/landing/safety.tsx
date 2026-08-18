@@ -8,7 +8,11 @@ const trust = [
   },
   {
     title: "Çocuk güvenliği",
-    desc: "Araçlara öğrenci panelinden, öğretmen gözetiminde erişiliyor. Küçük grup sayesinde her öğrenci sürekli takip ediliyor; yalnız bırakılan bir ekran yok.",
+    // Deliberately precise: the old copy said tools were reached "öğretmen
+    // gözetiminde" full stop, which a parent reads as "my child can't open
+    // this alone". They can — the student panel is theirs, with its own
+    // limited allowance. Saying so plainly is both true and still reassuring.
+    desc: "Derslerde her şey öğretmen eşliğinde yapılıyor; iki kişilik grupta yalnız bırakılan bir ekran yok. Ders dışında da öğrencinin kendi paneli açık kalıyor — ama sınırlı bir kullanım hakkıyla, ve ne ürettiği kayıt altında.",
   },
   {
     title: "Veliyle iletişim",

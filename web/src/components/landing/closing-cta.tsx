@@ -1,7 +1,12 @@
 import Image from "next/image";
 import { ContactCtas } from "./contact-ctas";
+import { siteConfig } from "@/lib/site";
 
-const legal = [
+/** Footer link row. Blog lives here because it had no entry point anywhere on
+ *  the site — no navbar item, no mobile-menu item, no footer link — so nothing
+ *  written in the admin panel was reachable by a visitor. */
+const footerLinks = [
+  { label: "Blog", href: "/blog" },
   { label: "KVKK", href: "/kvkk" },
   { label: "Gizlilik ve Çerezler", href: "/gizlilik" },
 ];
@@ -46,12 +51,18 @@ export function ClosingCta() {
           </div>
         </div>
 
-        <div style={{ marginTop: 18, display: "flex", flexWrap: "wrap", gap: "8px 20px" }}>
-          {legal.map((l) => (
+        <div style={{ marginTop: 18, display: "flex", flexWrap: "wrap", alignItems: "center", gap: "8px 20px" }}>
+          {footerLinks.map((l) => (
             <a key={l.href} href={l.href} style={{ fontFamily: "var(--font-plex-mono)", fontSize: 11, letterSpacing: ".04em", color: "var(--on-navy-soft)" }}>
               {l.label}
             </a>
           ))}
+          <a
+            href={`mailto:${siteConfig.email}`}
+            style={{ fontFamily: "var(--font-plex-mono)", fontSize: 11, letterSpacing: ".04em", color: "var(--on-navy-soft)" }}
+          >
+            {siteConfig.email}
+          </a>
         </div>
       </div>
     </section>

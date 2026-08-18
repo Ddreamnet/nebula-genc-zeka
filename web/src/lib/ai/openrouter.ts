@@ -1,5 +1,29 @@
 const BASE_URL = "https://openrouter.ai/api/v1";
 
+/**
+ * Every call below carries a deadline. Without one, a stalled upstream request
+ * holds a Node connection open indefinitely — and this app runs as a single
+ * standalone server with no serverless fan-out, so a handful of hung
+ * generations is enough to starve everyone else.
+ *
+ * The budgets differ because the work does: text usually answers in seconds,
+ * image generation routinely takes half a minute, and the /videos calls are
+ * only ever job bookkeeping (the render itself happens asynchronously and is
+ * polled) — except the finished-file download, which really does move bytes.
+ */
+const TIMEOUT_MS = {
+  text: 90_000,
+  image: 180_000,
+  audio: 180_000,
+  job: 30_000,
+  download: 120_000,
+} as const;
+
+/** Wraps a fetch failure so callers can tell "we gave up" from "it errored". */
+function timeoutError(what: string, ms: number): Error {
+  return new Error(`OpenRouter ${what} timed out after ${ms}ms`);
+}
+
 function headers() {
   return {
     Authorization: `Bearer ${process.env.OPENROUTER_API_KEY}`,
@@ -31,6 +55,9 @@ export async function generateText(
     method: "POST",
     headers: headers(),
     body: JSON.stringify({ model, messages }),
+    signal: AbortSignal.timeout(TIMEOUT_MS.text),
+  }).catch(() => {
+    throw timeoutError("text generation", TIMEOUT_MS.text);
   });
   if (!res.ok) throw new Error(`OpenRouter text generation failed: ${res.status} ${await res.text()}`);
   const data = await res.json();
@@ -64,6 +91,9 @@ export async function generateImage(
         ? { input_references: references.map((url) => ({ type: "image_url", image_url: { url } })) }
         : {}),
     }),
+    signal: AbortSignal.timeout(TIMEOUT_MS.image),
+  }).catch(() => {
+    throw timeoutError("image generation", TIMEOUT_MS.image);
   });
   if (!res.ok) throw new Error(`OpenRouter image generation failed: ${res.status} ${await res.text()}`);
   const data = await res.json();
@@ -82,6 +112,9 @@ export async function startVideo(
     method: "POST",
     headers: headers(),
     body: JSON.stringify({ model, prompt, duration, resolution }),
+    signal: AbortSignal.timeout(TIMEOUT_MS.job),
+  }).catch(() => {
+    throw timeoutError("video start", TIMEOUT_MS.job);
   });
   if (!res.ok) throw new Error(`OpenRouter video start failed: ${res.status} ${await res.text()}`);
   const data = await res.json();
@@ -94,7 +127,12 @@ export type VideoPollResult =
   | { status: "failed" };
 
 export async function pollVideo(jobId: string): Promise<VideoPollResult> {
-  const res = await fetch(`${BASE_URL}/videos/${jobId}`, { headers: headers() });
+  const res = await fetch(`${BASE_URL}/videos/${jobId}`, {
+    headers: headers(),
+    signal: AbortSignal.timeout(TIMEOUT_MS.job),
+  }).catch(() => {
+    throw timeoutError("video poll", TIMEOUT_MS.job);
+  });
   if (!res.ok) throw new Error(`OpenRouter video poll failed: ${res.status} ${await res.text()}`);
   const data = await res.json();
   if (data.status === "completed") {
@@ -108,7 +146,12 @@ export async function pollVideo(jobId: string): Promise<VideoPollResult> {
 
 /** The video content URL still requires the API key — "unsigned" just means no token embedded in the URL itself. */
 export async function downloadVideo(videoUrl: string): Promise<ArrayBuffer> {
-  const res = await fetch(videoUrl, { headers: headers() });
+  const res = await fetch(videoUrl, {
+    headers: headers(),
+    signal: AbortSignal.timeout(TIMEOUT_MS.download),
+  }).catch(() => {
+    throw timeoutError("video download", TIMEOUT_MS.download);
+  });
   if (!res.ok) throw new Error(`OpenRouter video download failed: ${res.status} ${await res.text()}`);
   return res.arrayBuffer();
 }
@@ -162,6 +205,9 @@ export async function generateAudio(
       stream_options: { include_usage: true },
       messages,
     }),
+    signal: AbortSignal.timeout(TIMEOUT_MS.audio),
+  }).catch(() => {
+    throw timeoutError("audio generation", TIMEOUT_MS.audio);
   });
   if (!res.ok || !res.body) throw new Error(`OpenRouter audio generation failed: ${res.status} ${await res.text()}`);
 

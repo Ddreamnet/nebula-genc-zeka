@@ -7,6 +7,20 @@
 }
 .nl-live-dot {
   animation: nl-live 1.6s ease-in-out infinite;
+  /* ⚠️ OPEN PERF BUG — this animation costs the whole landing page ~2/3 of its
+     frame budget. Measured with Playwright against a production build:
+       animation on  → 19 fps at rest
+       animation off → 60 fps at rest (median frame 16.7ms, worst 16.8ms)
+     Disabling .nl-pulse changes nothing; disabling only this dot restores
+     60fps, so it is solely responsible. That baseline is also why button
+     hovers feel delayed — at 19fps the 0.1s hover transition renders in ~2
+     frames, up to 66ms after the pointer arrives.
+     `will-change: opacity` was tried as the fix and did NOT help (verified in
+     the built CSS, re-measured: still 19fps), so plain layer promotion is not
+     the answer. Left in place as it is harmless. Next thing to try: animating
+     a pseudo-element instead of the dot itself, or dropping the dot to a
+     stepped 2-frame animation. */
+  will-change: opacity;
 }
 
 @keyframes nl-pulse {
@@ -34,6 +48,10 @@
 }
 .nl-btn--lg { font-size: 15px; padding: 16px 26px; border-radius: 11px; }
 .nl-btn--sm { font-size: 13px; padding: 12px 18px; border-radius: 10px; min-height: 44px; }
+/* Icon-only CTA (the hero's WhatsApp/Instagram pair) — the label moves to
+   aria-label/title. Fixed 52px square so it keeps the exact height of the
+   labelled .nl-btn--lg sitting next to it in the same row. */
+.nl-btn--icon { width: 52px; height: 52px; padding: 0; gap: 0; justify-content: center; }
 
 /* Shared dot-scatter fill for every filled 3D nl-btn variant — only the
    base color (--nl-btn-fill) and border/shadow differ per variant below. */

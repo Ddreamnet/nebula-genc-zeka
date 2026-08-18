@@ -97,7 +97,7 @@ export function StudentTopicsSection({
                               {getResourceIcon(resource.resource_type)}
                               <span
                                 className="text-xs flex-1 cursor-pointer hover:text-primary"
-                                onClick={() => window.open(resource.resource_url, "_blank")}
+                                onClick={() => window.open(resource.resource_url, "_blank", "noopener,noreferrer")}
                               >
                                 {resource.title}
                               </span>
@@ -162,7 +162,7 @@ export function StudentTopicsSection({
                           {getResourceIcon(resource.resource_type)}
                           <span
                             className="text-xs flex-1 cursor-pointer hover:text-primary"
-                            onClick={() => window.open(resource.resource_url, "_blank")}
+                            onClick={() => window.open(resource.resource_url, "_blank", "noopener,noreferrer")}
                           >
                             {resource.title}
                           </span>

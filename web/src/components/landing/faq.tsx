@@ -9,7 +9,7 @@ const faqs = [
   },
   {
     q: "Yapay zeka araçları için ayrıca ödeme yapacak mıyım?",
-    a: "Hayır. 100'den fazla yapay zeka aracına öğrenci panelinden erişim programa dahildir. Ayrı ayrı üyelik açmanıza, kart bilgisi girmenize veya ek abonelik ödemenize gerek yok; hepsi tek panelde ve öğretmen gözetiminde.",
+    a: "Hayır. 100'den fazla yapay zeka aracına öğrenci panelinden erişim programa dahildir. Ayrı ayrı üyelik açmanıza, kart bilgisi girmenize veya ek abonelik ödemenize gerek yok; hepsi tek panelde. Derslerde öğretmen eşliğinde kullanılıyor, ders dışında da öğrencinin kendi kullanım hakkı oluyor.",
   },
   {
     q: "10 yaşındaki çocuk için de, 18 yaşındaki için de uygun mu?",

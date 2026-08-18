@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Archivo, IBM_Plex_Mono, IBM_Plex_Sans } from "next/font/google";
 import "./globals.css";
+import { Analytics } from "@/components/site/analytics";
 
 // next/font preloads whatever a layout applies on EVERY route that layout
 // wraps, and the root layout wraps every route — so fonts only Playground
@@ -61,14 +62,18 @@ export const metadata: Metadata = {
     title: "Çocuğunuz yapay zekayı izlemesin, kullansın.",
     description:
       "10–18 yaş için canlı, uygulamalı yapay zeka akademisi. En fazla 2 kişilik gruplar, her derste gerçek bir üretim.",
-    images: [{ url: "/brand/nebula-lockup.png", width: 2048, height: 1024, alt: "Nebula Genç Zeka" }],
+    // 1200x630 JPEG, ~52KB. The previous card was a 1.1MB 2048x1024 PNG:
+    // WhatsApp — where nearly every link to this site actually gets pasted —
+    // drops preview images over a few hundred KB and falls back to showing
+    // the bare URL, so the card never rendered where it mattered most.
+    images: [{ url: "/brand/og-card.jpg", width: 1200, height: 630, alt: "Nebula Genç Zeka" }],
   },
   twitter: {
     card: "summary_large_image",
     title: "Nebula Genç Zeka",
     description:
       "10–18 yaş için canlı, uygulamalı yapay zeka akademisi. Çocuğunuz yapay zekayı izlemesin, kullansın.",
-    images: ["/brand/nebula-lockup.png"],
+    images: ["/brand/og-card.jpg"],
   },
   robots: { index: true, follow: true },
   alternates: { canonical: SITE_URL },
@@ -98,6 +103,7 @@ export default function RootLayout({
     >
       <body className="relative min-h-full flex flex-col">
         {children}
+        <Analytics />
       </body>
     </html>
   );

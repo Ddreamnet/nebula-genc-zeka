@@ -592,3 +592,4 @@ BEGIN
   );
 END;
 $function$;
+;

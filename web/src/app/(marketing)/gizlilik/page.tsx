@@ -10,7 +10,7 @@ export const metadata: Metadata = {
 
 export default function GizlilikPage() {
   return (
-    <LegalPage eyebrow="GİZLİLİK" title="Gizlilik ve Çerez Politikası" updated="Temmuz 2026">
+    <LegalPage eyebrow="GİZLİLİK" title="Gizlilik ve Çerez Politikası" updated="Ağustos 2026">
       <h2>1. Giriş</h2>
       <p>
         {siteConfig.name} olarak ({siteConfig.url}), sitemizi ve öğrenci panelini kullanan veliler ve öğrencilerin
@@ -36,16 +36,31 @@ export default function GizlilikPage() {
 
       <h2 id="cerezler">4. Çerezler</h2>
       <p>
-        Şu anda yalnızca öğrenci paneli oturumunuzu açık tutmak ve hesabınızın güvenliğini sağlamak için gerekli olan{" "}
-        <strong>zorunlu çerezleri</strong> kullanıyoruz. Reklam veya üçüncü taraf takip çerezi kullanmıyoruz. İleride
-        analiz amaçlı çerez eklenmesi halinde bu politika güncellenecektir.
+        Öğrenci paneli oturumunuzu açık tutmak ve hesabınızın güvenliğini sağlamak için{" "}
+        <strong>zorunlu çerezler</strong> kullanıyoruz. Bu çerezler olmadan giriş yapılamaz.
+      </p>
+      <p>
+        Ayrıca sitenin nasıl kullanıldığını anlamak ve reklam performansını ölçmek için{" "}
+        <strong>ölçümleme ve pazarlama çerezleri</strong> kullanıyoruz: Google Analytics (ziyaret istatistikleri) ve
+        Meta Pixel (Instagram/Facebook reklamlarının ölçümü). Bu çerezler ziyaretinize dair istatistiksel bilgi ve
+        cihaz/tarayıcı bilgisi toplar; öğrenci panelindeki ders, ödev veya Playground içeriğinize erişmez.
+      </p>
+      <p>
+        Tarayıcınızın ayarlarından çerezleri silebilir veya engelleyebilirsiniz; zorunlu çerezleri engellemeniz
+        halinde öğrenci paneline giriş yapamazsınız.
       </p>
 
-      <h2>5. Üçüncü Taraf Hizmetler</h2>
+      <h2>5. Üçüncü Taraf Hizmetler ve Yurt Dışına Aktarım</h2>
       <p>
-        Altyapımız için Supabase (veritabanı ve kimlik doğrulama) ve Vercel (barındırma) hizmetlerini; Playground&apos;da
-        seçtiğiniz modele göre OpenRouter üzerinden ilgili yapay zeka sağlayıcısını kullanıyoruz. Bu sağlayıcılar
-        yalnızca hizmeti çalıştırmak için gerekli veriye, gerektiği kadar erişebilir.
+        Altyapımız için GoDaddy (barındırma) ve Supabase (veritabanı, kimlik doğrulama ve dosya depolama)
+        hizmetlerini; Playground&apos;da seçtiğiniz modele göre OpenRouter üzerinden ilgili yapay zeka sağlayıcısını
+        kullanıyoruz. Bu sağlayıcılar yalnızca hizmeti çalıştırmak için gerekli veriye, gerektiği kadar erişebilir.
+      </p>
+      <p>
+        Bu hizmetlerin sunucuları yurt dışında bulunduğundan, verileriniz hizmetin sunulabilmesi için gereken ölçüde
+        yurt dışına aktarılır. Yapay zeka sağlayıcılarına yalnızca siz bir üretim talebinde bulunduğunuzda, o talebin
+        içeriğiyle sınırlı bir aktarım yapılır. Ayrıntı için{" "}
+        <Link href="/kvkk">KVKK Aydınlatma Metni</Link>&apos;nin 5. bölümüne bakabilirsiniz.
       </p>
 
       <h2>6. Çocukların Gizliliği</h2>

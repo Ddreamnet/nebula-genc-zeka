@@ -97,9 +97,9 @@ export function Hero() {
             Haftada bir gün, iki kişilik küçük gruplarda; öğretmen eşliğinde 100&apos;den fazla yapay zeka aracını kullanarak her derste elle tutulur bir şey üretiyorlar — kendi web sitesinden konuşan bir 3D avatara, bir şarkıdan kısa bir filme kadar.
           </p>
 
-          <ContactCtas>
+          <ContactCtas iconOnly>
             <a href="#nasil" className="nl-btn nl-btn--lg nl-btn--outline-dark inline-flex">
-              Nasıl işliyor
+              Nasıl işliyor?
             </a>
           </ContactCtas>
           <p style={{ fontFamily: "var(--font-plex-mono)", fontSize: 12.5, letterSpacing: ".04em", color: "var(--on-navy-soft)", margin: "22px 0 0" }}>

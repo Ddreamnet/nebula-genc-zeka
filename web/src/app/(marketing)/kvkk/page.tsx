@@ -10,7 +10,7 @@ export const metadata: Metadata = {
 
 export default function KvkkPage() {
   return (
-    <LegalPage eyebrow="KİŞİSEL VERİLERİN KORUNMASI" title="KVKK Aydınlatma Metni" updated="Temmuz 2026">
+    <LegalPage eyebrow="KİŞİSEL VERİLERİN KORUNMASI" title="KVKK Aydınlatma Metni" updated="Ağustos 2026">
       <h2>1. Veri Sorumlusu</h2>
       <p>
         {siteConfig.name} (&quot;Nebula&quot;) olarak, 6698 sayılı Kişisel Verilerin Korunması Kanunu (&quot;KVKK&quot;)
@@ -38,19 +38,39 @@ export default function KvkkPage() {
 
       <h2>4. Kişisel Verilerin Aktarıldığı Taraflar</h2>
       <p>
-        Verileriniz; barındırma ve veritabanı altyapımızı sağlayan hizmet sağlayıcılarla (Supabase, Vercel), yalnızca
-        siz bir üretim talebinde bulunduğunuzda ilgili yapay zeka sağlayıcısıyla (OpenRouter üzerinden, seçtiğiniz
-        modelle sınırlı olarak) ve yasal olarak talep etmeye yetkili kamu kurum ve kuruluşlarıyla paylaşılabilir.
+        Verileriniz; barındırma hizmetimizi sağlayan GoDaddy ile, veritabanı ve kimlik doğrulama altyapımızı sağlayan
+        Supabase ile, yalnızca siz bir üretim talebinde bulunduğunuzda ilgili yapay zeka sağlayıcısıyla (OpenRouter
+        üzerinden, seçtiğiniz modelle sınırlı olarak) ve yasal olarak talep etmeye yetkili kamu kurum ve
+        kuruluşlarıyla paylaşılabilir.
       </p>
 
-      <h2>5. Toplama Yöntemi ve Hukuki Sebebi</h2>
+      <h2>5. Yurt Dışına Aktarım</h2>
+      <p>
+        Yukarıda sayılan hizmet sağlayıcılarının sunucuları yurt dışında bulunmaktadır. Bu nedenle kişisel
+        verileriniz, hizmetin sunulabilmesi için gerekli olduğu ölçüde yurt dışına aktarılmaktadır:
+      </p>
+      <ul>
+        <li><strong>GoDaddy:</strong> web sitesi ve öğrenci paneli barındırma</li>
+        <li><strong>Supabase:</strong> veritabanı, kimlik doğrulama ve dosya depolama</li>
+        <li>
+          <strong>OpenRouter ve seçtiğiniz yapay zeka modelinin sağlayıcısı:</strong> yalnızca Playground&apos;da bir
+          üretim talebinde bulunduğunuzda, o talebin içeriğiyle sınırlı olarak
+        </li>
+      </ul>
+      <p>
+        Bu aktarımlar KVKK m.9 kapsamında, sözleşmenin ifası için zorunlu olması ve gerektiğinde açık rızanız hukuki
+        sebeplerine dayanılarak yapılır. Playground&apos;a hiçbir zaman kimlik bilgisi, iletişim bilgisi veya kişisel
+        veri içeren bir metin girilmemesini öneririz.
+      </p>
+
+      <h2>6. Toplama Yöntemi ve Hukuki Sebebi</h2>
       <p>
         Kişisel verileriniz; web sitemiz, öğrenci paneli ve Instagram/WhatsApp üzerinden doğrudan sizden, KVKK
         m.5/2&apos;de sayılan sözleşmenin kurulması/ifası, hukuki yükümlülüğün yerine getirilmesi, meşru menfaat ve
         gerektiğinde açık rızanız hukuki sebeplerine dayanılarak toplanır.
       </p>
 
-      <h2>6. KVKK m.11 Kapsamındaki Haklarınız</h2>
+      <h2>7. KVKK m.11 Kapsamındaki Haklarınız</h2>
       <p>İlgili kişi sıfatıyla bize başvurarak:</p>
       <ul>
         <li>kişisel verinizin işlenip işlenmediğini öğrenme, işlenmişse buna ilişkin bilgi talep etme,</li>
@@ -63,7 +83,7 @@ export default function KvkkPage() {
       </ul>
       <p>haklarına sahipsiniz.</p>
 
-      <h2>7. Başvuru Yöntemi</h2>
+      <h2>8. Başvuru Yöntemi</h2>
       <p>
         Yukarıdaki haklarınızı kullanmak için{" "}
         <Link href={`mailto:${siteConfig.email}`}>{siteConfig.email}</Link> adresine yazılı olarak başvurabilirsiniz.

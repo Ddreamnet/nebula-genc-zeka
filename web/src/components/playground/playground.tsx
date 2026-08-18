@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import {
   Send,
@@ -23,6 +23,7 @@ import {
   ChevronDown,
   ArrowLeft,
   X,
+  SquarePen,
   type LucideIcon,
 } from "lucide-react";
 import { Logo } from "@/components/site/logo";
@@ -82,7 +83,20 @@ type Msg = {
   videoUrl?: string;
   videoPending?: boolean;
   audioUrl?: string;
-  kind?: "text" | "code";
+  /**
+   * "switch" is not a message at all — it's the marker dropped into the
+   * transcript when the student changes model mid-conversation, so the thread
+   * shows where the handover happened instead of silently continuing under a
+   * different brand. Carries no content and is never sent to any model.
+   */
+  kind?: "text" | "code" | "switch";
+  /**
+   * Which tool produced this turn. Needed because the conversation now
+   * survives model changes: rendering every bubble with the *current* model's
+   * avatar would retroactively re-attribute old answers to whichever model
+   * happens to be selected now.
+   */
+  toolId?: string;
 };
 
 type GateReason = "insufficient_balance" | "login_required" | null;
@@ -93,9 +107,9 @@ type GateReason = "insufficient_balance" | "login_required" | null;
  * conversation just vanishes and the new model reads as having forgotten
  * everything, which is exactly how the behaviour was misread in testing.
  */
-type Notice = { kind: "soon" | "reset"; tool: string };
+type Notice = { kind: "soon"; tool: string };
 
-const NOTICE_MS: Record<Notice["kind"], number> = { soon: 2400, reset: 3400 };
+const NOTICE_MS: Record<Notice["kind"], number> = { soon: 2400 };
 
 // "Tümü" menu shows everything in one place; the featured tool lives only here, not under any single category.
 const ALL_TOOLS_FLAT: PlaygroundTool[] = [FEATURED_TOOL, ...CATEGORIES.flatMap((c) => c.tools)];
@@ -153,10 +167,24 @@ function useHoverPopover(closeDelay = 120) {
   };
 }
 
+/**
+ * Video is the one async modality: ore is debited up front and the result
+ * arrives minutes later, so how this loop ends decides whether a student pays
+ * for nothing. Two rules follow from that:
+ *  - the deadline is generous (the pricier models genuinely run past five
+ *    minutes, and the old 5-minute ceiling was giving up on live jobs), and
+ *  - giving up is an explicit server call, not just a UI message — /abandon
+ *    re-checks the job and refunds the ore if it really never landed.
+ */
+const VIDEO_DEADLINE_MS = 10 * 60 * 1000;
+
 async function pollVideoStatus(generationId: string, onUpdate: (patch: Partial<Msg>) => void, onDone: () => void) {
-  const deadline = Date.now() + 5 * 60 * 1000;
-  while (Date.now() < deadline) {
-    await new Promise((r) => setTimeout(r, 3000));
+  const startedAt = Date.now();
+  while (Date.now() - startedAt < VIDEO_DEADLINE_MS) {
+    // Tight at first (short clips often land inside a minute), then relaxed —
+    // ten minutes at a flat 3s would be 200 requests for one video.
+    const elapsed = Date.now() - startedAt;
+    await new Promise((r) => setTimeout(r, elapsed < 60_000 ? 3000 : 8000));
     try {
       const res = await fetch(`/api/playground/generate/${generationId}/status`);
       const data = await res.json();
@@ -166,7 +194,7 @@ async function pollVideoStatus(generationId: string, onUpdate: (patch: Partial<M
         return;
       }
       if (data.status === "failed") {
-        onUpdate({ videoPending: false, content: "Video oluşturulamadı, başka bir şey dener misin? 💫" });
+        onUpdate({ videoPending: false, content: "Video oluşturulamadı — harcadığın cevher hesabına geri yüklendi. Başka bir şey dener misin? 💫" });
         onDone();
         return;
       }
@@ -174,7 +202,32 @@ async function pollVideoStatus(generationId: string, onUpdate: (patch: Partial<M
       // transient network hiccup — keep polling until deadline
     }
   }
-  onUpdate({ videoPending: false, content: "Bu beklenenden uzun sürdü, birazdan tekrar dener misin? 💫" });
+
+  let refunded = false;
+  try {
+    const res = await fetch(`/api/playground/generate/${generationId}/abandon`, { method: "POST" });
+    const data = await res.json();
+    // The last-ditch poll inside /abandon can still find a finished job.
+    if (data.status === "completed") {
+      const done = await fetch(`/api/playground/generate/${generationId}/status`).then((r) => r.json());
+      if (done.status === "completed") {
+        onUpdate({ videoPending: false, videoUrl: done.videoUrl });
+        onDone();
+        return;
+      }
+    }
+    refunded = data.refunded === true;
+  } catch {
+    // Couldn't reach our own server — say the honest thing rather than
+    // promising a refund that may not have happened.
+  }
+
+  onUpdate({
+    videoPending: false,
+    content: refunded
+      ? "Bu video beklenenden uzun sürdü, iptal ettim — harcadığın cevher hesabına geri yüklendi. Tekrar dener misin? 💫"
+      : "Bu video beklenenden uzun sürdü. Cevherin durumunu kontrol ediyoruz; birazdan tekrar dener misin? 💫",
+  });
   onDone();
 }
 
@@ -190,6 +243,9 @@ export function Playground() {
   const [gateReason, setGateReason] = useState<GateReason>(null);
   const [composerHeight, setComposerHeight] = useState(0);
   const scrollRef = useRef<HTMLDivElement>(null);
+
+  /** Index of the reply currently being generated, or -1. */
+  const pendingIndex = messages.findLastIndex((m) => m.role === "assistant" && m.kind !== "switch");
 
   // 0 means this model can't see images at all, which is what hides the
   // attach button. The server enforces the same ceiling regardless.
@@ -209,7 +265,7 @@ export function Playground() {
   const pendingCost = generationOreCost(activeTool, attachments.length + carriedCount);
   const gated = gateReason !== null || remaining < pendingCost;
 
-  useEffect(() => {
+  const refreshBalance = useCallback(() => {
     fetch("/api/playground/balance")
       .then((r) => {
         if (!r.ok) {
@@ -226,6 +282,10 @@ export function Playground() {
   }, []);
 
   useEffect(() => {
+    refreshBalance();
+  }, [refreshBalance]);
+
+  useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
   }, [messages]);
 
@@ -235,11 +295,19 @@ export function Playground() {
     return () => clearTimeout(t);
   }, [notice]);
 
+  /**
+   * Patches the reply currently being generated. It searches backwards for the
+   * last real assistant turn rather than taking the last array entry, because
+   * a student can change model mid-generation (video polls for minutes) — that
+   * appends a switch marker, and writing the finished video onto the marker
+   * would both lose the video and turn a divider into a bubble.
+   */
   function setLastAssistant(patch: Partial<Msg>) {
     setMessages((m) => {
+      const i = m.findLastIndex((x) => x.role === "assistant" && x.kind !== "switch");
+      if (i === -1) return m;
       const copy = m.slice();
-      const last = copy[copy.length - 1];
-      if (last?.role === "assistant") copy[copy.length - 1] = { ...last, ...patch };
+      copy[i] = { ...copy[i], ...patch };
       return copy;
     });
   }
@@ -256,7 +324,10 @@ export function Playground() {
     // tools are one-shot generations, not a conversation). Trimmed to the
     // last HISTORY_LIMIT turns so cost doesn't grow unbounded; server
     // re-enforces the same cap, this is just to keep the payload small.
-    const priorTurns = activeTool.modality === "text" ? messages.filter((m) => m.content.trim()).slice(-HISTORY_LIMIT) : [];
+    const priorTurns =
+      activeTool.modality === "text"
+        ? messages.filter((m) => m.kind !== "switch" && m.content.trim()).slice(-HISTORY_LIMIT)
+        : [];
     // Only the most recent user turn's images are replayed — that's all the
     // server will use, and shipping the rest would put megabytes of dead data
     // URLs on the wire with every single message.
@@ -267,7 +338,13 @@ export function Playground() {
       images: i === lastUserIndex ? (m.attachments ?? []) : [],
     }));
 
-    setMessages((m) => [...m, { role: "user", content: q, attachments: sentImages }, { role: "assistant", content: "" }]);
+    setMessages((m) => [
+      ...m,
+      { role: "user", content: q, attachments: sentImages },
+      // Stamped with the model answering *now*, so this bubble keeps its own
+      // avatar after the student moves on to a different model.
+      { role: "assistant", content: "", toolId: activeTool.id },
+    ]);
 
     try {
       const res = await fetch("/api/playground/generate", {
@@ -305,6 +382,9 @@ export function Playground() {
       } else {
         setLastAssistant({ videoPending: true });
         await pollVideoStatus(data.generationId, setLastAssistant, () => setBusy(false));
+        // A video can end in a refund (see /abandon), so the balance shown in
+        // the header is only trustworthy if it's re-read once the job settles.
+        refreshBalance();
       }
     } catch {
       setLastAssistant({ content: "Bir şeyler ters gitti, tekrar dener misin? 💫" });
@@ -318,15 +398,22 @@ export function Playground() {
       return;
     }
     if (tool.id === activeTool.id) return;
-    // Switching models starts a fresh conversation — the new model is sent no
-    // history at all. Say that out loud when there was something to lose:
-    // silently emptying the transcript reads as the model having forgotten,
-    // which is precisely how it was misread while testing.
-    if (messages.length > 0) setNotice({ kind: "reset", tool: tool.name });
+    // Changing model no longer wipes the thread. What the new model can
+    // actually see depends on its modality, and that's what the inline marker
+    // below spells out — so the student reads it in the transcript, at the
+    // exact point it applies, instead of in a toast that disappears.
+    if (messages.length > 0) {
+      setMessages((m) => [...m, { role: "assistant", content: "", kind: "switch", toolId: tool.id }]);
+    }
     setActiveTool(tool);
-    setMessages([]);
     // The new model may take fewer images than the old one — or none — so
     // staged attachments don't survive a tool switch.
+    setAttachments([]);
+    setGateReason(null);
+  }
+
+  function newChat() {
+    setMessages([]);
     setAttachments([]);
     setGateReason(null);
   }
@@ -348,6 +435,17 @@ export function Playground() {
 
           <div className="ml-auto flex shrink-0 items-center gap-1.5 sm:gap-2">
             <OreMeter remaining={remaining} />
+            {messages.length > 0 && (
+              <button
+                type="button"
+                onClick={newChat}
+                title="Yeni sohbet"
+                className="inline-flex h-9 shrink-0 items-center gap-1.5 rounded-full border border-white/10 bg-surface-container/50 px-2.5 text-xs font-medium text-on-surface-variant transition hover:border-white/25 hover:bg-surface-container hover:text-on-surface sm:px-3"
+              >
+                <SquarePen className="size-3.5 shrink-0" />
+                <span className="hidden sm:inline">Yeni sohbet</span>
+              </button>
+            )}
             <Link
               href="/dashboard"
               title="Panele dön"
@@ -379,9 +477,21 @@ export function Playground() {
         ) : (
           <div ref={scrollRef} className="min-h-0 flex-1 overflow-y-auto pb-4">
             <div className="space-y-6">
-              {messages.map((m, i) => (
-                <Bubble key={i} msg={m} tool={activeTool} busy={busy && i === messages.length - 1} />
-              ))}
+              {messages.map((m, i) =>
+                m.kind === "switch" ? (
+                  <ModelSwitchMarker key={i} toolId={m.toolId} />
+                ) : (
+                  <Bubble
+                    key={i}
+                    msg={m}
+                    tool={findTool(m.toolId ?? "")?.tool ?? activeTool}
+                    // Same reason as setLastAssistant: a marker appended while
+                    // a video renders must not steal the typing indicator from
+                    // the bubble that's actually still waiting.
+                    busy={busy && i === pendingIndex}
+                  />
+                ),
+              )}
             </div>
           </div>
         )}
@@ -404,25 +514,15 @@ export function Playground() {
         placeholder={findTool(activeTool.id)?.category?.id === "web" ? "Hayalindeki siteyi, oyunu tarif et..." : "Bir şeyler hayal et..."}
       />
 
-      {/* Toast: locked tool, or "switching models cleared the chat" */}
+      {/* Toast: a tool that isn't wired up yet. Model changes no longer
+          need one — they leave a permanent marker in the thread instead. */}
       {notice && (
         <div aria-live="polite" className="pointer-events-none fixed inset-x-0 bottom-24 z-30 flex justify-center px-4">
           <div className="animate-in fade-in-0 slide-in-from-bottom-2 flex items-center gap-2 rounded-full border border-secondary/25 bg-surface-high/95 px-4 py-2.5 text-center text-sm text-on-surface shadow-lg backdrop-blur-xl">
-            {notice.kind === "soon" ? (
-              <>
-                <Lock className="size-3.5 shrink-0 text-secondary" />
-                <span>
-                  <strong className="font-medium">{notice.tool}</strong> çok yakında burada olacak.
-                </span>
-              </>
-            ) : (
-              <>
-                <Sparkles className="size-3.5 shrink-0 text-secondary" />
-                <span>
-                  <strong className="font-medium">{notice.tool}</strong> ile yeni sohbet başladı — önceki konuşmayı görmüyor.
-                </span>
-              </>
-            )}
+            <Lock className="size-3.5 shrink-0 text-secondary" />
+            <span>
+              <strong className="font-medium">{notice.tool}</strong> çok yakında burada olacak.
+            </span>
           </div>
         </div>
       )}
@@ -892,6 +992,55 @@ function Composer({
   );
 }
 
+/**
+ * Inline marker for "the model changed here".
+ *
+ * The caption is modality-driven, and the distinction is real rather than
+ * decorative. OpenRouter is stateless: nothing is remembered on their side,
+ * and a model only "remembers" what we resend to it. This app resends the
+ * whole running transcript for text tools — every turn of it, no matter which
+ * model wrote which line — so a text model picked up mid-thread reads the
+ * entire conversation above, including the parts other models produced, and
+ * a model returning after a detour reads its own earlier lines back. The only
+ * thing it can't see is what has already fallen out of the last-HISTORY_LIMIT
+ * window.
+ *
+ * Image, video and audio tools are one-shot generations: `send()` sends them
+ * no history at all, only the prompt typed next. Telling a student their new
+ * video model "continues the conversation" would be plainly false, hence the
+ * two different sentences.
+ */
+function ModelSwitchMarker({ toolId }: { toolId?: string }) {
+  const tool = findTool(toolId ?? "")?.tool;
+  if (!tool) return null;
+
+  const readsHistory = tool.modality === "text";
+
+  return (
+    <div className="flex flex-col items-center gap-2 py-1" aria-live="polite">
+      <div className="flex w-full items-center gap-3">
+        <span aria-hidden className="h-px flex-1 bg-gradient-to-r from-transparent to-white/15" />
+        <span className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-surface-high/70 py-1 pl-1 pr-3">
+          {tool.provider ? (
+            <ProviderBadge provider={tool.provider} className="size-6" />
+          ) : (
+            <span className="inline-flex size-6 shrink-0 items-center justify-center rounded-full bg-surface-container text-on-surface-variant">
+              <tool.icon className="size-3" />
+            </span>
+          )}
+          <span className="font-mono text-xs font-medium text-on-surface">{tool.name}</span>
+        </span>
+        <span aria-hidden className="h-px flex-1 bg-gradient-to-l from-transparent to-white/15" />
+      </div>
+      <p className="max-w-[46ch] text-center text-xs leading-relaxed text-on-surface-variant">
+        {readsHistory
+          ? `Sohbet buradan ${tool.name} ile devam ediyor — yukarıda yazılan her şeyi (son ${HISTORY_LIMIT} mesaj) okuyabiliyor, hangi modelin yazdığı fark etmiyor.`
+          : `${tool.name} sohbeti okumuyor — yalnızca bundan sonra yazacağın mesajı görüyor.`}
+      </p>
+    </div>
+  );
+}
+
 function Bubble({ msg, tool, busy }: { msg: Msg; tool: PlaygroundTool; busy: boolean }) {
   const isUser = msg.role === "user";
   const [copied, setCopied] = useState(false);
@@ -961,7 +1110,7 @@ function Bubble({ msg, tool, busy }: { msg: Msg; tool: PlaygroundTool; busy: boo
           <button
             onClick={() => {
               if (hasMedia) {
-                window.open(msg.imageUrl ?? msg.videoUrl ?? msg.audioUrl, "_blank");
+                window.open(msg.imageUrl ?? msg.videoUrl ?? msg.audioUrl, "_blank", "noopener,noreferrer");
                 return;
               }
               navigator.clipboard.writeText(msg.content);

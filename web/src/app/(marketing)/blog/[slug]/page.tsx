@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { notFound } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { ClosingCta } from "@/components/landing/closing-cta";
@@ -22,10 +23,23 @@ async function getPost(slug: string) {
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const { slug } = await params;
   const post = await getPost(slug);
-  if (!post) return { title: "Yazı bulunamadı — Nebula Genç Zeka" };
+  // Bare title only — the root layout's `template` ("%s · Nebula Genç Zeka")
+  // appends the brand itself. Spelling it out here too produced
+  // "Yazı · Nebula Genç Zeka · Nebula Genç Zeka" in the tab and in search results.
+  if (!post) return { title: "Yazı bulunamadı", robots: { index: false, follow: true } };
   return {
-    title: `${post.title} — Nebula Genç Zeka`,
+    title: post.title,
     description: post.excerpt ?? undefined,
+    openGraph: {
+      type: "article",
+      title: post.title,
+      description: post.excerpt ?? undefined,
+      publishedTime: post.published_at ?? undefined,
+      // The post's own cover is what people expect to see when the link is
+      // pasted into WhatsApp; the site-wide lockup only stands in when a post
+      // has no cover of its own.
+      ...(post.cover_image_url ? { images: [{ url: post.cover_image_url }] } : {}),
+    },
   };
 }
 
@@ -33,21 +47,9 @@ export default async function BlogPostPage({ params }: PageProps) {
   const { slug } = await params;
   const post = await getPost(slug);
 
-  if (!post) {
-    return (
-      <div style={{ background: "var(--paper)", minHeight: "100vh" }}>
-        <main style={{ paddingTop: "clamp(96px,12vw,140px)", paddingBottom: 80, paddingInline: "clamp(18px,5vw,64px)" }}>
-          <div style={{ maxWidth: 720, margin: "0 auto", textAlign: "center" }}>
-            <p style={{ fontSize: 20, color: "var(--ink-soft)", marginBottom: 16 }}>Yazı bulunamadı.</p>
-            <Link href="/blog" style={{ color: "var(--amber-dark)", display: "inline-flex", alignItems: "center", gap: 6 }}>
-              <ArrowLeft size={16} /> Blog&apos;a dön
-            </Link>
-          </div>
-        </main>
-        <ClosingCta />
-      </div>
-    );
-  }
+  // A missing slug must answer 404, not a 200 page that says "not found" —
+  // otherwise deleted posts stay in the search index as soft-404s.
+  if (!post) notFound();
 
   return (
     <div style={{ background: "var(--paper)", minHeight: "100vh" }}>

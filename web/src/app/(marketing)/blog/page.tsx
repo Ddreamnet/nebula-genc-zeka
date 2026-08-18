@@ -4,7 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { ClosingCta } from "@/components/landing/closing-cta";
 
 export const metadata: Metadata = {
-  title: "Blog — Nebula Genç Zeka",
+  title: "Blog",
   description: "Nebula Genç Zeka'dan yapay zeka, eğitim ve çocuklarla yaratıcılık üzerine yazılar.",
 };
 

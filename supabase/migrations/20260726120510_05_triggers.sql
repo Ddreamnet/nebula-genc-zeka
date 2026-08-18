@@ -1,0 +1,28 @@
+
+CREATE TRIGGER on_auth_user_created AFTER INSERT ON auth.users FOR EACH ROW EXECUTE FUNCTION handle_new_user();
+CREATE TRIGGER update_blog_posts_updated_at BEFORE UPDATE ON public.blog_posts FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+CREATE TRIGGER trg_set_updated_at_global_topic_resources BEFORE UPDATE ON public.global_topic_resources FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+CREATE TRIGGER trg_set_updated_at_global_topics BEFORE UPDATE ON public.global_topics FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+CREATE TRIGGER trg_set_updated_at_groups BEFORE UPDATE ON public.groups FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+CREATE TRIGGER on_homework_uploaded AFTER INSERT ON public.homework_submissions FOR EACH ROW EXECUTE FUNCTION notify_on_homework_upload();
+CREATE TRIGGER update_homework_submissions_updated_at BEFORE UPDATE ON public.homework_submissions FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+CREATE TRIGGER notify_last_lesson_trigger AFTER UPDATE ON public.lesson_instances FOR EACH ROW EXECUTE FUNCTION notify_admin_last_lesson();
+CREATE TRIGGER trg_prevent_duplicate_lesson_instance BEFORE INSERT OR UPDATE ON public.lesson_instances FOR EACH ROW EXECUTE FUNCTION prevent_duplicate_lesson_instance();
+CREATE TRIGGER update_lesson_instances_updated_at BEFORE UPDATE ON public.lesson_instances FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+CREATE TRIGGER trg_set_updated_at_profiles BEFORE UPDATE ON public.profiles FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+CREATE TRIGGER update_push_tokens_updated_at BEFORE UPDATE ON public.push_tokens FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+CREATE TRIGGER trg_set_updated_at_resources BEFORE UPDATE ON public.resources FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+CREATE TRIGGER update_student_lesson_tracking_updated_at BEFORE UPDATE ON public.student_lesson_tracking FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+CREATE TRIGGER trg_set_updated_at_lessons BEFORE UPDATE ON public.student_lessons FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+CREATE TRIGGER trg_validate_max_lessons BEFORE INSERT OR UPDATE ON public.student_lessons FOR EACH ROW EXECUTE FUNCTION validate_max_lessons_per_week();
+CREATE TRIGGER trg_set_updated_at_src BEFORE UPDATE ON public.student_resource_completion FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+CREATE TRIGGER trg_validate_max_group_members BEFORE INSERT OR UPDATE OF group_id ON public.students FOR EACH ROW EXECUTE FUNCTION validate_max_group_members();
+CREATE TRIGGER update_teacher_balance_updated_at BEFORE UPDATE ON public.teacher_balance FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+CREATE TRIGGER trg_complete_global_topic_resources_ins AFTER INSERT ON public.topics FOR EACH ROW EXECUTE FUNCTION complete_global_topic_resources();
+CREATE TRIGGER trg_complete_global_topic_resources_upd AFTER UPDATE OF is_completed ON public.topics FOR EACH ROW WHEN ((old.is_completed IS DISTINCT FROM new.is_completed)) EXECUTE FUNCTION complete_global_topic_resources();
+CREATE TRIGGER trg_complete_topic_resources AFTER UPDATE OF is_completed ON public.topics FOR EACH ROW EXECUTE FUNCTION complete_topic_resources();
+CREATE TRIGGER trg_complete_topic_resources_ins AFTER INSERT ON public.topics FOR EACH ROW EXECUTE FUNCTION complete_topic_resources();
+CREATE TRIGGER trg_complete_topic_resources_upd AFTER UPDATE OF is_completed ON public.topics FOR EACH ROW WHEN ((old.is_completed IS DISTINCT FROM new.is_completed)) EXECUTE FUNCTION complete_topic_resources();
+CREATE TRIGGER trg_set_updated_at_topics BEFORE UPDATE ON public.topics FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+CREATE TRIGGER update_trial_lessons_updated_at BEFORE UPDATE ON public.trial_lessons FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+;

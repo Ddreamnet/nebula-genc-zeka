@@ -13,3 +13,7 @@ build/
 # whether to run install/build at all — no lockfile there means it skips
 # straight to the serve command against a server.js that was never built.
 # See commit history for the incident this caused.
+
+# Supabase CLI local state (linked project ref, pooler URL, server versions).
+# Machine-specific and re-created by `supabase link` — never committed.
+supabase/.temp/
