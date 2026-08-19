@@ -1,6 +1,12 @@
 /**
- * Fixed, non-interactive deep-space background shared by every page.
- * Pure CSS — no client JS. GPU-cheap: only opacity animates (one twinkle layer).
+ * The Playground's ground: "Kâğıt Uzay" seen from the space side.
+ *
+ * Used only by /playground (every other route paints an opaque surface over
+ * it). It used to be a stack of radial gradients — a lit dome, three aurora
+ * glows and a vignette — which is exactly what the rest of the product stopped
+ * doing when it moved onto the cut-paper system. This is the same star field
+ * the marketing page's space bands use: one flat navy fill and two painted
+ * star layers, the second drifting in opacity. No gradient, no blur.
  */
 export function CosmicBackground() {
   return (
@@ -10,35 +16,11 @@ export function CosmicBackground() {
       // browsers/devices where overscroll-behavior isn't honored, a rubber-band
       // drag past the top/bottom edge still reveals more background instead of
       // a hard, obviously-viewport-sized seam.
-      className="pointer-events-none fixed -inset-12 -z-10 overflow-hidden bg-surface"
+      className="pointer-events-none fixed -inset-12 -z-10 overflow-hidden"
+      style={{ background: "#141F3C" }}
     >
-      {/* Deep radial base — slightly lit from the top */}
-      <div
-        className="absolute inset-0"
-        style={{
-          background:
-            "radial-gradient(125% 120% at 50% -10%, #171b1d 0%, #0e1011 45%, #070909 100%)",
-        }}
-      />
-
-      {/* Nebula aurora glows (amber + cosmic blue) */}
-      <div className="absolute inset-0 aurora opacity-90" />
-
-      {/* Two starfield layers — the second gently twinkles */}
-      <div className="absolute inset-0 starfield opacity-70" />
-      <div
-        className="absolute inset-0 starfield opacity-50 animate-twinkle"
-        style={{ backgroundPosition: "140px 90px, 60px 40px, 200px 120px, 30px 220px, 180px 60px, 90px 150px" }}
-      />
-
-      {/* Vignette to focus content */}
-      <div
-        className="absolute inset-0"
-        style={{
-          background:
-            "radial-gradient(100% 70% at 50% 38%, transparent 55%, rgba(0,0,0,0.55) 100%)",
-        }}
-      />
+      <div className="absolute inset-0 pg-stars" />
+      <div className="absolute inset-0 pg-stars pg-stars--twinkle" />
     </div>
   );
 }

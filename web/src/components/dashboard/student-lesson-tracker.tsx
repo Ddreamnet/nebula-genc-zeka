@@ -112,8 +112,8 @@ export function StudentLessonTracker({ studentId }: StudentLessonTrackerProps) {
       <div key={inst.id} className="flex flex-col items-center gap-0.5">
         <div
           className={cn(
-            "h-8 w-8 sm:h-9 sm:w-9 rounded-lg border-2 transition-all duration-200 flex items-center justify-center text-xs font-semibold shadow-sm",
-            isCompleted ? "bg-primary text-primary-foreground border-primary scale-95 shadow-md" : "bg-muted/50 border-muted-foreground/20",
+            "h-8 w-8 sm:h-9 sm:w-9 rounded-lg border-2 transition-all duration-200 flex items-center justify-center text-xs font-semibold shadow-[0_3px_0_0_var(--pn-ink)]",
+            isCompleted ? "bg-primary text-primary-foreground border-primary scale-95" : "bg-muted/50 border-muted-foreground/20",
           )}
           title={`Ders ${displayPosition + 1} - ${timeInfo}`}
         >

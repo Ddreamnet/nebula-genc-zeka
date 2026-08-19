@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 76" fill="none"><title>Gezegen</title>
+  <path d="M12 46a40 13 -18 0 0 72-22" stroke="#152343" stroke-width="9" stroke-linecap="round"/>
+  <circle cx="48" cy="38" r="26" fill="#8B6BFF" stroke="#152343" stroke-width="4.5"/>
+  <circle cx="39" cy="30" r="6" fill="#FFFFFF" opacity="0.28"/>
+  <circle cx="57" cy="45" r="4" fill="#FFFFFF" opacity="0.2"/>
+  <path d="M84 24a40 13 -18 0 1 -72 22" stroke="#152343" stroke-width="9" stroke-linecap="round"/>
+  <path d="M84 24a40 13 -18 0 1 -72 22" stroke="#FFD27A" stroke-width="4" stroke-linecap="round"/>
+</svg>

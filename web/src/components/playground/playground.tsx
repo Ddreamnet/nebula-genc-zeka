@@ -33,6 +33,7 @@ import { WhatsappIcon } from "@/components/ui/brand-icons";
 import { CATEGORIES, FEATURED_TOOL, findTool, generationOreCost, type PlaygroundTool } from "@/lib/playground/tools";
 import { CURRICULUM_MONTHS, weeksInMonth, resolveWeekTools } from "@/lib/playground/curriculum";
 import { ProviderBadge } from "./provider-logos";
+import { ChatHistory } from "./chat-history";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/panel-ui/popover";
 
 // Keep in sync with HISTORY_LIMIT in app/api/playground/generate/route.ts —
@@ -178,7 +179,14 @@ function useHoverPopover(closeDelay = 120) {
  */
 const VIDEO_DEADLINE_MS = 10 * 60 * 1000;
 
-async function pollVideoStatus(generationId: string, onUpdate: (patch: Partial<Msg>) => void, onDone: () => void) {
+async function pollVideoStatus(
+  generationId: string,
+  onUpdate: (patch: Partial<Msg>) => void,
+  onDone: () => void,
+  /** Called with the bucket path once the file exists, so the transcript row
+   *  this video belongs to can finally be settled. */
+  onLanded?: (outputPath: string | null) => void,
+) {
   const startedAt = Date.now();
   while (Date.now() - startedAt < VIDEO_DEADLINE_MS) {
     // Tight at first (short clips often land inside a minute), then relaxed —
@@ -190,6 +198,7 @@ async function pollVideoStatus(generationId: string, onUpdate: (patch: Partial<M
       const data = await res.json();
       if (data.status === "completed") {
         onUpdate({ videoPending: false, videoUrl: data.videoUrl });
+        onLanded?.(data.outputPath ?? null);
         onDone();
         return;
       }
@@ -212,6 +221,7 @@ async function pollVideoStatus(generationId: string, onUpdate: (patch: Partial<M
       const done = await fetch(`/api/playground/generate/${generationId}/status`).then((r) => r.json());
       if (done.status === "completed") {
         onUpdate({ videoPending: false, videoUrl: done.videoUrl });
+        onLanded?.(done.outputPath ?? null);
         onDone();
         return;
       }
@@ -242,6 +252,11 @@ export function Playground() {
   const [remaining, setRemaining] = useState(20);
   const [gateReason, setGateReason] = useState<GateReason>(null);
   const [composerHeight, setComposerHeight] = useState(0);
+  /** Server-side thread this transcript belongs to; null until the first turn. */
+  const [chatId, setChatId] = useState<string | null>(null);
+  /** Bumped whenever the history list could have changed, to re-fetch it. */
+  const [historyKey, setHistoryKey] = useState(0);
+  const [loadingChat, setLoadingChat] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   /** Index of the reply currently being generated, or -1. */
@@ -350,7 +365,7 @@ export function Playground() {
       const res = await fetch("/api/playground/generate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ toolId: activeTool.id, prompt: q, history, attachments: sentImages }),
+        body: JSON.stringify({ toolId: activeTool.id, prompt: q, history, attachments: sentImages, chatId }),
       });
       const data = await res.json();
 
@@ -369,6 +384,10 @@ export function Playground() {
       }
 
       setRemaining(data.remaining);
+      // The server opens the chat on the first turn and hands back its id; from
+      // here on every turn rides the same thread.
+      if (data.chatId && data.chatId !== chatId) setChatId(data.chatId);
+      setHistoryKey((k) => k + 1);
 
       if (data.modality === "text") {
         setLastAssistant({ content: data.content, kind: data.kind === "code" ? "code" : "text" });
@@ -381,7 +400,19 @@ export function Playground() {
         setBusy(false);
       } else {
         setLastAssistant({ videoPending: true });
-        await pollVideoStatus(data.generationId, setLastAssistant, () => setBusy(false));
+        await pollVideoStatus(
+          data.generationId,
+          setLastAssistant,
+          () => setBusy(false),
+          (outputPath) => {
+            if (!data.assistantMessageId) return;
+            void fetch("/api/playground/chats/settle", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ messageId: data.assistantMessageId, kind: "video", outputPath }),
+            }).then(() => setHistoryKey((k) => k + 1));
+          },
+        );
         // A video can end in a refund (see /abandon), so the balance shown in
         // the header is only trustworthy if it's re-read once the job settles.
         refreshBalance();
@@ -416,21 +447,51 @@ export function Playground() {
     setMessages([]);
     setAttachments([]);
     setGateReason(null);
+    setChatId(null);
+  }
+
+  /**
+   * Reopens a stored transcript. The tool is restored from the chat's own
+   * tool_id, so continuing an old thread starts on the model it was made with
+   * rather than on whatever happened to be selected.
+   */
+  async function openChat(id: string) {
+    if (id === chatId || loadingChat) return;
+    setLoadingChat(true);
+    try {
+      const res = await fetch(`/api/playground/chats/${id}`);
+      const data = await res.json();
+      if (data.error) return;
+      setMessages(Array.isArray(data.messages) ? data.messages : []);
+      setChatId(data.id);
+      setAttachments([]);
+      setGateReason(null);
+      const tool = findTool(data.toolId)?.tool;
+      if (tool && tool.status === "live") setActiveTool(tool);
+    } catch {
+      // Leave the current thread on screen — silently swapping it for an empty
+      // one would look like the old chat had been deleted.
+    } finally {
+      setLoadingChat(false);
+    }
   }
 
   return (
     <div className="relative flex h-dvh flex-col overflow-hidden">
-      {/* Ambient glow accents — purely decorative, GPU-cheap (opacity/transform only) */}
-      <div aria-hidden className="pointer-events-none absolute -left-32 top-24 size-72 rounded-full bg-secondary/10 blur-3xl animate-pulse-glow" />
-      <div aria-hidden className="pointer-events-none absolute -right-24 top-96 size-80 rounded-full bg-primary/10 blur-3xl animate-pulse-glow [animation-delay:1.5s]" />
+      <ChatHistory
+        activeChatId={chatId}
+        refreshKey={historyKey}
+        onOpenChat={openChat}
+        onNewChat={newChat}
+      />
 
       {/* One row: brand · model picker · balance · way out. The picker doubles
           as the "which AI am I talking to" readout, so no second nav row and
           no floating badge over the canvas are needed. */}
-      <header className="sticky top-0 z-20 bg-surface/80 backdrop-blur-xl">
+      <header className="sticky top-0 z-20 bg-surface">
         <div className="mx-auto flex h-14 w-full max-w-4xl items-center gap-2 px-3 sm:h-16 sm:gap-3 sm:px-4">
           <Logo light disableLink className="shrink-0" />
-          <span aria-hidden className="hidden h-7 w-px shrink-0 bg-white/10 sm:block" />
+          <span aria-hidden className="hidden h-7 w-[2px] shrink-0 bg-outline-variant sm:block" />
           <ModelPicker activeTool={activeTool} onSelect={selectTool} />
 
           <div className="ml-auto flex shrink-0 items-center gap-1.5 sm:gap-2">
@@ -440,7 +501,7 @@ export function Playground() {
                 type="button"
                 onClick={newChat}
                 title="Yeni sohbet"
-                className="inline-flex h-9 shrink-0 items-center gap-1.5 rounded-full border border-white/10 bg-surface-container/50 px-2.5 text-xs font-medium text-on-surface-variant transition hover:border-white/25 hover:bg-surface-container hover:text-on-surface sm:px-3"
+                className="inline-flex h-9 shrink-0 items-center gap-1.5 rounded-full border border-outline-variant bg-surface-container px-2.5 text-xs font-medium text-on-surface-variant transition hover:border-outline hover:bg-surface-container hover:text-on-surface sm:px-3"
               >
                 <SquarePen className="size-3.5 shrink-0" />
                 <span className="hidden sm:inline">Yeni sohbet</span>
@@ -449,7 +510,7 @@ export function Playground() {
             <Link
               href="/dashboard"
               title="Panele dön"
-              className="inline-flex h-9 shrink-0 items-center gap-1.5 rounded-full border border-white/10 bg-surface-container/50 px-2.5 text-xs font-medium text-on-surface-variant transition hover:border-white/25 hover:bg-surface-container hover:text-on-surface sm:px-3"
+              className="inline-flex h-9 shrink-0 items-center gap-1.5 rounded-full border border-outline-variant bg-surface-container px-2.5 text-xs font-medium text-on-surface-variant transition hover:border-outline hover:bg-surface-container hover:text-on-surface sm:px-3"
             >
               <ArrowLeft className="size-3.5 shrink-0" />
               <span className="hidden sm:inline">Panel</span>
@@ -458,7 +519,7 @@ export function Playground() {
         </div>
         {/* Hairline that fades out at both ends — a hard full-width rule is
             what made the old bar read as a stock template block. */}
-        <div aria-hidden className="h-px bg-gradient-to-r from-transparent via-white/18 to-transparent" />
+        <div aria-hidden className="h-[3px] bg-surface-lowest" />
       </header>
 
       <div
@@ -518,7 +579,7 @@ export function Playground() {
           need one — they leave a permanent marker in the thread instead. */}
       {notice && (
         <div aria-live="polite" className="pointer-events-none fixed inset-x-0 bottom-24 z-30 flex justify-center px-4">
-          <div className="animate-in fade-in-0 slide-in-from-bottom-2 flex items-center gap-2 rounded-full border border-secondary/25 bg-surface-high/95 px-4 py-2.5 text-center text-sm text-on-surface shadow-lg backdrop-blur-xl">
+          <div className="animate-in fade-in-0 slide-in-from-bottom-2 flex items-center gap-2 rounded-full border border-secondary/25 bg-surface-high px-4 py-2.5 text-center text-sm text-on-surface">
             <Lock className="size-3.5 shrink-0 text-secondary" />
             <span>
               <strong className="font-medium">{notice.tool}</strong> çok yakında burada olacak.
@@ -558,7 +619,7 @@ function PickerTab({ icon: Icon, label, active, onSelect }: { icon: LucideIcon; 
       onMouseEnter={onSelect}
       className={cn(
         "flex items-center gap-1.5 rounded-full px-3 py-1.5 font-mono text-[11px] transition",
-        active ? "bg-secondary/15 text-secondary-bright" : "text-on-surface-variant hover:bg-surface-container/60 hover:text-on-surface",
+        active ? "bg-secondary/15 text-secondary-bright" : "text-on-surface-variant hover:bg-surface-container hover:text-on-surface",
       )}
     >
       <Icon className="size-3.5" /> {label}
@@ -570,7 +631,7 @@ function PickerTab({ icon: Icon, label, active, onSelect }: { icon: LucideIcon; 
 function sideItemClass(active: boolean): string {
   return cn(
     "rounded-lg px-2.5 py-2 text-left transition",
-    active ? "bg-secondary/15 text-secondary-bright" : "text-on-surface-variant hover:bg-surface-container/60 hover:text-on-surface",
+    active ? "bg-secondary/15 text-secondary-bright" : "text-on-surface-variant hover:bg-surface-container hover:text-on-surface",
   );
 }
 
@@ -583,7 +644,7 @@ function ToolCard({ tool, active, onSelect }: { tool: PlaygroundTool; active: bo
       title={`${tool.name} · ${tool.description}`}
       className={cn(
         "flex flex-col gap-1 rounded-xl border p-2 text-left transition",
-        active ? "border-secondary/40 bg-secondary/12" : "border-white/6 bg-surface-container/40 hover:border-white/15 hover:bg-surface-container/70",
+        active ? "border-secondary/40 bg-secondary/12" : "border-outline-variant bg-surface-container hover:border-outline-variant hover:bg-surface-high",
         isSoon && "opacity-70",
       )}
     >
@@ -678,7 +739,7 @@ function ModelPicker({ activeTool, onSelect }: { activeTool: PlaygroundTool; onS
             "flex h-9 min-w-0 items-center gap-2 rounded-full border py-1 pl-1 pr-2 text-left transition sm:pr-2.5",
             open
               ? "border-secondary/45 bg-secondary/12"
-              : "border-white/10 bg-surface-container/50 hover:border-white/25 hover:bg-surface-container/80",
+              : "border-outline-variant bg-surface-container hover:border-outline hover:bg-surface-high",
           )}
         >
           {activeTool.provider ? (
@@ -699,15 +760,15 @@ function ModelPicker({ activeTool, onSelect }: { activeTool: PlaygroundTool; onS
         align="start"
         sideOffset={8}
         {...hoverProps}
-        className="w-[min(680px,94vw)] gap-0 overflow-hidden rounded-2xl border border-white/10 bg-surface-high/95 p-0 shadow-2xl ring-0 backdrop-blur-xl"
+        className="pg-dialog w-[min(680px,94vw)] gap-0 overflow-hidden p-0 ring-0"
       >
-        <div className="flex items-center gap-1 border-b border-white/8 px-2 py-1.5">
+        <div className="flex items-center gap-1 border-b border-outline-variant px-2 py-1.5">
           <PickerTab icon={LayoutGrid} label="Kategoriler" active={mode === "category"} onSelect={() => setMode("category")} />
           <PickerTab icon={CalendarDays} label="Müfredat" active={mode === "curriculum"} onSelect={() => setMode("curriculum")} />
         </div>
 
         <div className="flex h-72 flex-row sm:h-80">
-          <div className="flex w-28 shrink-0 flex-col gap-0.5 overflow-y-auto border-r border-white/8 p-2 sm:w-36">
+          <div className="flex w-28 shrink-0 flex-col gap-0.5 overflow-y-auto border-r border-outline-variant p-2 sm:w-36">
             {mode === "category"
               ? CATEGORY_MENU_ENTRIES.map((entry) => {
                   const Icon = CATEGORY_ICONS[entry.id] ?? Layers;
@@ -780,7 +841,7 @@ function GatedCallout({ gateReason }: { gateReason: GateReason }) {
       : "Ücretsiz deneme hakkın bitti. Öğrenci olarak çok daha fazlasını üret!";
 
   return (
-    <div className="flex flex-col items-center gap-3 rounded-2xl border border-secondary/25 bg-secondary/8 p-5 text-center sm:flex-row sm:justify-between sm:text-left">
+    <div className="pg-card flex flex-col items-center gap-3 p-5 text-center sm:flex-row sm:justify-between sm:text-left">
       <div className="flex items-center gap-3">
         <span className="inline-flex size-10 shrink-0 items-center justify-center rounded-full bg-secondary/15 text-secondary">
           <Lock className="size-5" />
@@ -788,7 +849,7 @@ function GatedCallout({ gateReason }: { gateReason: GateReason }) {
         <p className="text-sm text-on-surface-variant">{gatedMessage}</p>
       </div>
       <div className="flex shrink-0 gap-2">
-        <Link href="/dashboard" className="rounded-full border border-white/10 px-4 py-2 font-mono text-sm text-on-surface transition hover:border-secondary/40">
+        <Link href="/dashboard" className="rounded-full border border-outline-variant px-4 py-2 font-mono text-sm text-on-surface transition hover:border-secondary/40">
           Panele dön
         </Link>
         <Link
@@ -897,8 +958,8 @@ function Composer({
             void addFiles(e.dataTransfer.files);
           }}
           className={cn(
-            "flex flex-col gap-2 rounded-2xl border bg-surface-container/60 p-2 transition-colors focus-within:border-secondary/50",
-            dragging ? "border-secondary/60 bg-secondary/8" : "border-white/10",
+            "pg-card flex flex-col gap-2 p-2 transition-colors",
+            dragging && "bg-secondary/15",
           )}
         >
           {attachments.length > 0 && (
@@ -906,12 +967,12 @@ function Composer({
               {attachments.map((src, i) => (
                 <div key={i} className="group/thumb relative animate-in fade-in-0 zoom-in-95">
                   {/* eslint-disable-next-line @next/next/no-img-element -- client-side data URL, never a remote asset */}
-                  <img src={src} alt="" className="size-16 rounded-lg border border-white/10 object-cover" />
+                  <img src={src} alt="" className="size-16 rounded-lg border border-outline-variant object-cover" />
                   <button
                     type="button"
                     onClick={() => setAttachments((prev) => prev.filter((_, idx) => idx !== i))}
                     aria-label="Görseli kaldır"
-                    className="absolute -right-1.5 -top-1.5 inline-flex size-5 items-center justify-center rounded-full border border-white/10 bg-surface text-on-surface-variant transition hover:text-on-surface"
+                    className="absolute -right-1.5 -top-1.5 inline-flex size-5 items-center justify-center rounded-full border border-outline-variant bg-surface text-on-surface-variant transition hover:text-on-surface"
                   >
                     <X className="size-3" />
                   </button>
@@ -941,7 +1002,7 @@ function Composer({
                   disabled={full || busy}
                   aria-label="Görsel ekle"
                   title={full ? `En fazla ${maxImages} görsel` : "Görsel ekle"}
-                  className="inline-flex size-10 shrink-0 items-center justify-center rounded-xl border border-white/10 text-on-surface-variant transition hover:border-secondary/40 hover:text-on-surface disabled:opacity-40"
+                  className="inline-flex size-10 shrink-0 items-center justify-center rounded-xl border border-outline-variant text-on-surface-variant transition hover:border-secondary/40 hover:text-on-surface disabled:opacity-40"
                 >
                   <ImagePlus className="size-4" />
                 </button>
@@ -976,7 +1037,7 @@ function Composer({
               type="submit"
               disabled={!input.trim() || busy}
               aria-label="Gönder"
-              className="inline-flex size-10 shrink-0 items-center justify-center rounded-xl bg-secondary text-on-secondary transition hover:brightness-110 disabled:opacity-40"
+              className="pg-btn inline-flex size-10 shrink-0 items-center justify-center transition hover:brightness-110 disabled:opacity-40"
             >
               <Send className="size-4" />
             </button>
@@ -1019,8 +1080,8 @@ function ModelSwitchMarker({ toolId }: { toolId?: string }) {
   return (
     <div className="flex flex-col items-center gap-2 py-1" aria-live="polite">
       <div className="flex w-full items-center gap-3">
-        <span aria-hidden className="h-px flex-1 bg-gradient-to-r from-transparent to-white/15" />
-        <span className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-surface-high/70 py-1 pl-1 pr-3">
+        <span aria-hidden className="h-[2px] flex-1 bg-outline-variant" />
+        <span className="inline-flex items-center gap-2 rounded-full border border-outline-variant bg-surface-high py-1 pl-1 pr-3">
           {tool.provider ? (
             <ProviderBadge provider={tool.provider} className="size-6" />
           ) : (
@@ -1030,7 +1091,7 @@ function ModelSwitchMarker({ toolId }: { toolId?: string }) {
           )}
           <span className="font-mono text-xs font-medium text-on-surface">{tool.name}</span>
         </span>
-        <span aria-hidden className="h-px flex-1 bg-gradient-to-l from-transparent to-white/15" />
+        <span aria-hidden className="h-[2px] flex-1 bg-outline-variant" />
       </div>
       <p className="max-w-[46ch] text-center text-xs leading-relaxed text-on-surface-variant">
         {readsHistory
@@ -1068,7 +1129,7 @@ function Bubble({ msg, tool, busy }: { msg: Msg; tool: PlaygroundTool; busy: boo
           <div className="mb-1.5 flex flex-wrap justify-end gap-1.5">
             {msg.attachments.map((src, i) => (
               // eslint-disable-next-line @next/next/no-img-element -- client-side data URL, never a remote asset
-              <img key={i} src={src} alt="" className="size-24 rounded-xl border border-white/10 object-cover" />
+              <img key={i} src={src} alt="" className="size-24 rounded-xl border border-outline-variant object-cover" />
             ))}
           </div>
         )}
@@ -1076,10 +1137,10 @@ function Bubble({ msg, tool, busy }: { msg: Msg; tool: PlaygroundTool; busy: boo
           <img
             src={msg.imageUrl}
             alt=""
-            className="max-h-96 rounded-2xl rounded-tl-sm border border-white/8 object-contain shadow-lg shadow-black/30 transition duration-300 hover:scale-[1.01]"
+            className="pg-card max-h-96 rounded-tl-sm object-contain transition duration-300 hover:scale-[1.01]"
           />
         ) : msg.videoUrl ? (
-          <video src={msg.videoUrl} controls className="max-h-96 rounded-2xl rounded-tl-sm border border-white/8 shadow-lg shadow-black/30" />
+          <video src={msg.videoUrl} controls className="pg-card max-h-96 rounded-tl-sm" />
         ) : msg.audioUrl ? (
           <audio src={msg.audioUrl} controls className="w-full max-w-xs rounded-full" />
         ) : msg.kind === "code" && msg.content ? (
@@ -1092,7 +1153,7 @@ function Bubble({ msg, tool, busy }: { msg: Msg; tool: PlaygroundTool; busy: boo
               "max-w-[62ch] whitespace-pre-wrap break-words rounded-2xl px-4 py-3 text-sm leading-relaxed",
               isUser
                 ? "rounded-br-sm border border-secondary/20 bg-secondary/12 text-secondary-bright"
-                : "rounded-tl-sm border border-white/8 bg-surface-high/60 text-on-surface",
+                : "rounded-tl-sm border border-outline-variant bg-surface-high/60 text-on-surface",
             )}
           >
             {msg.content ? (
@@ -1121,7 +1182,7 @@ function Bubble({ msg, tool, busy }: { msg: Msg; tool: PlaygroundTool; busy: boo
             // Touch devices have no hover state — opacity-0 there would make this
             // permanently unreachable, so it's always visible below sm and only
             // hides-until-hover on pointer/desktop sizes.
-            className="absolute -bottom-2.5 left-3 inline-flex items-center gap-1 rounded-full border border-white/10 bg-surface px-2 py-1 font-mono text-[10px] text-on-surface-variant opacity-100 shadow-sm transition duration-200 hover:border-secondary/40 hover:text-on-surface sm:translate-y-1 sm:opacity-0 sm:group-hover:translate-y-0 sm:group-hover:opacity-100"
+            className="absolute -bottom-2.5 left-3 inline-flex items-center gap-1 rounded-full border border-outline-variant bg-surface px-2 py-1 font-mono text-[10px] text-on-surface-variant opacity-100 shadow-sm transition duration-200 hover:border-secondary/40 hover:text-on-surface sm:translate-y-1 sm:opacity-0 sm:group-hover:translate-y-0 sm:group-hover:opacity-100"
           >
             {hasMedia ? (
               <>
@@ -1155,9 +1216,9 @@ function CodeOutputView({ html }: { html: string }) {
   const source = extractHtml(html);
 
   return (
-    <div className="w-full overflow-hidden rounded-2xl border border-white/8 bg-surface-high/40">
-      <div className="flex items-center justify-between border-b border-white/8 px-2 py-1.5">
-        <div className="inline-flex gap-0.5 rounded-full bg-surface-container/60 p-0.5 font-mono text-[10px]">
+    <div className="pg-card w-full overflow-hidden">
+      <div className="flex items-center justify-between border-b border-outline-variant px-2 py-1.5">
+        <div className="inline-flex gap-0.5 rounded-full bg-surface-container p-0.5 font-mono text-[10px]">
           <button
             onClick={() => setTab("preview")}
             className={cn("rounded-full px-2.5 py-1 transition", tab === "preview" ? "bg-secondary/20 text-secondary-bright" : "text-on-surface-variant")}
@@ -1179,7 +1240,7 @@ function CodeOutputView({ html }: { html: string }) {
               setTimeout(() => setCopied(false), 1500);
             }}
             aria-label="Kopyala"
-            className="inline-flex size-6 items-center justify-center rounded-md text-on-surface-variant transition hover:bg-surface-container/60 hover:text-on-surface"
+            className="inline-flex size-6 items-center justify-center rounded-md text-on-surface-variant transition hover:bg-surface-container hover:text-on-surface"
           >
             {copied ? <Check className="size-3 text-success" /> : <Copy className="size-3" />}
           </button>
@@ -1194,7 +1255,7 @@ function CodeOutputView({ html }: { html: string }) {
               URL.revokeObjectURL(url);
             }}
             aria-label="İndir"
-            className="inline-flex size-6 items-center justify-center rounded-md text-on-surface-variant transition hover:bg-surface-container/60 hover:text-on-surface"
+            className="inline-flex size-6 items-center justify-center rounded-md text-on-surface-variant transition hover:bg-surface-container hover:text-on-surface"
           >
             <Download className="size-3" />
           </button>

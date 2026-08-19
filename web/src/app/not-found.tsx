@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import { StatusPage } from "@/components/landing/status-page";
 import { ContactCtas } from "@/components/landing/contact-ctas";
+import { PaperButton } from "@/components/ui/paper-button";
 
 export const metadata: Metadata = {
   title: "Sayfa bulunamadı",
@@ -16,10 +16,10 @@ export default function NotFound() {
       title="Bu sayfa uzayda kaybolmuş."
       message="Aradığınız adres taşınmış ya da hiç var olmamış olabilir. Ana sayfadan devam edebilir, ya da ne aradığınızı bize doğrudan yazabilirsiniz."
     >
-      <Link href="/" className="nl-btn nl-btn--lg nl-btn--amber inline-flex">
+      <PaperButton href="/" tone="amber">
         Ana sayfaya dön
-      </Link>
-      <ContactCtas iconOnly />
+      </PaperButton>
+      <ContactCtas variant="short" />
     </StatusPage>
   );
 }

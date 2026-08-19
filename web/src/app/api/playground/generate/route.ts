@@ -91,6 +91,9 @@ export async function POST(request: Request) {
   const body = await request.json().catch(() => null);
   const toolId: string | undefined = body?.toolId;
   const prompt: string | undefined = body?.prompt;
+  // Null on the first message of a thread: rpc_append_turn opens the chat and
+  // hands back the id the client keeps for the rest of the conversation.
+  const chatId: string | null = typeof body?.chatId === "string" ? body.chatId : null;
 
   if (!toolId || typeof prompt !== "string" || !prompt.trim()) {
     return NextResponse.json({ error: "invalid_request" }, { status: 400 });
@@ -160,6 +163,37 @@ export async function POST(request: Request) {
 
   const generationId = result.generation_id;
 
+  // ---- Transcript ----------------------------------------------------
+  // Written after the balance gate, so a refused generation never leaves a
+  // turn behind, and before the model call, so the assistant's row already
+  // exists to be filled in — including minutes later, when an async video
+  // finally lands. Failure here is deliberately non-fatal: losing the history
+  // of a generation is worth much less than the generation itself.
+  const { data: turnRows, error: turnError } = await supabase.rpc("rpc_append_turn", {
+    p_chat_id: chatId,
+    p_tool_id: tool.id,
+    p_user_content: prompt.trim(),
+    p_generation_id: generationId,
+  });
+  if (turnError) console.error("[playground] rpc_append_turn failed", turnError.message);
+  const turn = turnRows?.[0];
+  const thread = {
+    chatId: turn?.chat_id ?? chatId,
+    assistantMessageId: turn?.assistant_message_id ?? null,
+  };
+
+  /** Fills the placeholder assistant row reserved above. */
+  const settle = async (kind: string, content: string, outputPath?: string) => {
+    if (!thread.assistantMessageId) return;
+    const { error } = await supabase.rpc("rpc_settle_message", {
+      p_message_id: thread.assistantMessageId,
+      p_content: content,
+      p_kind: kind,
+      p_output_path: outputPath ?? null,
+    });
+    if (error) console.error("[playground] rpc_settle_message failed", error.message);
+  };
+
   try {
     if (tool.modality === "text") {
       const priorTurns = history.map((m, i) =>
@@ -180,8 +214,10 @@ export async function POST(request: Request) {
         p_status: "completed",
         p_real_cost_usd: costUsd,
       });
+      await settle(isWebTool ? "code" : "text", content);
       return NextResponse.json({
         generationId,
+        ...thread,
         modality: "text",
         kind: isWebTool ? "code" : "text",
         content,
@@ -210,8 +246,10 @@ export async function POST(request: Request) {
         p_real_cost_usd: costUsd,
         p_output_path: path,
       });
+      await settle("image", "", path);
       return NextResponse.json({
         generationId,
+        ...thread,
         modality: "image",
         imageUrl: signed?.signedUrl,
         remaining: result.remaining_ore,
@@ -235,8 +273,10 @@ export async function POST(request: Request) {
         p_real_cost_usd: costUsd,
         p_output_path: path,
       });
+      await settle("audio", "", path);
       return NextResponse.json({
         generationId,
+        ...thread,
         modality: "audio",
         audioUrl: signed?.signedUrl,
         remaining: result.remaining_ore,
@@ -246,7 +286,9 @@ export async function POST(request: Request) {
     // Video: async job — kick off, persist the job id, client polls for completion.
     const { jobId } = await startVideo(prompt.trim(), tool.providerModel, tool.videoDuration ?? 4, tool.videoResolution ?? "720p");
     await supabase.rpc("rpc_attach_video_job", { p_generation_id: generationId, p_job_id: jobId });
-    return NextResponse.json({ generationId, modality: "video", remaining: result.remaining_ore });
+    // No settle() here: the row stays empty until the poller reports the file,
+    // which is why its id is reserved up front and handed to the client.
+    return NextResponse.json({ generationId, ...thread, modality: "video", remaining: result.remaining_ore });
   } catch (err) {
     await supabase.rpc("rpc_finalize_generation", {
       p_generation_id: generationId,

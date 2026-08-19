@@ -25,7 +25,9 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
     const { data: signed } = await supabase.storage
       .from("playground-outputs")
       .createSignedUrl(generation.output_path!, 3600);
-    return NextResponse.json({ status: "completed", videoUrl: signed?.signedUrl });
+    // outputPath rides along so the client can settle the transcript row this
+    // video belongs to — see /api/playground/chats/settle.
+    return NextResponse.json({ status: "completed", videoUrl: signed?.signedUrl, outputPath: generation.output_path });
   }
   if (generation.status === "failed") {
     return NextResponse.json({ status: "failed" });
@@ -59,7 +61,7 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
       });
 
       const { data: signed } = await supabase.storage.from("playground-outputs").createSignedUrl(path, 3600);
-      return NextResponse.json({ status: "completed", videoUrl: signed?.signedUrl });
+      return NextResponse.json({ status: "completed", videoUrl: signed?.signedUrl, outputPath: path });
     } catch {
       // The video really did finish on OpenRouter's side — don't leave this stuck as
       // "pending" forever; fail cleanly so the ore gets refunded.

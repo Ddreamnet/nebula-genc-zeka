@@ -520,6 +520,86 @@ export type Database = {
         }
         Relationships: []
       }
+      playground_chats: {
+        Row: {
+          archived_at: string | null
+          created_at: string
+          id: string
+          last_message_at: string
+          message_count: number
+          tool_id: string
+          user_id: string
+        }
+        Insert: {
+          archived_at?: string | null
+          created_at?: string
+          id?: string
+          last_message_at?: string
+          message_count?: number
+          tool_id: string
+          user_id?: string
+        }
+        Update: {
+          archived_at?: string | null
+          created_at?: string
+          id?: string
+          last_message_at?: string
+          message_count?: number
+          tool_id?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      playground_chat_messages: {
+        Row: {
+          chat_id: string
+          content: string
+          created_at: string
+          generation_id: string | null
+          id: string
+          kind: string
+          output_path: string | null
+          role: string
+          seq: number
+          tool_id: string | null
+          user_id: string
+        }
+        Insert: {
+          chat_id: string
+          content?: string
+          created_at?: string
+          generation_id?: string | null
+          id?: string
+          kind?: string
+          output_path?: string | null
+          role: string
+          seq: number
+          tool_id?: string | null
+          user_id?: string
+        }
+        Update: {
+          chat_id?: string
+          content?: string
+          created_at?: string
+          generation_id?: string | null
+          id?: string
+          kind?: string
+          output_path?: string | null
+          role?: string
+          seq?: number
+          tool_id?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "playground_chat_messages_chat_id_fkey"
+            columns: ["chat_id"]
+            isOneToOne: false
+            referencedRelation: "playground_chats"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           created_at: string
@@ -1172,6 +1252,40 @@ export type Database = {
           p_teacher_id: string
         }
         Returns: Json
+      }
+      rpc_append_switch: {
+        Args: {
+          p_chat_id: string
+          p_tool_id: string
+        }
+        Returns: undefined
+      }
+      rpc_append_turn: {
+        Args: {
+          p_chat_id: string | null
+          p_generation_id?: string | null
+          p_tool_id: string
+          p_user_content: string
+        }
+        Returns: {
+          assistant_message_id: string
+          chat_id: string
+        }[]
+      }
+      rpc_archive_chat: {
+        Args: {
+          p_chat_id: string
+        }
+        Returns: undefined
+      }
+      rpc_settle_message: {
+        Args: {
+          p_content?: string
+          p_kind?: string
+          p_message_id: string
+          p_output_path?: string | null
+        }
+        Returns: undefined
       }
       rpc_start_generation: {
         Args: {

@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 104" fill="none"><title>Bit — Nova'nın yardımcısı</title>
+  <path d="M48 20L48 8" stroke="#152343" stroke-width="6" stroke-linecap="round"/>
+  <circle cx="48" cy="7" r="7" fill="#FF9F45" stroke="#152343" stroke-width="4.5"/>
+  <rect x="4" y="44" width="16" height="26" rx="8" fill="#3D5FE0" stroke="#152343" stroke-width="5"/>
+  <rect x="76" y="44" width="16" height="26" rx="8" fill="#3D5FE0" stroke="#152343" stroke-width="5"/>
+  <rect x="16" y="20" width="64" height="64" rx="22" fill="#3D5FE0" stroke="#152343" stroke-width="5"/>
+  <rect x="28" y="38" width="40" height="28" rx="14" fill="#152343"/>
+  <circle cx="48" cy="52" r="9" fill="#9BE7FF"/>
+  <circle cx="44" cy="48" r="3" fill="#FFFFFF" opacity="0.9"/>
+  <rect x="34" y="74" width="28" height="5" rx="2.5" fill="#152343" opacity="0.35"/>
+</svg>

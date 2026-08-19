@@ -4,12 +4,14 @@ import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { ArrowRight } from "lucide-react";
+import { ArrowRight, Menu, X } from "lucide-react";
 import { siteConfig } from "@/lib/site";
+import { PaperButton } from "@/components/ui/paper-button";
+import { Star } from "@/components/cast/props";
 
 const THEME = {
-  dark: { text: "#EFE7D6", border: "rgba(239,231,214,.4)", logo: "/landing/logo-white.png" },
-  light: { text: "#152343", border: "rgba(21,35,67,.32)", logo: "/landing/logo-black.png" },
+  dark: { text: "var(--on-space)", logo: "/landing/logo-white.png" },
+  light: { text: "var(--ink)", logo: "/landing/logo-black.png" },
 } as const;
 
 export function LandingNavbar() {
@@ -44,23 +46,11 @@ export function LandingNavbar() {
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
 
-  // Which section is "current" (drives the dark/light nav color swap) —
-  // an IntersectionObserver watching a thin band just below the header,
-  // instead of a scroll-driven loop calling getBoundingClientRect() on
-  // every section on every frame. This runs off the main thread's
-  // scroll-handling path entirely; the browser only calls back when a
-  // section actually crosses the band.
-  //
-  // Depends on `pathname`: this navbar lives in the shared (marketing)
-  // layout, so it does NOT remount on client-side navigation between pages
-  // (e.g. clicking the logo from /kvkk back to /) — only the page content
-  // underneath swaps. Without this dependency the observer set up once for
-  // /kvkk's single light section keeps watching those now-detached nodes
-  // forever; it never sees the new page's sections, so `theme` gets stuck
-  // on whatever the previous page last set (dark navy text stuck on top of
-  // the new page's dark navy Hero — unreadable). Re-running this effect
-  // per route re-queries the current DOM and re-attaches to what's actually
-  // there now.
+  // Which section is "current" (drives the dark/light nav color swap) — an
+  // IntersectionObserver watching a thin band just below the header. Re-run
+  // per route: a client-side navigation swaps the DOM under an observer that
+  // is still attached to the old page's sections, so `theme` would otherwise
+  // stick on whatever the previous page last set.
   useEffect(() => {
     const sections = Array.from(document.querySelectorAll<HTMLElement>("[data-navtheme]"));
     if (sections.length === 0) return;
@@ -68,17 +58,11 @@ export function LandingNavbar() {
     const headerH = navRef.current?.offsetHeight ?? 90;
     const io = new IntersectionObserver(
       () => {
-        // Don't trust which entries the browser happened to report as
-        // "changed" this batch — during a boundary crossing both the
-        // outgoing and incoming section briefly overlap the thin band at
-        // once, and picking via reduce(top <= top) always resolved to
-        // whichever section comes earlier in the document (its top is
-        // necessarily the more negative one), no matter the actual scroll
-        // position. That silently delayed/stuck every dark<->light flip
-        // until the outgoing section fully cleared the band. Instead,
-        // recompute directly: find whichever observed section's rect
-        // actually straddles the header's bottom edge right now — that's
-        // unambiguous and only runs on the rare frames this callback fires.
+        // Don't trust which entries the browser reported as changed this
+        // batch — during a boundary crossing both the outgoing and incoming
+        // section briefly overlap the band. Recompute directly: whichever
+        // observed section straddles the header's bottom edge right now is
+        // unambiguously the current one.
         const liveHeaderH = navRef.current?.offsetHeight ?? headerH;
         const current = sections.find((s) => {
           const rect = s.getBoundingClientRect();
@@ -101,48 +85,28 @@ export function LandingNavbar() {
   }, [open]);
 
   const t = THEME[theme];
-  const btnStyle: React.CSSProperties = {
-    color: t.text,
-    borderColor: t.border,
-    // Without this, this button's color/border snapped instantly on every
-    // dark<->light flip while the nav links next to it (which do declare a
-    // transition) faded smoothly — same underlying state change, visibly
-    // inconsistent motion, easy to read as "the transition is glitching".
-    transition: "color .3s ease, border-color .3s ease",
-  };
 
   return (
     <>
       {/* Both logo variants preloaded so the very first dark<->light flip
           doesn't pop in a not-yet-fetched image over an already-updated
-          header — the swap is a full <img> src change (no crossfade),
-          so whichever variant hasn't loaded yet would flash in late. */}
+          header — the swap is a full <img> src change (no crossfade), so
+          whichever variant hasn't loaded yet would flash in late. */}
       <link rel="preload" as="image" href={THEME.dark.logo} />
       <link rel="preload" as="image" href={THEME.light.logo} />
+
       <header
         ref={navRef}
         data-nav
-        style={{
-          position: "fixed",
-          top: 0,
-          left: 0,
-          right: 0,
-          zIndex: 50,
-          background: "transparent",
-          padding: condensed ? "11px clamp(18px,5vw,64px)" : "18px clamp(18px,5vw,64px)",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          gap: 16,
-          transition: "padding .3s ease",
-        }}
+        data-theme={theme}
+        data-condensed={condensed}
+        className="nb-header"
       >
         <Link
           href={logoHref}
           aria-label="Nebula Genç Zeka ana sayfa"
-          className="nl-nav-logo"
+          className="nb-nav-logo"
           data-condensed={condensed}
-          style={{ display: "flex", alignItems: "center" }}
         >
           <Image
             src={t.logo}
@@ -150,100 +114,101 @@ export function LandingNavbar() {
             width={220}
             height={58}
             priority
-            style={{ height: "clamp(42px,5.6vw,58px)", width: "auto" }}
+            style={{ height: "clamp(40px,5.4vw,54px)", width: "auto" }}
           />
         </Link>
 
         <nav
-          style={{
-            alignItems: "center",
-            gap: "clamp(18px,2.6vw,34px)",
-            fontFamily: "var(--font-plex-mono)",
-            fontWeight: 600,
-            fontSize: 14,
-            letterSpacing: ".04em",
-          }}
           className="hidden md:flex"
+          style={{ alignItems: "center", gap: "clamp(20px,2.8vw,36px)" }}
         >
           {siteConfig.nav.map((link) => (
-            <a
-              key={link.href}
-              href={link.href}
-              style={{
-                color: t.text,
-                transition: "color .3s ease",
-              }}
-            >
+            <a key={link.href} href={link.href} className="nb-nav-link" style={{ color: t.text }}>
               {link.label}
             </a>
           ))}
         </nav>
 
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          <Link href="/giris" className="nl-btn nl-btn--sm nl-btn--amber hidden md:inline-flex">
+          <PaperButton href="/giris" tone="amber" size="sm" className="hidden md:inline-flex">
             Giriş yap
-          </Link>
-          <Link href="/giris" aria-label="Giriş yap" className="nl-icon-btn nl-icon-btn--amber inline-flex md:hidden">
+          </PaperButton>
+          <PaperButton
+            href="/giris"
+            tone="amber"
+            size="sm"
+            icon
+            aria-label="Giriş yap"
+            className="md:hidden"
+          >
             <ArrowRight className="size-5" />
-          </Link>
-          <button
-            type="button"
+          </PaperButton>
+          <PaperButton
+            tone={theme === "dark" ? "ghost-space" : "paper"}
+            size="sm"
+            icon
             onClick={() => setOpen((v) => !v)}
             aria-label={open ? "Menüyü kapat" : "Menüyü aç"}
             aria-expanded={open}
-            className="nl-icon-btn inline-flex md:hidden"
-            style={btnStyle}
+            className="md:hidden"
           >
-            {open ? "✕" : "☰"}
-          </button>
+            {open ? <X className="size-5" /> : <Menu className="size-5" />}
+          </PaperButton>
         </div>
       </header>
 
       {open && (
         <div
-          className="md:hidden"
+          className="md:hidden nb-space nb-on-space"
           style={{
             position: "fixed",
-            inset: "0 0 0 0",
-            // Static value matching the header's real (measured) height at
-            // mobile widths, where this menu is the only thing that uses
-            // it — replaces a JS-measured CSS var that was updated via a
-            // ResizeObserver watching the header's content-box, which never
-            // actually fired for the condense/expand padding change (that
-            // only affects the border-box), so it was silently always
-            // falling back to this same kind of static value anyway.
-            top: "clamp(78px, 11vw, 90px)",
+            // Matches the header's real height at mobile widths, where this
+            // menu is the only thing that needs it.
+            inset: "clamp(74px, 11vw, 88px) 0 0",
             zIndex: 40,
-            background: "var(--navy)",
+            overflowY: "auto",
           }}
         >
-          <div style={{ display: "flex", flexDirection: "column", gap: 4, padding: "24px clamp(18px,5vw,64px)" }}>
+          <div className="nb-stars" aria-hidden />
+          <div
+            style={{
+              position: "relative",
+              display: "flex",
+              flexDirection: "column",
+              gap: 12,
+              padding: "28px clamp(18px,5vw,64px) 40px",
+            }}
+          >
             {siteConfig.nav.map((link) => (
               <a
                 key={link.href}
                 href={link.href}
                 onClick={() => setOpen(false)}
+                className="nb-card nb-card--live nb-card--space"
                 style={{
-                  color: "var(--on-navy)",
-                  fontFamily: "var(--font-plex-mono)",
-                  fontSize: 18,
-                  padding: "14px 4px",
-                  borderBottom: "1px solid rgba(169,182,212,.14)",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 12,
+                  padding: "18px 20px",
+                  fontFamily: "var(--font-fredoka), ui-sans-serif, sans-serif",
+                  fontWeight: 500,
+                  fontSize: 20,
+                  color: "var(--on-space)",
                 }}
               >
+                <Star className="size-[16px] shrink-0" color="#FF9F45" outlined={false} />
                 {link.label}
               </a>
             ))}
-            <div style={{ display: "flex", flexDirection: "column", gap: 12, marginTop: 20 }}>
-              <Link
-                href="/giris"
-                onClick={() => setOpen(false)}
-                className="nl-btn nl-btn--lg nl-btn--amber"
-                style={{ justifyContent: "center", textAlign: "center" }}
-              >
-                Giriş yap
-              </Link>
-            </div>
+            <PaperButton
+              href="/giris"
+              tone="amber"
+              size="lg"
+              onClick={() => setOpen(false)}
+              style={{ marginTop: 12 }}
+            >
+              Giriş yap
+            </PaperButton>
           </div>
         </div>
       )}

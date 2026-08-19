@@ -23,10 +23,10 @@ export function ContactDialog() {
           <Card>
             <CardContent className="p-4">
               <div className="flex items-center gap-3">
-                <WhatsappIcon className="h-5 w-5 shrink-0 text-[#25D366]" />
+                <WhatsappIcon className="h-5 w-5 shrink-0 text-[#2c7a58]" />
                 <div>
                   <p className="font-medium">WhatsApp</p>
-                  <a href={whatsappHref()} target="_blank" rel="noreferrer" className="text-sm text-[#25D366] hover:underline">
+                  <a href={whatsappHref()} target="_blank" rel="noreferrer" className="text-sm text-[#2c7a58] hover:underline">
                     +90 546 280 48 36
                   </a>
                 </div>
@@ -36,10 +36,10 @@ export function ContactDialog() {
           <Card>
             <CardContent className="p-4">
               <div className="flex items-center gap-3">
-                <InstagramIcon className="h-5 w-5 shrink-0 text-[#FF0069]" />
+                <InstagramIcon className="h-5 w-5 shrink-0 text-[#CE3B5F]" />
                 <div>
                   <p className="font-medium">Instagram</p>
-                  <a href={siteConfig.instagram} target="_blank" rel="noreferrer" className="text-sm text-[#FF0069] hover:underline">
+                  <a href={siteConfig.instagram} target="_blank" rel="noreferrer" className="text-sm text-[#CE3B5F] hover:underline">
                     @nebulagenczeka
                   </a>
                 </div>

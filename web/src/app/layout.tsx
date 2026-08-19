@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { Archivo, IBM_Plex_Mono, IBM_Plex_Sans } from "next/font/google";
+import { Archivo, IBM_Plex_Mono } from "next/font/google";
 import "./globals.css";
 import { Analytics } from "@/components/site/analytics";
 
@@ -9,19 +9,15 @@ import { Analytics } from "@/components/site/analytics";
 // Manrope, JetBrains Mono) live in app/playground/layout.tsx instead, scoped
 // to just that one route. These three (Archivo/Plex Sans/Plex Mono) are the
 // ones actually needed everywhere else: directly by (marketing), and by
-// giriş/dashboard via the scoped --font-display/sans/mono override in
-// globals.css's .panel-theme block — so they're the ones that belong here.
+// giriş/dashboard via the scoped --font-mono override in globals.css's
+// .panel-theme block. IBM Plex Sans used to be the panel body face and was
+// loaded here for that; the panels now use Nunito (loaded by their own
+// layouts via lib/landing-fonts), so it is gone — it was being downloaded on
+// every route in the app and rendered on none.
 const archivo = Archivo({
   subsets: ["latin", "latin-ext"],
   weight: ["700", "800", "900"],
   variable: "--font-archivo",
-  display: "swap",
-});
-
-const plexSans = IBM_Plex_Sans({
-  subsets: ["latin", "latin-ext"],
-  weight: ["400", "500", "600", "700"],
-  variable: "--font-plex-sans",
   display: "swap",
 });
 
@@ -99,7 +95,7 @@ export default function RootLayout({
       // animation. See node_modules/next/dist/docs/.../version-16.md
       // "Scroll Behavior Override".
       data-scroll-behavior="smooth"
-      className={`${archivo.variable} ${plexSans.variable} ${plexMono.variable} h-full antialiased`}
+      className={`${archivo.variable} ${plexMono.variable} h-full antialiased`}
     >
       <body className="relative min-h-full flex flex-col">
         {children}

@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 72 112" fill="none"><title>Roket</title>
+  <path d="M18 56 4 84l18-6z" fill="#FF6B8A" stroke="#152343" stroke-width="4.5" stroke-linejoin="round"/>
+  <path d="M54 56 68 84l-18-6z" fill="#FF6B8A" stroke="#152343" stroke-width="4.5" stroke-linejoin="round"/>
+  <path d="M36 4c14 14 20 34 18 56v18H18V60C16 38 22 18 36 4z" fill="#FFFBF2" stroke="#152343" stroke-width="5" stroke-linejoin="round"/>
+  <circle cx="36" cy="42" r="11" fill="#3D5FE0" stroke="#152343" stroke-width="4.5"/>
+  <circle cx="32" cy="38" r="3.4" fill="#FFFFFF" opacity="0.6"/>
+  <path d="M22 82h28" stroke="#152343" stroke-width="4.5" stroke-linecap="round"/>
+  <path d="M26 86q10 22 20 0z" fill="#FF9F45" stroke="#152343" stroke-width="4.5" stroke-linejoin="round"/>
+  <path d="M31 88q5 11 10 0z" fill="#FFD27A"/>
+</svg>

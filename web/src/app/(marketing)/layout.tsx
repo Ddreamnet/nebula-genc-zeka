@@ -1,7 +1,8 @@
 import { LandingNavbar } from "@/components/landing/landing-navbar";
-import { landingVars } from "@/lib/landing-theme";
+import { NovaClickBlink } from "@/components/cast/nova-blink";
+import { landingVars, legacyAliases } from "@/lib/landing-theme";
+import { landingFontClass } from "@/lib/landing-fonts";
 import "./landing.css";
-
 
 export default function MarketingLayout({
   children,
@@ -9,11 +10,9 @@ export default function MarketingLayout({
   children: React.ReactNode;
 }) {
   return (
-    // Archivo/Plex Sans/Plex Mono are already loaded once in the root layout
-    // (app/layout.tsx) and their CSS variables cascade down from <html> —
-    // no need to redeclare/reload the same Google fonts a second time here.
-    <div style={{ ...landingVars, fontFamily: "var(--font-plex-sans)" }}>
+    <div className={`${landingFontClass} nb`} style={{ ...landingVars, ...legacyAliases }}>
       <LandingNavbar />
+      <NovaClickBlink />
       <main>{children}</main>
     </div>
   );

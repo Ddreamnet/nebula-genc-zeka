@@ -2,6 +2,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { PanelThemeScope } from "@/components/site/panel-theme-scope";
 import { AuthProvider } from "@/contexts/auth-context";
+import { landingFontClass } from "@/lib/landing-fonts";
 
 // AuthProvider (client component) creates the browser Supabase client in a
 // useMemo initializer, which still runs during the server-rendered pass —
@@ -19,7 +20,9 @@ export default function AuthLayout({
 }) {
   return (
     <AuthProvider>
-      <div className="panel-theme panel-grid-bg flex min-h-dvh flex-col bg-surface font-sans text-on-surface">
+      <div
+        className={`panel-theme panel-grid-bg flex min-h-dvh flex-col bg-surface font-sans text-on-surface ${landingFontClass}`}
+      >
         <PanelThemeScope />
         {/* Same padding + logo size as landing-navbar.tsx's header (its
            initial, non-condensed state) — the logo sits at the exact same

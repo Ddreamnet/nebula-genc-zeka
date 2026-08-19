@@ -182,10 +182,21 @@ const MARKS: Record<ProviderId, { Mark: Mark; name: string }> = {
   mistral: { Mark: MistralMark, name: "Mistral AI" },
 };
 
-export function ProviderBadge({ provider, className }: { provider: ProviderId; className?: string }) {
+export function ProviderBadge({
+  provider,
+  className,
+  style,
+}: {
+  provider: ProviderId;
+  className?: string;
+  style?: React.CSSProperties;
+}) {
   const { Mark } = MARKS[provider];
   return (
-    <span className={cn("inline-flex shrink-0 items-center justify-center rounded-full bg-white p-1.5 shadow-sm", className)}>
+    <span
+      className={cn("inline-flex shrink-0 items-center justify-center rounded-full bg-white p-1.5 shadow-sm", className)}
+      style={style}
+    >
       <Mark className="size-full" />
     </span>
   );

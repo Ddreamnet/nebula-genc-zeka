@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
-import { landingVars } from "@/lib/landing-theme";
+import { landingVars, legacyAliases } from "@/lib/landing-theme";
+import { landingFontClass } from "@/lib/landing-fonts";
 import { LandingNavbar } from "./landing-navbar";
 import "@/app/(marketing)/landing.css";
 
@@ -26,12 +27,12 @@ export function StatusPage({
   children: ReactNode;
 }) {
   return (
-    <div style={{ ...landingVars, fontFamily: "var(--font-plex-sans)" }}>
+    <div className={`${landingFontClass} nb`} style={{ ...landingVars, ...legacyAliases }}>
       <LandingNavbar />
       <main
         data-navtheme="light"
+        className="nb-paper"
         style={{
-          background: "var(--paper)",
           minHeight: "100dvh",
           display: "flex",
           alignItems: "center",
@@ -41,42 +42,13 @@ export function StatusPage({
         }}
       >
         <div style={{ maxWidth: 640, margin: "0 auto", width: "100%" }}>
-          <div
-            style={{
-              fontFamily: "var(--font-plex-mono)",
-              fontSize: 12.5,
-              letterSpacing: ".2em",
-              color: "var(--amber-dark)",
-              marginBottom: 18,
-            }}
-          >
+          <div className="nb-eyebrow" style={{ marginBottom: 18 }}>
             {code}
           </div>
-          <h1
-            style={{
-              fontFamily: "var(--font-archivo)",
-              fontWeight: 900,
-              fontStretch: "125%",
-              letterSpacing: "-.02em",
-              lineHeight: 1.02,
-              fontSize: "clamp(2.1rem,5.5vw,3.4rem)",
-              color: "var(--navy)",
-              margin: "0 0 18px",
-              textWrap: "balance",
-            }}
-          >
+          <h1 className="nb-h2" style={{ marginBottom: 18 }}>
             {title}
           </h1>
-          <p
-            style={{
-              fontSize: "clamp(1.02rem,1.6vw,1.2rem)",
-              lineHeight: 1.55,
-              color: "var(--ink-soft)",
-              margin: "0 0 34px",
-              maxWidth: 520,
-              textWrap: "pretty",
-            }}
-          >
+          <p className="nb-lead" style={{ maxWidth: 520, marginBottom: 34 }}>
             {message}
           </p>
           <div style={{ display: "flex", flexWrap: "wrap", gap: 14 }}>{children}</div>

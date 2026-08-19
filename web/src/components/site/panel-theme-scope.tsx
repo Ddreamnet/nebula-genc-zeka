@@ -1,8 +1,26 @@
 "use client";
 
 import { useEffect } from "react";
+import { landingFontClass } from "@/lib/landing-fonts";
 
-const CLASSES = ["panel-theme", "panel-grid-bg", "bg-surface", "text-on-surface", "font-sans"];
+/**
+ * The font classes matter as much as the theme ones. next/font exposes each
+ * face as a CSS variable scoped to whatever element carries its generated
+ * class — and the panel layouts put that class on their wrapper div. But
+ * .panel-theme resolves --font-sans to `var(--font-nunito)`, so anything
+ * rendered OUTSIDE that wrapper (every portaled dialog, popover and toast)
+ * hit an undefined variable, which makes the whole declaration invalid at
+ * computed-value time and drops the element to the browser's default face.
+ * Carrying the font classes on <body> too puts the variables above both trees.
+ */
+const CLASSES = [
+  "panel-theme",
+  "panel-grid-bg",
+  "bg-surface",
+  "text-on-surface",
+  "font-sans",
+  ...landingFontClass.split(" ").filter(Boolean),
+];
 
 /**
  * Toggles the panel/auth theme classes directly on <body> instead of a

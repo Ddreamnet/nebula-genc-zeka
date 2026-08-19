@@ -94,8 +94,8 @@ export function NotificationBell() {
         </button>
       </PopoverTrigger>
       <PopoverContent className="w-[calc(100vw-2rem)] sm:w-96 max-w-[400px] p-0" align="end">
-        <Card className="border-0 shadow-lg">
-          <CardHeader className="border-b bg-gradient-to-r from-blue-600/10 to-indigo-600/10 pb-4">
+        <Card>
+          <CardHeader className="border-b-[2.5px] border-primary bg-surface-dim pb-4">
             <div className="flex items-center justify-between">
               <div>
                 <CardTitle className="text-lg font-semibold">Admin Bildirimleri</CardTitle>

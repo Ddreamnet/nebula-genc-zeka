@@ -148,7 +148,7 @@ export function LessonTracker({ studentId, studentName, teacherId }: LessonTrack
   return (
     <>
       <div className="flex items-center justify-center w-full">
-        <div className="flex items-center border-2 border-primary/30 rounded-xl p-2 sm:p-2.5 bg-gradient-to-br from-primary/5 to-secondary/5 shadow-sm mx-auto">
+        <div className="flex items-center border-[2.5px] border-primary rounded-xl p-2 sm:p-2.5 bg-surface-dim mx-auto">
           <div className="flex flex-col gap-2 sm:gap-2.5 md:gap-2">
             {Array.from({ length: rowConfig.rows }, (_, rowIndex) => (
               <div key={rowIndex} className="flex flex-wrap gap-2 sm:gap-2.5 justify-center">
@@ -170,13 +170,13 @@ export function LessonTracker({ studentId, studentName, teacherId }: LessonTrack
                         onClick={() => handleLessonClick(inst.id, isCompleted)}
                         disabled={!isNextCompletable && !isUndoable}
                         className={cn(
-                          "h-8 w-8 sm:h-9 sm:w-9 rounded-lg border-2 transition-all duration-200 font-semibold text-xs flex items-center justify-center shadow-sm relative",
+                          "h-8 w-8 sm:h-9 sm:w-9 rounded-lg border-2 transition-all duration-200 font-semibold text-xs flex items-center justify-center shadow-[0_3px_0_0_var(--pn-ink)] relative",
                           isCompleted
                             ? isUndoable
-                              ? "bg-primary text-primary-foreground border-primary scale-95 shadow-md hover:bg-primary/80 hover:scale-100 cursor-pointer"
-                              : "bg-primary text-primary-foreground border-primary scale-95 shadow-md cursor-default"
+                              ? "bg-primary text-primary-foreground border-primary scale-95 hover:bg-primary/80 hover:scale-100 cursor-pointer"
+                              : "bg-primary text-primary-foreground border-primary scale-95 cursor-default"
                             : isNextCompletable
-                              ? "bg-background border-primary hover:bg-primary/10 hover:scale-105 hover:shadow-md cursor-pointer"
+                              ? "bg-background border-primary hover:bg-primary/10 hover:scale-105 cursor-pointer"
                               : "bg-background border-primary/30 opacity-60 cursor-not-allowed",
                         )}
                         title={isUndoable ? `Ders ${displayPosition + 1} - Geri al` : `Ders ${displayPosition + 1} - ${timeInfo}`}

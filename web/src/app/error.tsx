@@ -1,8 +1,8 @@
 "use client";
 
-import Link from "next/link";
 import { StatusPage } from "@/components/landing/status-page";
 import { ContactCtas } from "@/components/landing/contact-ctas";
+import { PaperButton } from "@/components/ui/paper-button";
 
 /**
  * Route-level error boundary for everything under the root layout. `reset()`
@@ -17,13 +17,13 @@ export default function Error({ reset }: { error: Error & { digest?: string }; r
       title="Bu sayfayı açamadık."
       message="Geçici bir aksaklık olabilir. Tekrar denemek çoğu zaman yeterli oluyor; olmazsa bize yazın, hemen bakalım."
     >
-      <button type="button" onClick={reset} className="nl-btn nl-btn--lg nl-btn--amber inline-flex">
+      <PaperButton tone="amber" onClick={reset}>
         Tekrar dene
-      </button>
-      <Link href="/" className="nl-btn nl-btn--lg nl-btn--outline-dark inline-flex" style={{ color: "var(--navy)", borderColor: "rgba(21,35,67,.32)" }}>
+      </PaperButton>
+      <PaperButton href="/" tone="paper">
         Ana sayfa
-      </Link>
-      <ContactCtas iconOnly />
+      </PaperButton>
+      <ContactCtas variant="short" />
     </StatusPage>
   );
 }

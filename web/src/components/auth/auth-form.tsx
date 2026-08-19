@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Eye, EyeOff, ArrowRight } from "lucide-react";
-import { AuthMascot, type MascotState } from "./auth-mascot";
+import { NovaAuth, type MascotState } from "./nova-auth";
 import { useAuth } from "@/contexts/auth-context";
 import { mapSupabaseError } from "@/lib/supabase/auth-errors";
 import { whatsappHref } from "@/lib/site";
@@ -16,13 +16,13 @@ function Field({
 }: { label: string } & React.InputHTMLAttributes<HTMLInputElement>) {
   return (
     <div>
-      <label className="mb-1.5 block font-mono text-xs uppercase tracking-widest text-on-surface-variant">
+      <label className="mb-1.5 block font-mono text-xs font-semibold uppercase tracking-widest text-on-surface-variant">
         {label}
       </label>
-      <input
-        {...props}
-        className="w-full rounded-xl border border-outline-variant bg-surface-high px-4 py-3 text-base text-on-surface outline-none transition focus:border-secondary placeholder:text-on-surface-variant/50"
-      />
+      {/* Border, fill and focus ring come from the .panel-theme field rule in
+          globals.css — every input in the product gets the same cut-paper edge
+          from one place, so this only sets size. */}
+      <input {...props} className="w-full px-4 py-3 text-base outline-none" />
     </div>
   );
 }
@@ -93,10 +93,10 @@ export function AuthForm() {
   return (
     <div className="w-full max-w-md">
       <div className="mb-4 flex justify-center">
-        <AuthMascot state={mascotState} shakeSignal={shakeSignal} className="w-40" />
+        <NovaAuth state={mascotState} shakeSignal={shakeSignal} className="w-36" />
       </div>
 
-      <div className="pn-card rounded-3xl p-7 sm:p-9">
+      <div className="pn-card p-7 sm:p-9">
         <h1 className="text-center font-display text-2xl font-semibold tracking-tight text-on-surface">
           Tekrar hoş geldin
         </h1>
@@ -129,7 +129,7 @@ export function AuthForm() {
                 placeholder="••••••••"
                 autoComplete="current-password"
                 onChange={() => error && setError(null)}
-                className="w-full rounded-xl border border-outline-variant bg-surface-high px-4 py-3 pr-11 text-base text-on-surface outline-none transition focus:border-secondary placeholder:text-on-surface-variant/50"
+                className="w-full px-4 py-3 pr-11 text-base outline-none"
               />
               <button
                 type="button"
@@ -147,7 +147,7 @@ export function AuthForm() {
             {error && <p className="mt-2 text-sm text-error">{error}</p>}
           </div>
 
-          <button type="submit" disabled={submitting} className="pn-btn pn-btn--amber mt-2 w-full text-sm">
+          <button type="submit" disabled={submitting} className="pn-btn pn-btn--amber mt-2 w-full">
             {submitting ? "Giriş yapılıyor..." : "Giriş Yap"}
             <ArrowRight className="size-4" />
           </button>
@@ -159,7 +159,7 @@ export function AuthForm() {
             href={whatsappHref()}
             target="_blank"
             rel="noreferrer"
-            className="inline-flex items-center gap-1.5 align-middle font-medium text-[#25D366] hover:underline"
+            className="inline-flex items-center gap-1.5 align-middle font-semibold text-[#2c7a58] hover:underline"
           >
             <WhatsappIcon className="size-4" />
             WhatsApp&apos;tan yaz
