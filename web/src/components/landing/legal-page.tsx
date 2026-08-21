@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { archivo } from "@/lib/prose-font";
 
 const legal = [
   { label: "KVKK", href: "/kvkk" },
@@ -28,7 +29,7 @@ export function LegalPage({
   children: ReactNode;
 }) {
   return (
-    <div data-navtheme="light" style={{ background: "var(--paper)", minHeight: "100vh" }}>
+    <div data-navtheme="light" className={archivo.variable} style={{ background: "var(--paper)", minHeight: "100vh" }}>
       <main style={{ paddingTop: "clamp(96px,12vw,140px)", paddingBottom: 100, paddingInline: "clamp(18px,5vw,64px)" }}>
         <div style={{ maxWidth: 720, margin: "0 auto" }}>
           <div

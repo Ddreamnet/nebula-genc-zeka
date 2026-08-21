@@ -33,11 +33,16 @@ export default function AuthLayout({
             aria-label="Nebula Genç Zeka — ana sayfa"
             style={{ display: "inline-flex", alignItems: "center" }}
           >
+            {/* Intrinsic size for next/image's srcset, not the rendered size
+               (the inline `height` clamp owns that). Declaring the source
+               file's real 1024x512 made the login page preload a 1024px-wide
+               — 2048px on a retina screen — render of a 58px-tall logo.
+               232x116 is the same 2:1 ratio at 2x the largest drawn size. */}
             <Image
               src="/landing/logo-black.png"
               alt="Nebula Genç Zeka"
-              width={1024}
-              height={512}
+              width={232}
+              height={116}
               priority
               style={{ height: "clamp(42px,5.6vw,58px)", width: "auto" }}
             />

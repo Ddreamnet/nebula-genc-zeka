@@ -46,7 +46,7 @@ export function PlaygroundTeaser() {
       <div className="nb-wrap">
         <div className="nb-measure" style={{ marginBottom: "clamp(34px,4.5vw,54px)" }}>
           <div className="nb-eyebrow" style={{ marginBottom: 18 }}>
-            03 — SİTE İÇİ AI ERİŞİMİ
+            03 — SİTE İÇİ YAPAY ZEKA ERİŞİMİ
           </div>
           <h2 className="nb-h2" style={{ marginBottom: 18 }}>
             Dağınık <span style={{ color: "var(--amber)" }}>100+</span> araç,

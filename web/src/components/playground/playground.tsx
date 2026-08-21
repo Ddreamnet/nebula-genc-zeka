@@ -444,10 +444,18 @@ export function Playground() {
   }
 
   function newChat() {
+    // Switching threads mid-generation would land the reply in the wrong
+    // transcript: setLastAssistant patches by position, and the position it
+    // finds after a reset belongs to whatever is on screen then.
+    if (busy) return;
     setMessages([]);
     setAttachments([]);
     setGateReason(null);
     setChatId(null);
+    // The thread being left is already stored, so re-reading the list here is
+    // what makes it show up in the sidebar the moment it's left rather than
+    // after the next send.
+    setHistoryKey((k) => k + 1);
   }
 
   /**
@@ -456,7 +464,8 @@ export function Playground() {
    * rather than on whatever happened to be selected.
    */
   async function openChat(id: string) {
-    if (id === chatId || loadingChat) return;
+    // Same reason newChat() refuses mid-generation — see the note there.
+    if (id === chatId || loadingChat || busy) return;
     setLoadingChat(true);
     try {
       const res = await fetch(`/api/playground/chats/${id}`);
@@ -481,6 +490,7 @@ export function Playground() {
       <ChatHistory
         activeChatId={chatId}
         refreshKey={historyKey}
+        busy={busy}
         onOpenChat={openChat}
         onNewChat={newChat}
       />
@@ -500,8 +510,9 @@ export function Playground() {
               <button
                 type="button"
                 onClick={newChat}
-                title="Yeni sohbet"
-                className="inline-flex h-9 shrink-0 items-center gap-1.5 rounded-full border border-outline-variant bg-surface-container px-2.5 text-xs font-medium text-on-surface-variant transition hover:border-outline hover:bg-surface-container hover:text-on-surface sm:px-3"
+                disabled={busy}
+                title={busy ? "Üretim bitince yeni sohbet açabilirsin" : "Yeni sohbet"}
+                className="inline-flex h-9 shrink-0 items-center gap-1.5 rounded-full border border-outline-variant bg-surface-container px-2.5 text-xs font-medium text-on-surface-variant transition hover:border-outline hover:bg-surface-container hover:text-on-surface disabled:pointer-events-none disabled:opacity-40 sm:px-3"
               >
                 <SquarePen className="size-3.5 shrink-0" />
                 <span className="hidden sm:inline">Yeni sohbet</span>

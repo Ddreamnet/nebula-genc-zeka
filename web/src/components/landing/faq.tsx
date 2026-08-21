@@ -40,7 +40,7 @@ const faqs = [
   },
   {
     q: "Çocuğum çekingen. İki kişilik grupta zorlanır mı?",
-    a: "İki kişilik grubun asıl sebebi bu. Kalabalıkta konuşamayan bir çocuk, tek bir arkadaşı ve bir öğretmenle rahat ediyor. Üstelik ilk ders birebir: öğretmen çocuğunuzu tanıdıktan sonra grubu ona göre kuruyoruz.",
+    a: "İki kişilik grubun asıl sebebi bu. Kalabalıkta konuşamayan bir çocuk, tek bir arkadaşı ve bir öğretmenle rahat ediyor. Üstelik ilk ders birebir: öğretmen çocuğunuzu tanıdıktan sonra grubu ona göre kuruyoruz. Grup hiç istemezseniz programın tamamını birebir de veriyoruz; bunu bize söylemeniz yeterli.",
   },
   {
     q: "10 yaşındaki çocuk için de, 18 yaşındaki için de uygun mu?",

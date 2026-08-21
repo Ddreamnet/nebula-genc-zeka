@@ -19,6 +19,14 @@
         filter can.
      3. The 3D press is two stacked layers (::before slab + .face), so the
         press animates transform alone instead of re-painting a box-shadow.
+     4. `will-change` belongs ONLY on the handful of elements running an
+        INFINITE animation (the float/bob/drift props, the marquee track, the
+        blip). It is a request for a permanent compositor layer, and a layer
+        costs GPU memory plus one more quad per frame forever — so putting it
+        on every button, card and nav link, which only move for ~150ms on
+        hover, made a page of them slower to scroll rather than faster to
+        hover. A transform/opacity transition is composited for its own
+        duration with no hint at all; that is what those now rely on.
    ========================================================================= */
 
 /* =========================================================================
@@ -187,7 +195,6 @@
    static, so the card visually "sits down" onto its own shadow on press. */
 .nb-card--live {
   transition: transform 0.16s cubic-bezier(0.2, 0.8, 0.3, 1);
-  will-change: transform;
 }
 @media (hover: hover) {
   .nb-card--live:hover { transform: translateY(-4px); }
@@ -272,7 +279,6 @@
   line-height: 1;
   white-space: nowrap;
   transition: transform 0.11s cubic-bezier(0.2, 0.8, 0.3, 1);
-  will-change: transform;
 }
 @media (hover: hover) {
   .nb-btn:hover .nb-btn__face { transform: translateY(-2px); }
@@ -387,6 +393,11 @@
 .nb .reveal[data-show="true"] {
   opacity: 1;
   transform: translate3d(0, 0, 0) scale(1);
+  /* Give the layer back once the block has landed — it never moves again, and
+     a promotion held for the rest of the session is a layer the compositor
+     keeps walking for nothing. The transition still runs on the compositor
+     while it is actually running. */
+  will-change: auto;
 }
 
 /* Marquee strip. The track holds two identical copies and slides exactly
@@ -438,7 +449,6 @@
 .nb-faq summary::marker { content: ""; }
 .nb-faq__mark {
   transition: transform 0.2s cubic-bezier(0.2, 0.8, 0.3, 1);
-  will-change: transform;
 }
 .nb-faq details[open] .nb-faq__mark { transform: rotate(45deg); }
 
@@ -609,7 +619,6 @@
   align-items: center;
   transform-origin: left center;
   transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
-  will-change: transform;
 }
 .nb-nav-logo[data-condensed="true"] { transform: scale(0.86); }
 
@@ -619,7 +628,6 @@
   font-size: 16px;
   letter-spacing: 0.005em;
   transition: color 0.25s ease, transform 0.15s cubic-bezier(0.2, 0.8, 0.3, 1);
-  will-change: transform;
 }
 @media (hover: hover) {
   .nb-nav-link:hover { transform: translateY(-2px); }

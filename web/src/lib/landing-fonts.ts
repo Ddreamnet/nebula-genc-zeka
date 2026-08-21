@@ -19,9 +19,16 @@ export const fredoka = Fredoka({
   display: "swap",
 });
 
+// 800 is deliberately absent. Nothing in the product ever asks for it: there
+// is no `font-extrabold`/`font-black` utility anywhere, and the single
+// `fontWeight: 800` in the codebase is app/global-error.tsx, which renders
+// outside the root layout on system-ui by design. It was one more woff2
+// preloaded on every route — marketing, login, panels and playground alike —
+// to draw zero characters. 400/600/700 are all genuinely used (body copy,
+// `font-semibold`, `font-bold` and the <strong> runs in safety.tsx).
 export const nunito = Nunito({
   subsets: ["latin", "latin-ext"],
-  weight: ["400", "600", "700", "800"],
+  weight: ["400", "600", "700"],
   variable: "--font-nunito",
   display: "swap",
 });

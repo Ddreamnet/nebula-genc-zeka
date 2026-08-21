@@ -5,6 +5,7 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type ReactNode,
 } from "react";
@@ -46,6 +47,20 @@ export function AuthProvider({
   const [roles, setRoles] = useState<AppRole[]>(initialRoles);
   const [loading, setLoading] = useState(!initialUser);
 
+  /**
+   * Whose profile+roles the two pieces of state above are already holding.
+   *
+   * Without this the mount sequence fetched them THREE times over for a
+   * result that never differed: dashboard/page.tsx server-fetches them and
+   * seeds this provider, then init() below re-fetched them, and then
+   * supabase-js fired its INITIAL_SESSION event on subscribe and the handler
+   * re-fetched them a third time. Six queries, four of them round trips the
+   * browser sat through before the dashboard could settle — which is
+   * precisely the pause after pressing "Giriş Yap". Seeding this ref from
+   * the server-provided user makes all of it a no-op.
+   */
+  const loadedForUserId = useRef<string | null>(initialProfile ? (initialUser?.id ?? null) : null);
+
   useEffect(() => {
     let cancelled = false;
 
@@ -55,17 +70,21 @@ export function AuthProvider({
         supabase.from("user_roles").select("role").eq("user_id", userId),
       ]);
       if (cancelled) return;
+      loadedForUserId.current = userId;
       setProfile(profileRow ?? null);
       setRoles((roleRows ?? []).map((r) => r.role));
     }
 
     async function init() {
+      // getSession() reads the cookie/local copy, so this is cheap — it is
+      // only here to resolve `loading` and to catch a session that changed
+      // between the server render and hydration.
       const {
         data: { session },
       } = await supabase.auth.getSession();
       if (cancelled) return;
       setUser(session?.user ?? null);
-      if (session?.user) {
+      if (session?.user && loadedForUserId.current !== session.user.id) {
         await loadProfile(session.user.id);
       }
       if (!cancelled) setLoading(false);
@@ -75,11 +94,20 @@ export function AuthProvider({
 
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange(async (_event, session) => {
+    } = supabase.auth.onAuthStateChange(async (event, session) => {
       setUser(session?.user ?? null);
       if (session?.user) {
-        await loadProfile(session.user.id);
+        // TOKEN_REFRESHED swaps the access token and nothing else; INITIAL_SESSION
+        // is just supabase-js replaying the session we already rendered with.
+        // Neither can have changed profiles/user_roles, so neither is worth a
+        // pair of queries. Every other event (SIGNED_IN, USER_UPDATED, ...) still
+        // re-reads, so a genuine account switch is picked up exactly as before.
+        const replayed =
+          (event === "INITIAL_SESSION" || event === "TOKEN_REFRESHED") &&
+          loadedForUserId.current === session.user.id;
+        if (!replayed) await loadProfile(session.user.id);
       } else {
+        loadedForUserId.current = null;
         setProfile(null);
         setRoles([]);
       }

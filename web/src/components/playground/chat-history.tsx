@@ -51,6 +51,7 @@ const BUCKET_ORDER = ["Bugün", "Dün", "Bu hafta", "Bu ay", "Daha eski"];
 export function ChatHistory({
   activeChatId,
   refreshKey,
+  busy,
   onOpenChat,
   onNewChat,
 }: {
@@ -58,6 +59,8 @@ export function ChatHistory({
   activeChatId: string | null;
   /** Bump to re-fetch — the list changes whenever a turn is written. */
   refreshKey: number;
+  /** A generation is in flight; switching threads now would misplace its reply. */
+  busy: boolean;
   onOpenChat: (id: string) => void;
   onNewChat: () => void;
 }) {
@@ -148,9 +151,10 @@ export function ChatHistory({
             <button
               type="button"
               onClick={onNewChat}
-              title="Yeni sohbet"
+              disabled={busy}
+              title={busy ? "Üretim bitince yeni sohbet açabilirsin" : "Yeni sohbet"}
               aria-label="Yeni sohbet"
-              className="ml-auto inline-flex size-7 items-center justify-center rounded-lg text-on-surface-variant transition hover:bg-surface-high hover:text-on-surface"
+              className="ml-auto inline-flex size-7 items-center justify-center rounded-lg text-on-surface-variant transition hover:bg-surface-high hover:text-on-surface disabled:pointer-events-none disabled:opacity-40"
             >
               <Plus className="size-4" />
             </button>
@@ -187,11 +191,14 @@ export function ChatHistory({
                           <button
                             type="button"
                             onClick={() => onOpenChat(c.id)}
+                            disabled={busy && !active}
+                            title={busy && !active ? "Üretim bitince başka sohbete geçebilirsin" : undefined}
                             className={cn(
                               "flex w-full items-center gap-2.5 rounded-xl px-2 py-2 pr-8 text-left transition",
                               active
                                 ? "bg-secondary/15 ring-2 ring-secondary/50"
                                 : "hover:bg-surface-high",
+                              "disabled:pointer-events-none disabled:opacity-40",
                               busyId === c.id && "opacity-40",
                             )}
                           >
@@ -216,9 +223,19 @@ export function ChatHistory({
                           <button
                             type="button"
                             onClick={() => archive(c.id)}
+                            // Archiving the open thread resets it to a new
+                            // chat, which newChat() refuses mid-generation —
+                            // so the row would vanish while its reply kept
+                            // filling the transcript on screen.
+                            disabled={busy && active}
                             title="Sohbeti sil"
                             aria-label={`Sohbeti sil: ${c.preview || "boş sohbet"}`}
-                            className="absolute right-1.5 top-1/2 inline-flex size-6 -translate-y-1/2 items-center justify-center rounded-md text-on-surface-variant opacity-0 transition hover:bg-error/20 hover:text-error focus-visible:opacity-100 group-hover/row:opacity-100"
+                            className={cn(
+                              "absolute right-1.5 top-1/2 inline-flex size-6 -translate-y-1/2 items-center justify-center rounded-md text-on-surface-variant opacity-0 transition",
+                              busy && active
+                                ? "pointer-events-none"
+                                : "hover:bg-error/20 hover:text-error focus-visible:opacity-100 group-hover/row:opacity-100",
+                            )}
                           >
                             <Trash2 className="size-3.5" />
                           </button>

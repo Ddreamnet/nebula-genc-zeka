@@ -14,6 +14,22 @@ const THEME = {
   light: { text: "var(--ink)", logo: "/landing/logo-black.png" },
 } as const;
 
+/**
+ * The exact srcset next/image emits for the header logo below.
+ *
+ * With no `sizes` prop, next/image builds a two-entry `x`-descriptor set from
+ * the declared `width`: the smallest configured size >= width for 1x, and the
+ * smallest >= width*2 for 2x. width={220} against Next's default size list
+ * (…128, 256, 384, 640…) resolves to 256 and 640, and quality defaults to 75.
+ * Kept next to the <Image> that has to match it — if these ever drift apart
+ * the only symptom is a preload the browser reports as unused, never a broken
+ * image.
+ */
+function logoSrcSet(src: string): string {
+  const at = (w: number) => `/_next/image?url=${encodeURIComponent(src)}&w=${w}&q=75`;
+  return `${at(256)} 1x, ${at(640)} 2x`;
+}
+
 export function LandingNavbar() {
   const pathname = usePathname();
   // "#top" only exists on the homepage (Hero's own id) — on every other
@@ -91,9 +107,16 @@ export function LandingNavbar() {
       {/* Both logo variants preloaded so the very first dark<->light flip
           doesn't pop in a not-yet-fetched image over an already-updated
           header — the swap is a full <img> src change (no crossfade), so
-          whichever variant hasn't loaded yet would flash in late. */}
-      <link rel="preload" as="image" href={THEME.dark.logo} />
-      <link rel="preload" as="image" href={THEME.light.logo} />
+          whichever variant hasn't loaded yet would flash in late.
+
+          These MUST point at the same URLs <Image> will actually request, not
+          at the files in /public. Preloading the raw PNGs warmed two cache
+          entries the page then never touched: 57 KB fetched at preload
+          priority, competing with the hero's own fonts and CSS, while the
+          <img> went off and fetched /_next/image separately anyway — so the
+          flash these are here to prevent was never actually prevented. */}
+      <link rel="preload" as="image" imageSrcSet={logoSrcSet(THEME.dark.logo)} />
+      <link rel="preload" as="image" imageSrcSet={logoSrcSet(THEME.light.logo)} />
 
       <header
         ref={navRef}

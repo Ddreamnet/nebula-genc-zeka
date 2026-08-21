@@ -71,9 +71,13 @@ export function NovaAuth({
   const leftPupilRef = useRef<SVGGElement>(null);
   const rightPupilRef = useRef<SVGGElement>(null);
   const coveringRef = useRef(covering);
+  /** Set by the cursor-follow effect below; lets a state change re-arm its
+   *  now-demand-driven rAF loop. */
+  const wakeRef = useRef<(() => void) | null>(null);
 
   useEffect(() => {
     coveringRef.current = covering;
+    wakeRef.current?.();
   }, [covering]);
 
   // ---- Pupils follow the cursor (direct DOM writes — no React in the hot path) ----
@@ -98,16 +102,21 @@ export function NovaAuth({
         dirty = false;
       }
     };
-    const onMove = (e: PointerEvent) => {
-      mouse.x = e.clientX;
-      mouse.y = e.clientY;
-    };
-    const onDirty = () => {
-      dirty = true;
-    };
+
+    // The loop is demand-driven rather than free-running. It used to schedule
+    // a frame unconditionally, forever — so a login page sitting untouched
+    // still woke the main thread 60 times a second to re-write two identical
+    // SVG transforms, which on an SVG child is a repaint of the whole mascot
+    // each time. Now anything that can move the pupils (a pointer move, a
+    // scroll, a resize, the arms coming down) calls wake(), and the loop
+    // parks itself again as soon as the lerp has converged. The visible
+    // behaviour is unchanged: the same easing, the same landing position.
+    const EPSILON = 0.01;
+    let running = false;
 
     const tick = () => {
       if (dirty) measure();
+      let settled = true;
       if (!coveringRef.current && center.scale > 0) {
         const dx = (mouse.x - center.x) / center.scale;
         const dy = (mouse.y - center.y) / center.scale;
@@ -123,18 +132,46 @@ export function NovaAuth({
         const t = `translate(${cur.x}px, ${cur.y}px)`;
         leftPupilRef.current?.style.setProperty("transform", t);
         rightPupilRef.current?.style.setProperty("transform", t);
+        settled = Math.abs(tx - cur.x) < EPSILON && Math.abs(ty - cur.y) < EPSILON;
+      }
+      if (settled) {
+        running = false;
+        raf = 0;
+        return;
       }
       raf = requestAnimationFrame(tick);
     };
+
+    const wake = () => {
+      if (running) return;
+      running = true;
+      raf = requestAnimationFrame(tick);
+    };
+
+    const onMove = (e: PointerEvent) => {
+      mouse.x = e.clientX;
+      mouse.y = e.clientY;
+      wake();
+    };
+    const onDirty = () => {
+      dirty = true;
+      wake();
+    };
+
+    // The arms dropping/lifting flips coveringRef, and the frame after that is
+    // the one that has to re-aim the pupils — so the same element the arms
+    // animate on is what re-arms the loop.
+    wakeRef.current = wake;
 
     measure();
     window.addEventListener("pointermove", onMove, { passive: true });
     window.addEventListener("resize", onDirty);
     window.addEventListener("scroll", onDirty, { passive: true });
-    raf = requestAnimationFrame(tick);
+    wake();
 
     return () => {
-      cancelAnimationFrame(raf);
+      if (raf) cancelAnimationFrame(raf);
+      wakeRef.current = null;
       window.removeEventListener("pointermove", onMove);
       window.removeEventListener("resize", onDirty);
       window.removeEventListener("scroll", onDirty);

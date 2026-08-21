@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { ClosingCta } from "@/components/landing/closing-cta";
+import { archivo } from "@/lib/prose-font";
 
 export const metadata: Metadata = {
   title: "Blog",
@@ -17,7 +18,7 @@ export default async function BlogPage() {
     .order("published_at", { ascending: false });
 
   return (
-    <div style={{ background: "var(--paper)", minHeight: "100vh" }}>
+    <div className={archivo.variable} style={{ background: "var(--paper)", minHeight: "100vh" }}>
       <main style={{ paddingTop: "clamp(96px,12vw,140px)", paddingBottom: 80, paddingInline: "clamp(18px,5vw,64px)" }}>
         <div style={{ maxWidth: 1180, margin: "0 auto" }}>
           <h1

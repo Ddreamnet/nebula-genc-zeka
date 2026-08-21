@@ -36,7 +36,7 @@ export function Safety() {
           <div className="nb-eyebrow" style={{ marginBottom: 18 }}>
             04 — GÜVEN
           </div>
-          <h2 className="nb-h2">Gelin, acele etmeden anlatalım.</h2>
+          <h2 className="nb-h2">Çocuğunuzu kime emanet ediyorsunuz?</h2>
         </div>
 
         <div className="nb-grid nb-grid--3" style={{ marginBottom: "clamp(34px,4.5vw,48px)" }}>

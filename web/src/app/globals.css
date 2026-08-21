@@ -224,6 +224,13 @@
 .reveal[data-show="true"] {
   opacity: 1;
   transform: translate3d(0, 0, 0);
+  /* Hand the layer back the moment the reveal fires. `will-change` is a hint
+     to pre-promote something that is ABOUT to move — once a block has landed
+     it never moves again, so holding the promotion just leaks a layer per
+     revealed section for the rest of the session. The transition itself still
+     runs composited: a transform/opacity transition is promoted for its own
+     duration regardless of will-change. */
+  will-change: auto;
 }
 
 /* Respect user preference — kill all motion */
@@ -518,7 +525,13 @@
     0 var(--pn-lift) 0 var(--pn-stroke) var(--pn-ink);
   transition: transform 0.11s cubic-bezier(0.2, 0.8, 0.3, 1),
     box-shadow 0.11s cubic-bezier(0.2, 0.8, 0.3, 1);
-  will-change: transform;
+  /* No `will-change: transform` here on purpose. It used to sit on this rule,
+     which handed EVERY button on a panel its own permanent compositor layer —
+     an admin dashboard has dozens, and each one costs GPU memory and one more
+     quad for the compositor to walk on every single frame, scrolling
+     included. The press is a 110ms transform transition; the browser promotes
+     it for the duration on its own and drops the layer again afterwards,
+     which is exactly the behaviour wanted. */
 }
 @media (hover: hover) {
   .pn-btn:hover:not(:disabled) {

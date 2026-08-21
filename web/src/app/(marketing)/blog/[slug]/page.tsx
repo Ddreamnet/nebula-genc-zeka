@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { ClosingCta } from "@/components/landing/closing-cta";
+import { archivo } from "@/lib/prose-font";
 
 interface PageProps {
   params: Promise<{ slug: string }>;
@@ -52,7 +53,7 @@ export default async function BlogPostPage({ params }: PageProps) {
   if (!post) notFound();
 
   return (
-    <div style={{ background: "var(--paper)", minHeight: "100vh" }}>
+    <div className={archivo.variable} style={{ background: "var(--paper)", minHeight: "100vh" }}>
       <main style={{ paddingTop: "clamp(96px,12vw,140px)", paddingBottom: 80, paddingInline: "clamp(18px,5vw,64px)" }}>
         <div style={{ maxWidth: 720, margin: "0 auto" }}>
           {post.cover_image_url && (
