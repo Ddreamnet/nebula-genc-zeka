@@ -84,9 +84,16 @@
     overflow-x: hidden;
   }
 
+  /* Selection has to stay readable on every surface this app renders on:
+     the deep-space dark UI, the cream panel, and the marketing paper world.
+     Painting the text itself in a bright accent (--color-secondary-bright)
+     only worked on the dark one — on cream it was near-white on near-white,
+     so dragging across a paragraph made the words disappear. The wash stays;
+     the ink is now the surface's own, and any scope that wants its own pair
+     sets the two tokens (landing-theme.ts does, for the paper world). */
   ::selection {
-    background: color-mix(in oklab, var(--color-secondary) 30%, transparent);
-    color: var(--color-secondary-bright);
+    background: var(--selection-bg, color-mix(in oklab, var(--color-secondary) 30%, transparent));
+    color: var(--selection-fg, var(--color-on-surface));
   }
 
   /* Focus ring — accessible + on-brand */

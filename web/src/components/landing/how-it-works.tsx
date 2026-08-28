@@ -3,12 +3,16 @@ import { Nova } from "@/components/cast/nova";
 import { Star } from "@/components/cast/props";
 
 /** The four facts a parent actually asks first. Each gets its own accent so
- *  the row scans as four separate answers, not one table. */
+ *  the row scans as four separate answers, not one table.
+ *
+ *  No program length here on purpose: lessons run one-to-one and continue as
+ *  long as the family wants them to, so a fixed "4 ay" was answering a
+ *  question about a package we no longer sell. */
 const FACTS = [
-  { value: "4 ay", label: "program süresi", fill: "#DCD2FF", tone: "var(--violet-deep)" },
+  { value: "Birebir", label: "ders formatı", fill: "#DCD2FF", tone: "var(--violet-deep)" },
   { value: "1 gün", label: "haftada ders", fill: "#C6F1DC", tone: "var(--mint-deep)" },
   { value: "40+40", label: "dakika canlı ders", fill: "#FFE1C4", tone: "var(--amber-deep)" },
-  { value: "2 kişi", label: "grup büyüklüğü", fill: "#FFD6DE", tone: "var(--coral-deep)" },
+  { value: "1 çıktı", label: "her ders sonunda", fill: "#FFD6DE", tone: "var(--coral-deep)" },
 ];
 
 function Step({
@@ -96,7 +100,7 @@ export function HowItWorks() {
           <div className="nb-eyebrow" style={{ marginBottom: 18 }}>
             02 — NASIL İŞLİYOR
           </div>
-          <h2 className="nb-h2">Küçük grup, net bir düzen.</h2>
+          <h2 className="nb-h2">Birebir ders, net bir düzen.</h2>
         </div>
 
         <div className="nb-grid nb-grid--4" style={{ marginBottom: "clamp(40px,5vw,60px)" }}>

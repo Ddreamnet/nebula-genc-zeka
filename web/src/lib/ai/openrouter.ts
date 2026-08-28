@@ -19,6 +19,13 @@ const TIMEOUT_MS = {
   download: 120_000,
 } as const;
 
+/**
+ * Tek yer: tüm modellerin görsel en/boy oranı. OpenRouter'da parametre adı
+ * `aspect_ratio` ("9:16" = dikey). Oranı desteklemeyen modelde OpenRouter
+ * kendi en yakın boyutuna yuvarlar, ek bir iş gerekmez.
+ */
+const ASPECT_RATIO = "9:16";
+
 /** Wraps a fetch failure so callers can tell "we gave up" from "it errored". */
 function timeoutError(what: string, ms: number): Error {
   return new Error(`OpenRouter ${what} timed out after ${ms}ms`);
@@ -87,6 +94,7 @@ export async function generateImage(
       model,
       prompt,
       n: 1,
+      aspect_ratio: ASPECT_RATIO,
       ...(references.length > 0
         ? { input_references: references.map((url) => ({ type: "image_url", image_url: { url } })) }
         : {}),

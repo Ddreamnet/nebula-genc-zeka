@@ -110,8 +110,8 @@ export function Hero() {
               are not two ends of a scale), and it promised something "elle
               tutulur" without ever naming the thing being held. */}
           <p className="nb-lead" style={{ maxWidth: 560, marginBottom: 32 }}>
-            Haftada bir ders, iki kişilik grup, yanında hep bir öğretmen. Her ders bitmiş bir işle
-            bitiyor: bir web sitesi, oynanabilir bir oyun, kendi şarkısı, kendi kısa filmi.
+            Haftada bir ders, tamamen birebir, karşısında hep bir öğretmen. Her ders bitmiş bir
+            işle bitiyor: bir web sitesi, oynanabilir bir oyun, kendi şarkısı, kendi kısa filmi.
           </p>
 
           <ContactCtas variant="trial">

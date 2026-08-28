@@ -1,7 +1,10 @@
+import Link from "next/link";
+import { ArrowRight } from "lucide-react";
 import { Reveal } from "@/components/ui/reveal";
 import { Nova } from "@/components/cast/nova";
 import { Star, NovaSays } from "@/components/cast/props";
-import { WebArt, AvatarArt, OyunArt, AfisArt, MuzikArt, VideoArt } from "./output-art";
+import { OUTPUT_ART } from "./output-art";
+import { OUTPUT_CATEGORIES, type OutputCategory } from "@/lib/outputs";
 
 /**
  * The six outputs, as a bento.
@@ -17,86 +20,20 @@ import { WebArt, AvatarArt, OyunArt, AfisArt, MuzikArt, VideoArt } from "./outpu
  * which undid in words what the tints and shadows do in pixels. Each one now
  * lands on a different beat, and each ends where a parent actually sees the
  * result: the class group chat, a friend playing it, the wall of their room.
+ *
+ * Every card is a link into /eserler/<slug>, where that output's real student
+ * work lives. The section asserts "bunları çocuklar yaptı"; the pages behind
+ * these cards are where that stops being an assertion. Copy and colours come
+ * from lib/outputs.ts so the card and the page it opens stay one thing.
  */
 
-type Card = {
-  span: string;
-  no: string;
-  title: string;
-  desc: string;
-  panel: string;
-  tone: string;
-  ink: string;
-  art: React.ReactNode;
-};
+function OutputCard({ card, wide, delay }: { card: OutputCategory; wide: boolean; delay: number }) {
+  const Art = OUTPUT_ART[card.slug];
 
-const CARDS: Card[] = [
-  {
-    span: "span-4",
-    no: "ÇIKTI 01",
-    title: "Kendi web sitesi",
-    desc: "Aklındaki fikri anlatıyor, sitesi çıkıyor. Sonra linki sınıf grubuna atıyor.",
-    panel: "#DCD2FF",
-    tone: "var(--violet-deep)",
-    ink: "var(--violet-deep)",
-    art: <WebArt />,
-  },
-  {
-    span: "span-2",
-    no: "ÇIKTI 02",
-    title: "Konuşan 3D avatar",
-    desc: "Karakteri o çiziyor, sesi o veriyor. Karakter ekranda konuşuyor.",
-    panel: "#C6F1DC",
-    tone: "var(--mint-deep)",
-    ink: "var(--mint-deep)",
-    art: <AvatarArt />,
-  },
-  {
-    span: "span-2",
-    no: "ÇIKTI 03",
-    title: "Oyun",
-    desc: "Kuralları o koyuyor. Sonunda arkadaşı oturup oynuyor.",
-    panel: "#FFD6DE",
-    tone: "var(--coral-deep)",
-    ink: "var(--coral-deep)",
-    art: <OyunArt />,
-  },
-  {
-    span: "span-2",
-    no: "ÇIKTI 04",
-    title: "Afiş & görsel",
-    desc: "Odasına asacak kalitede afişler. Baskıya hazır çıkıyor.",
-    panel: "#FFE1C4",
-    tone: "var(--amber-deep)",
-    ink: "var(--amber-deep)",
-    art: <AfisArt />,
-  },
-  {
-    span: "span-2",
-    no: "ÇIKTI 05",
-    title: "Müzik & şarkı",
-    desc: "Sözü onun, melodisi onun. Telefonda çalınabilecek bir parça.",
-    panel: "#D3DCFB",
-    tone: "var(--blue-deep)",
-    ink: "var(--blue-deep)",
-    art: <MuzikArt />,
-  },
-  {
-    span: "span-6",
-    no: "ÇIKTI 06",
-    title: "Video & kısa film",
-    desc: "Senaryodan kurguya kadar hepsi onun. Sonunda izlenecek bir kısa film.",
-    panel: "#FFEBCF",
-    tone: "var(--amber-deep)",
-    ink: "var(--amber-deep)",
-    art: <VideoArt />,
-  },
-];
-
-function OutputCard({ card, wide, delay }: { card: Card; wide: boolean; delay: number }) {
   return (
     <Reveal className={card.span} delay={delay} style={{ height: "100%" }}>
-      <article
+      <Link
+        href={`/eserler/${card.slug}`}
         className="nb-card nb-card--live"
         style={
           {
@@ -105,6 +42,8 @@ function OutputCard({ card, wide, delay }: { card: Card; wide: boolean; delay: n
             display: wide ? "grid" : "flex",
             gridTemplateColumns: wide ? "minmax(0,1.4fr) minmax(0,1fr)" : undefined,
             flexDirection: wide ? undefined : "column",
+            color: "inherit",
+            textDecoration: "none",
           } as React.CSSProperties
         }
       >
@@ -121,7 +60,7 @@ function OutputCard({ card, wide, delay }: { card: Card; wide: boolean; delay: n
             flex: wide ? undefined : 1,
           }}
         >
-          {card.art}
+          <Art />
         </div>
 
         <div
@@ -133,15 +72,32 @@ function OutputCard({ card, wide, delay }: { card: Card; wide: boolean; delay: n
             gap: 7,
           }}
         >
-          <span className="nb-eyebrow" style={{ color: card.ink }}>
+          <span className="nb-eyebrow" style={{ color: card.tone }}>
             {card.no}
           </span>
           <h3 className="nb-h3">{card.title}</h3>
           <p style={{ color: "var(--ink-soft)", fontSize: 15, lineHeight: 1.5, margin: 0 }}>
             {card.desc}
           </p>
+          {/* The affordance. Without it the cards read as a static grid and
+              nobody finds out the work is one tap away. */}
+          <span
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 6,
+              marginTop: 4,
+              fontFamily: "var(--font-fredoka), ui-sans-serif, sans-serif",
+              fontWeight: 500,
+              fontSize: 14.5,
+              color: card.tone,
+            }}
+          >
+            Öğrencilerin işlerini gör
+            <ArrowRight size={16} strokeWidth={2.75} />
+          </span>
         </div>
-      </article>
+      </Link>
     </Reveal>
   );
 }
@@ -170,7 +126,8 @@ export function Curriculum() {
             </h2>
             <p className="nb-lead" style={{ maxWidth: 560 }}>
               Soyut bir &ldquo;yapay zeka farkındalığı&rdquo; değil. Yayınlanabilir, paylaşılabilir,
-              arkadaşına gösterilebilir altı somut çıktı.
+              arkadaşına gösterilebilir altı somut çıktı. Her kartın altında o çıktıdan
+              öğrencilerin yaptıkları var.
             </p>
           </div>
 
@@ -194,8 +151,8 @@ export function Curriculum() {
         </div>
 
         <div className="nb-grid nb-bento">
-          {CARDS.map((c, i) => (
-            <OutputCard key={c.no} card={c} wide={c.span === "span-6"} delay={(i % 3) * 90} />
+          {OUTPUT_CATEGORIES.map((c, i) => (
+            <OutputCard key={c.slug} card={c} wide={c.span === "span-6"} delay={(i % 3) * 90} />
           ))}
         </div>
       </div>

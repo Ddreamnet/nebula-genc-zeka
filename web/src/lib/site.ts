@@ -13,11 +13,10 @@ export const siteConfig = {
   founder: "Fatih Böke",
 
   /**
-   * Pricing. Published as of Aug 2026: the FAQ used to say nothing at all
-   * about money, which is the first thing a parent opens the FAQ to find.
-   *
-   * Lives here rather than inline in the FAQ so the two figures can't drift
-   * apart, and so there is exactly one place to edit when they change.
+   * Pricing. NOT published anywhere on the site right now — the FAQ's price
+   * question was removed, and the figure is quoted on WhatsApp per family
+   * instead. Kept here as the single place to edit if it goes back up, so a
+   * number never gets pasted into a component again.
    */
   pricing: {
     monthly: "5.000 TL",

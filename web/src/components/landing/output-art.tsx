@@ -249,3 +249,17 @@ export function VideoArt() {
     </Scene>
   );
 }
+
+/**
+ * Art keyed by output slug. The bento card and the category page it opens draw
+ * from this one map, so a card and its page can never end up showing different
+ * pictures for the same output.
+ */
+export const OUTPUT_ART: Record<string, () => React.ReactElement> = {
+  "web-sitesi": WebArt,
+  avatar: AvatarArt,
+  oyun: OyunArt,
+  afis: AfisArt,
+  muzik: MuzikArt,
+  video: VideoArt,
+};

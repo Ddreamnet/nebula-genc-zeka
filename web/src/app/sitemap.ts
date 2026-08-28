@@ -1,6 +1,7 @@
 import type { MetadataRoute } from "next";
 import { siteConfig } from "@/lib/site";
 import { createPublicClient } from "@/lib/supabase/public";
+import { OUTPUT_CATEGORIES } from "@/lib/outputs";
 
 /**
  * Generated per request rather than at build time.
@@ -21,6 +22,12 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const staticRoutes: MetadataRoute.Sitemap = [
     { url: siteConfig.url, changeFrequency: "monthly", priority: 1 },
     { url: `${siteConfig.url}/blog`, changeFrequency: "weekly", priority: 0.7 },
+    { url: `${siteConfig.url}/eserler`, changeFrequency: "monthly", priority: 0.7 },
+    ...OUTPUT_CATEGORIES.map((c) => ({
+      url: `${siteConfig.url}/eserler/${c.slug}`,
+      changeFrequency: "monthly" as const,
+      priority: 0.6,
+    })),
     { url: `${siteConfig.url}/kvkk`, changeFrequency: "yearly", priority: 0.2 },
     { url: `${siteConfig.url}/gizlilik`, changeFrequency: "yearly", priority: 0.2 },
   ];

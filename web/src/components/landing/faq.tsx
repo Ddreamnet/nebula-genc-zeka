@@ -1,16 +1,16 @@
 import { Plus } from "lucide-react";
-import { siteConfig } from "@/lib/site";
 
 /**
  * The parent-facing FAQ.
  *
  * Ordered by when the question actually gets asked, not by how comfortable it
- * is to answer: price and commitment sit near the top because that is what a
- * parent opens this accordion to find. The site used to say nothing at all
- * about money, so the FAQ answered every question except the one being asked.
+ * is to answer.
  *
- * The two figures come from siteConfig.pricing rather than living inline, so
- * they can't drift apart from each other or from anywhere else quoting them.
+ * Price is deliberately not one of the questions — the figures came off the
+ * site in Aug 2026 and are given per family over WhatsApp instead. They still
+ * live in siteConfig.pricing, so putting the question back is one entry here,
+ * not a number pasted into a component. The commitment answer stays, because
+ * "can I stop" is the worry underneath it.
  */
 
 const faqs = [
@@ -27,10 +27,6 @@ const faqs = [
     a: "Hayır. 100'den fazla yapay zeka aracına öğrenci panelinden erişim programa dahildir. Ayrı ayrı üyelik açmanıza, kart bilgisi girmenize veya ek abonelik ödemenize gerek yok; hepsi tek panelde. Derslerde öğretmen eşliğinde kullanılıyor, ders dışında da öğrencinin kendi kullanım hakkı oluyor.",
   },
   {
-    q: "Ücret ne kadar?",
-    a: `Aylık ${siteConfig.pricing.monthly}. Programın tamamını (4 ay) peşin alırsanız ${siteConfig.pricing.full}, yani ${siteConfig.pricing.fullSaving} daha az. Yapay zeka araçlarının kullanım hakkı fiyata dahil; ayrıca bir abonelik ödemiyorsunuz.`,
-  },
-  {
     q: "Taahhüt var mı, istediğim zaman bırakabilir miyim?",
     a: "Taahhüt yok. Aylık ödeyerek başlayabilir, devam etmek istemezseniz bırakabilirsiniz. Zaten ilk ders ücretsiz: kimse görmeden karar vermek zorunda değil.",
   },
@@ -39,12 +35,12 @@ const faqs = [
     a: "Haklısınız, zaten fazla. Fark şurada: burada ekranı izlemiyor, ekranda bir şey yapıyor. Haftada 80 dakika, ve sonunda ortada gösterilecek bir iş var. Bunu ekran süresine ekleme değil, bir kısmının yerine koyma olarak düşünün.",
   },
   {
-    q: "Çocuğum çekingen. İki kişilik grupta zorlanır mı?",
-    a: "İki kişilik grubun asıl sebebi bu. Kalabalıkta konuşamayan bir çocuk, tek bir arkadaşı ve bir öğretmenle rahat ediyor. Üstelik ilk ders birebir: öğretmen çocuğunuzu tanıdıktan sonra grubu ona göre kuruyoruz. Grup hiç istemezseniz programın tamamını birebir de veriyoruz; bunu bize söylemeniz yeterli.",
+    q: "Çocuğum çekingen. Derste zorlanır mı?",
+    a: "Ders birebir: ekranın karşısında çocuğunuz ve öğretmeni var, başka kimse yok. Kalabalıkta elini kaldıramayan bir çocuk burada soru sormaktan da, yanlış yapmaktan da çekinmiyor. İlk ders zaten ücretsiz; çocuğunuz denedikten sonra karar verirsiniz.",
   },
   {
     q: "10 yaşındaki çocuk için de, 18 yaşındaki için de uygun mu?",
-    a: "Evet. Grupları biz kuruyoruz ve yaşa göre kuruyoruz; 10 yaşındaki bir çocuğu 18 yaşındakiyle asla eşleştirmiyoruz. İçeriği de o gruba göre ayarlıyoruz. Herkes kendi hızında, yapabileceğinin bir adım ötesinde çalışıyor. Kimse sıkılmıyor, kimse geride kalmıyor.",
+    a: "Evet. Dersler birebir olduğu için içeriği doğrudan o çocuğa göre kuruyoruz; 10 yaşındakiyle 18 yaşındakinin dersi aynı ders değil. Herkes kendi hızında, yapabileceğinin bir adım ötesinde çalışıyor. Kimse sıkılmıyor, kimse geride kalmıyor.",
   },
 ];
 

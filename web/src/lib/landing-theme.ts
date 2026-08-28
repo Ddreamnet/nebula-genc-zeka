@@ -31,6 +31,13 @@ export const landingVars = {
   "--on-space": "#F2ECDD",
   "--on-space-soft": "#A9B6D4",
 
+  /* ---- Text selection. Highlighter amber under navy ink — the one pair
+     that stays legible both on cream paper and on the navy bands, where the
+     inherited app default (a bright peach on a peach wash) was unreadable.
+     Read by the ::selection rule in globals.css. ---- */
+  "--selection-bg": "#FFD9A8",
+  "--selection-fg": "#152343",
+
   /* ---- Accents. Each has a -deep pair used as the hard 3D shadow, so
      every colored control lifts and presses with the same physics. ---- */
   "--blue": "#3D5FE0",

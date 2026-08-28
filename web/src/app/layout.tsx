@@ -32,7 +32,7 @@ export const metadata: Metadata = {
     template: "%s · Nebula Genç Zeka",
   },
   description:
-    "10–18 yaş için canlı, uygulamalı yapay zeka akademisi. En fazla 2 kişilik gruplar, her derste gerçek bir üretim: gelişmiş prompting, görsel ve video üretimi.",
+    "10–18 yaş için canlı, uygulamalı yapay zeka akademisi. Birebir dersler, her derste gerçek bir üretim: gelişmiş prompting, görsel ve video üretimi.",
   applicationName: "Nebula Genç Zeka",
   keywords: [
     "çocuklar için yapay zeka",
@@ -52,7 +52,7 @@ export const metadata: Metadata = {
     siteName: "Nebula Genç Zeka",
     title: "Çocuğunuz yapay zekayı izlemesin, kullansın.",
     description:
-      "10–18 yaş için canlı, uygulamalı yapay zeka akademisi. En fazla 2 kişilik gruplar, her derste gerçek bir üretim.",
+      "10–18 yaş için canlı, uygulamalı yapay zeka akademisi. Birebir dersler, her derste gerçek bir üretim.",
     // 1200x630 JPEG, ~52KB. The previous card was a 1.1MB 2048x1024 PNG:
     // WhatsApp — where nearly every link to this site actually gets pasted —
     // drops preview images over a few hundred KB and falls back to showing
