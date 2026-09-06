@@ -162,8 +162,8 @@ export function ManageGroupsDialog({ open, onOpenChange, teacherId, students, gr
                               <span className="font-medium">{group.name}</span>
                               <Button
                                 variant="ghost"
-                                size="sm"
-                                className="h-6 w-6 p-0"
+                                size="icon-sm"
+                                aria-label={`${group.name} grubunu yeniden adlandır`}
                                 onClick={() => {
                                   setRenamingId(group.id);
                                   setRenameValue(group.name);

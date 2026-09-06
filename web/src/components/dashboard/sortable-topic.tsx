@@ -77,13 +77,13 @@ export function SortableTopic({ topic, isAdmin, expandAll, onAddResource, onEdit
                 </div>
                 {isAdmin && (
                   <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
-                    <Button variant="outline" size="sm" aria-label="Kaynak ekle" onClick={() => onAddResource(topic.id)} className="h-8 w-8 p-0">
+                    <Button variant="outline" size="icon" aria-label="Kaynak ekle" onClick={() => onAddResource(topic.id)}>
                       <Plus className="h-4 w-4" />
                     </Button>
-                    <Button variant="ghost" size="sm" aria-label="Konuyu düzenle" onClick={() => onEditTopic(topic)} className="h-8 w-8 p-0">
+                    <Button variant="ghost" size="icon" aria-label="Konuyu düzenle" onClick={() => onEditTopic(topic)}>
                       <Pencil className="h-4 w-4" />
                     </Button>
-                    <Button variant="destructive" size="sm" aria-label="Konuyu sil" onClick={() => onDeleteTopic(topic.id)} className="h-8 w-8 p-0">
+                    <Button variant="destructive" size="icon" aria-label="Konuyu sil" onClick={() => onDeleteTopic(topic.id)}>
                       <Trash2 className="h-4 w-4" />
                     </Button>
                   </div>

@@ -33,24 +33,34 @@ export function SortableResource({ resource, isAdmin, onEditResource, onDeleteRe
           </button>
         )}
         <div className="flex-shrink-0">{getResourceIcon(resource.resource_type)}</div>
-        <div className="flex-1 cursor-pointer min-w-0" onClick={() => window.open(resource.resource_url, "_blank", "noopener,noreferrer")}>
-          <p className="font-medium text-sm hover:text-primary transition-colors truncate">{resource.title}</p>
-          {resource.description && <p className="text-xs text-muted-foreground truncate">{resource.description}</p>}
-        </div>
+        <a
+          href={resource.resource_url}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="group/res min-w-0 flex-1 no-underline"
+        >
+          <p className="truncate text-sm font-medium transition-colors group-hover/res:text-primary">{resource.title}</p>
+          {resource.description && <p className="truncate text-xs text-muted-foreground">{resource.description}</p>}
+        </a>
       </div>
       <div className="flex items-center gap-1 flex-shrink-0 ml-auto sm:ml-0">
         {isAdmin && (
           <>
-            <Button size="sm" variant="ghost" aria-label="Kaynağı düzenle" onClick={() => onEditResource(resource)} className="h-7 w-7 p-0">
+            <Button size="icon-sm" variant="ghost" aria-label="Kaynağı düzenle" onClick={() => onEditResource(resource)}>
               <Pencil className="h-3 w-3" />
             </Button>
-            <Button size="sm" variant="ghost" aria-label="Kaynağı sil" onClick={() => onDeleteResource(resource.id)} className="h-7 w-7 p-0">
+            <Button size="icon-sm" variant="ghost" aria-label="Kaynağı sil" onClick={() => onDeleteResource(resource.id)}>
               <Trash2 className="h-3 w-3 text-destructive" />
             </Button>
           </>
         )}
-        <Button size="sm" variant="ghost" aria-label="Aç" onClick={() => window.open(resource.resource_url, "_blank", "noopener,noreferrer")} className="h-7 w-7 p-0">
-          <ExternalLink className="h-3 w-3" />
+        {/* A real anchor, not a button firing window.open: middle-click,
+            "open in new tab" and screen readers all work on the former and
+            none of them work on the latter. */}
+        <Button size="icon-sm" variant="ghost" aria-label="Kaynağı aç" asChild>
+          <a href={resource.resource_url} target="_blank" rel="noopener noreferrer">
+            <ExternalLink className="h-3 w-3" />
+          </a>
         </Button>
       </div>
     </div>

@@ -31,9 +31,9 @@ export function useStudentTopics(studentUserId: string | undefined): UseStudentT
 
     try {
       const [studentTopicsRes, globalTopics, completionRes] = await Promise.all([
-        supabase.from("topics").select("*, resources (*)").eq("student_id", studentUserId).order("order_index"),
+        supabase.from("topics").select("id, title, description, is_completed, completed_at, order_index, group_link_id, resources (id, title, description, resource_type, resource_url, order_index, group_link_id)").eq("student_id", studentUserId).order("order_index"),
         fetchGlobalTopics(),
-        supabase.from("student_resource_completion").select("*").eq("student_id", studentUserId),
+        supabase.from("student_resource_completion").select("resource_id, is_completed, completed_at").eq("student_id", studentUserId),
       ]);
 
       if (studentTopicsRes.error) throw studentTopicsRes.error;

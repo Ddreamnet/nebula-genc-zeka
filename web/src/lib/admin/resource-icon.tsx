@@ -1,4 +1,7 @@
-import { ExternalLink, FileText, Video, Link as LinkIcon, Image } from "lucide-react";
+// `Image as ImageIcon`: importing lucide's icon under its bare name shadows
+// the global Image constructor AND makes jsx-a11y read `<Image />` as an
+// `<img>` missing its alt text.
+import { ExternalLink, FileText, Video, Link as LinkIcon, Image as ImageIcon } from "lucide-react";
 
 /** Icon for a resource type — used by student topic sections across the panel. */
 export function getResourceIcon(type: string, className = "h-4 w-4") {
@@ -11,7 +14,7 @@ export function getResourceIcon(type: string, className = "h-4 w-4") {
     case "link":
       return <LinkIcon className={className} />;
     case "image":
-      return <Image className={className} />;
+      return <ImageIcon className={className} />;
     default:
       return <ExternalLink className={className} />;
   }

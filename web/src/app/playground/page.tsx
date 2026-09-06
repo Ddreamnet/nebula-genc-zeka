@@ -14,7 +14,8 @@ export default async function PlaygroundPage() {
     data: { user },
   } = await supabase.auth.getUser();
 
-  // Temporary: Playground is student-only for now, no anonymous/public access.
+  // Signed-in accounts only — anonymous/public access was removed, not merely
+  // bypassed. Students, teachers and admins all reach the Playground.
   if (!user || user.is_anonymous) {
     redirect("/giris");
   }

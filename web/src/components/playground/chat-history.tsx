@@ -129,7 +129,7 @@ export function ChatHistory({
         )}
       >
         <History className="size-5" />
-        <span className="font-mono text-[10px] tracking-widest [writing-mode:vertical-rl]">GEÇMİŞ</span>
+        <span className="font-mono text-micro tracking-widest [writing-mode:vertical-rl]">GEÇMİŞ</span>
       </button>
 
       <aside
@@ -147,7 +147,7 @@ export function ChatHistory({
         <div className="flex min-w-[min(292px,86vw)] flex-col overflow-hidden">
           <header className="flex items-center gap-2 border-b-[3px] border-surface-lowest px-3 py-2.5">
             <History className="size-4 shrink-0 text-secondary" />
-            <span className="font-mono text-[11px] tracking-widest text-on-surface-variant">GEÇMİŞ</span>
+            <span className="font-mono text-micro tracking-widest text-on-surface-variant">GEÇMİŞ</span>
             <button
               type="button"
               onClick={onNewChat}
@@ -179,7 +179,7 @@ export function ChatHistory({
             ) : (
               grouped.map((group) => (
                 <section key={group.label} className="mb-2">
-                  <h3 className="px-2 pb-1 pt-2 font-mono text-[10px] tracking-widest text-on-surface-variant/70">
+                  <h3 className="px-2 pb-1 pt-2 font-mono text-micro tracking-widest text-on-surface-variant/70">
                     {group.label.toLocaleUpperCase("tr-TR")}
                   </h3>
                   <ul className="flex flex-col gap-1">
@@ -212,10 +212,10 @@ export function ChatHistory({
                               <span className="size-7 shrink-0 rounded-full bg-surface-high" />
                             )}
                             <span className="min-w-0 flex-1">
-                              <span className="block truncate text-[13.5px] leading-snug text-on-surface">
+                              <span className="block truncate text-mini leading-snug text-on-surface">
                                 {c.preview || "(boş sohbet)"}
                               </span>
-                              <span className="block truncate font-mono text-[10px] text-on-surface-variant">
+                              <span className="block truncate font-mono text-micro text-on-surface-variant">
                                 {tool?.name ?? c.toolId} · {c.messageCount} mesaj
                               </span>
                             </span>

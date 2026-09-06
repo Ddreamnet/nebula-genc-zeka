@@ -10,6 +10,7 @@ import { Loader2, UserPlus } from "lucide-react";
 import { toast } from "sonner";
 import { createClient } from "@/lib/supabase/client";
 import { DAYS_OF_WEEK, type StudentLessonBase } from "@/lib/admin/types";
+import { validateLessonSlots, generateTempPassword } from "@/lib/lesson/validate-slots";
 
 interface CreateStudentDialogProps {
   open: boolean;
@@ -39,18 +40,18 @@ export function CreateStudentDialog({ open, onOpenChange, onStudentCreated, teac
     }
   }, [open]);
 
-  useEffect(() => {
-    if (lessonsPerWeek > lessons.length) {
-      const newLessons = [...lessons];
-      for (let i = lessons.length; i < lessonsPerWeek; i++) {
-        newLessons.push({ dayOfWeek: 1, startTime: "", endTime: "" });
-      }
-      setLessons(newLessons);
-    } else if (lessonsPerWeek < lessons.length) {
-      setLessons(lessons.slice(0, lessonsPerWeek));
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [lessonsPerWeek]);
+  /** Deriving the slot list from the count belongs in the change handler, not
+   *  in an effect reading `lessons` out of a suppressed dependency. */
+  function handleLessonsPerWeekChange(count: number) {
+    setLessonsPerWeek(count);
+    setLessons((prev) => {
+      if (count === prev.length) return prev;
+      if (count < prev.length) return prev.slice(0, count);
+      const next = [...prev];
+      while (next.length < count) next.push({ dayOfWeek: 1, startTime: "", endTime: "" });
+      return next;
+    });
+  }
 
   function updateLesson(index: number, field: keyof StudentLessonBase, value: string | number) {
     const updated = [...lessons];
@@ -65,8 +66,13 @@ export function CreateStudentDialog({ open, onOpenChange, onStudentCreated, teac
       toast.error("Lütfen tüm alanları doldurun");
       return;
     }
-    if (!lessons.every((lesson) => lesson.dayOfWeek !== undefined && lesson.startTime && lesson.endTime)) {
-      toast.error("Tüm ders programı alanlarını doldurun");
+    // Same validator the edit dialog runs — and the same one the database now
+    // enforces. Before this, only "is it empty?" was checked here, so a
+    // reversed slot (15:00-14:00) sailed through and later billed the teacher
+    // MINUS 60 minutes when the lesson was completed.
+    const slotError = validateLessonSlots(lessons);
+    if (slotError) {
+      toast.error(slotError);
       return;
     }
 
@@ -109,12 +115,7 @@ export function CreateStudentDialog({ open, onOpenChange, onStudentCreated, teac
   }
 
   function generatePassword() {
-    const chars = "ABCDEFGHJKMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789";
-    let result = "";
-    for (let i = 0; i < 8; i++) {
-      result += chars.charAt(Math.floor(Math.random() * chars.length));
-    }
-    setTempPassword(result);
+    setTempPassword(generateTempPassword());
   }
 
   return (
@@ -171,7 +172,7 @@ export function CreateStudentDialog({ open, onOpenChange, onStudentCreated, teac
 
           <div className="space-y-2">
             <Label htmlFor="lessonsPerWeek">Haftalık Ders Sayısı</Label>
-            <Select value={lessonsPerWeek.toString()} onValueChange={(value) => setLessonsPerWeek(Number(value))}>
+            <Select value={lessonsPerWeek.toString()} onValueChange={(value) => handleLessonsPerWeekChange(Number(value))}>
               <SelectTrigger>
                 <SelectValue />
               </SelectTrigger>

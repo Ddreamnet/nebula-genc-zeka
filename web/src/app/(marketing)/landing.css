@@ -120,6 +120,27 @@
 .nb-paper-plain { background-color: var(--paper); color: var(--ink); }
 .nb-paper-sunken { background-color: var(--paper-sunken); color: var(--ink); }
 
+/* Tinted paper. Same dot grid as .nb-paper, in the section's own hue, used to
+   separate two consecutive light bands that would otherwise merge.
+
+   Adjacency rule from the design system: `--tint-peach` and `--paper` are 4/1/0
+   apart per channel, so a peach band immediately followed by a paper one reads
+   as a single wall with a seam painted on it. A warm tint must be followed by a
+   cool one — which is why 04 Bülten is peach and 05 Güven is blue. Reordering
+   the sections means re-checking that pairing. */
+.nb-tint-peach {
+  background-color: var(--tint-peach);
+  background-image: radial-gradient(rgba(210, 112, 26, 0.16) 1.4px, transparent 1.4px);
+  background-size: 26px 26px;
+  color: var(--ink);
+}
+.nb-tint-blue {
+  background-color: var(--tint-blue);
+  background-image: radial-gradient(rgba(36, 55, 166, 0.15) 1.4px, transparent 1.4px);
+  background-size: 26px 26px;
+  color: var(--ink);
+}
+
 /* Space: full-bleed bands only (hero, AI panel, closing). Stars are a static
    painted layer — the twinkle lives on a separate cheap opacity layer. */
 .nb-space {
@@ -367,6 +388,29 @@
   to   { transform: translate3d(-50%, 0, 0); }
 }
 
+/* Hero decor keyframes. The plume's art is injected as raw SVG (see
+   hero-decor.ts) and names these three by string, so they cannot be renamed
+   without editing that block too. Every animated group in it carries
+   `animation-play-state: var(--nb-play, running)`, which is how the reduced-
+   motion block below stops the whole field with one property instead of
+   enumerating a few hundred inline animations. */
+
+/* Planet surfaces. Only the patch group spins, never the sphere — rotating
+   the sphere would carry its specular highlight around with it, which reads
+   as the planet tumbling rather than turning. */
+@keyframes nb-moon { to { transform: rotate(360deg); } }
+
+/* Comets crossing the plume's edge. The translate is in the decor SVG's user
+   units along the shared 30deg travel axis (±170 units, here as the 147/85
+   components), so a comet enters and leaves the frame on the same line every
+   other streak travels. */
+@keyframes nb-meteor {
+  0%   { transform: translate(147px, -85px); opacity: 0; }
+  18%  { opacity: 1; }
+  82%  { opacity: 1; }
+  100% { transform: translate(-147px, 85px); opacity: 0; }
+}
+
 .nb-float { animation: nb-float 7s cubic-bezier(0.65, 0, 0.35, 1) infinite; will-change: transform; }
 .nb-bob   { animation: nb-bob 4.2s cubic-bezier(0.65, 0, 0.35, 1) infinite; will-change: transform; }
 .nb-drift { animation: nb-drift 11s cubic-bezier(0.65, 0, 0.35, 1) infinite; will-change: transform; }
@@ -498,6 +542,9 @@
   .nb-stars--twinkle, .nb-nova__eyes, .nb-marquee__track {
     animation: none !important;
   }
+  /* The hero's plume: one property stops ~26 spinning planets, orbiting moons
+     and drifting comets at once, because every one of them reads --nb-play. */
+  .nb-hero { --nb-play: paused; }
   .nb .reveal { opacity: 1 !important; transform: none !important; transition: none !important; }
   .nb-btn__face, .nb-card--live, .nb-faq__mark { transition: none !important; }
 }
@@ -560,6 +607,143 @@
 @media (min-width: 980px) { .nb-grid--4 { grid-template-columns: repeat(4, 1fr); } }
 .nb-grid > * { min-width: 0; }
 
+/* Page scale. `zoom`, not `transform: scale()` — zoom re-runs layout at the
+   smaller size, so the block still fills the viewport's width and takes
+   proportionally less height. A transform would paint a shrunken copy of a
+   full-size box and leave a dead margin down the right and bottom.
+
+   What scales and what does not: px and vw lengths both resolve against the
+   real viewport and are then painted at --nb-scale, so they shrink. Container
+   percentages do not — 38% of the deck stays 38% of the deck. That is the
+   behaviour we want (it is exactly what a browser zoom-out does), but it is
+   also why the hero's shuttle anchor had to be re-checked at every breakpoint
+   after this landed: its max() weighs a vw floor against a %-of-stage value,
+   and those two no longer trade off at the same widths they used to.
+
+   Unsupported in a browser without `zoom` (pre-126 Firefox) means the page
+   renders at 100%, which is the old design — a safe floor, not a broken one. */
+.nb-scale { zoom: var(--nb-scale, 1); }
+
+/* Hero frame. The whole space field is positioned against this box, so its
+   padding is load-bearing geometry, not just breathing room: the shuttle's
+   anchor, the plume's clip and the crumbs all resolve against its padding
+   box. Values are measured from the design handoff — do not round them.
+
+   --nb-shift pushes the dark field right on narrow viewports so the cream
+   text column keeps its width. It is 0 above ~833px, so the authored curve is
+   untouched on desktop, and it is read by four separate decor layers, which
+   is why it lives on the frame rather than on any one of them.
+
+   min-height is what guarantees the field is taller than it is wide enough
+   for the plume to read as a cone; the section has no content tall enough to
+   hold it open on its own. */
+.nb-hero {
+  --nb-shift: max(0px, calc(300px - 36vw));
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  min-height: clamp(1000px, 74vw, 1160px);
+  padding: clamp(88px, 7.4vw, 116px) clamp(18px, 5vw, 64px) clamp(60px, 5.4vw, 84px);
+}
+
+/* The hero's two right-anchored decor layers, sized differently on purpose.
+
+   The FIELD (planets, comets, smoke bands, star specks) lives under the wake
+   clip, so anything it paints outside the plume is cut away and costs
+   nothing. The handoff sizes it 100% x 100% with `xMaxYMid meet`, which on a
+   box taller than the art's own 1440:820 is width-constrained: the art gets
+   fitted into a band across the vertical middle and letterboxed above and
+   below it. That is invisible on a desktop-shaped box and takes over
+   completely as the viewport narrows, which is what bunched every planet into
+   the centre of the frame on a phone.
+
+   Flooring the width at the art's own aspect makes `meet` height-constrained
+   instead, so the field fills the frame top to bottom and spills off to the
+   left into the clip. `max-width` then caps how far that can go: filling an
+   800px-tall frame outright means drawing the art at roughly 1:1, and at
+   phone widths that leaves two enormous planets and nothing else. 900px (in
+   the hero's own pre-zoom units) lands on ~55% scale — planets from the top
+   of the frame to the bottom, at a size that still reads as a field of them.
+   The cap stops mattering around 900px viewport, where the box is wide enough
+   that min-width wins, so the desktop composition is the handoff's own. */
+.nb-hero-art--field {
+  position: absolute;
+  top: 0;
+  right: 0;
+  /* height, NOT top+bottom. With both offsets set and the width left to the
+     aspect ratio, the browser resolves the width first (off min-width) and
+     derives the height from it — the exact inversion of what this is for. A
+     definite height makes the ratio drive the width. */
+  height: 100%;
+  width: auto;
+  aspect-ratio: 1440 / 820;
+  min-width: 100%;
+  max-width: 900px;
+  display: block;
+  pointer-events: none;
+}
+
+/* The OVERLAY is the opposite case: four comet groups drawn UNCLIPPED so they
+   straddle the plume's edge and spill onto the cream. Its anchors were chosen
+   by sweeping the design space for lanes that clear all nine planet discs and
+   the logo, paragraph and scroll-cue boxes — and those clearances are only
+   true while it sits in the box the handoff measured them in. Scaling it the
+   way the field is scaled walks the comets left until they cross the
+   paragraph, so this one keeps the handoff's geometry verbatim. */
+.nb-hero-art--overlay {
+  position: absolute;
+  left: var(--nb-shift);
+  top: 0;
+  bottom: 0;
+  width: calc(100% - var(--nb-shift));
+  height: 100%;
+  display: block;
+  pointer-events: none;
+  overflow: visible;
+}
+
+/* Bülten: the fanned deck beside the "her sayıda" list. The handoff ships
+   this as a fixed 1.06/.94 split with no media queries at all, scaling purely
+   through clamp() — which holds down to 390px in the prototype but squeezes
+   the six-item list into a column narrower than its own longest word. One
+   breakpoint, matching .nb-bento's, buys the mobile stack back without
+   touching the desktop proportions the design was drawn at. */
+.nb-bulten {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: clamp(26px, 3.6vw, 52px);
+  align-items: start;
+}
+@media (min-width: 860px) {
+  .nb-bulten { grid-template-columns: 1.06fr 0.94fr; }
+}
+
+/* The deck itself: four covers fanned from a shared bottom-centre origin. */
+.nb-deck {
+  position: relative;
+  height: clamp(250px, 29vw, 368px);
+}
+.nb-deck__cover {
+  position: absolute;
+  bottom: 0;
+  width: 38%;
+  height: auto;
+  /* --nb-tilt is set per card at the call site; the hover has to name it
+     again because a bare translateY would drop the card flat. */
+  transform: rotate(var(--nb-tilt, 0deg));
+  transform-origin: bottom center;
+  border: var(--stroke) solid var(--stroke-color);
+  border-radius: 10px;
+  box-shadow: 0 var(--lift) 0 0 rgba(21, 35, 67, 0.26);
+  transition: transform 0.2s cubic-bezier(0.2, 0.8, 0.3, 1);
+}
+@media (hover: hover) {
+  .nb-deck__cover:hover { transform: rotate(var(--nb-tilt, 0deg)) translateY(-10px); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .nb-deck__cover { transition: none !important; }
+}
+
 /* Curriculum bento: one wide hero card, then pairs. Falls back to a plain
    single column below 860px where a bento is unreadable anyway. */
 @media (min-width: 860px) {
@@ -618,9 +802,23 @@
   display: flex;
   align-items: center;
   transform-origin: left center;
-  transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  transition:
+    transform 0.25s cubic-bezier(0.4, 0, 0.2, 1),
+    opacity 0.2s ease,
+    visibility 0s;
 }
 .nb-nav-logo[data-condensed="true"] { transform: scale(0.86); }
+
+/* Hidden while the hero prints the same wordmark right below it — see
+   LandingNavbar. visibility, not just opacity, so the invisible link is also
+   out of the tab order; its 0s transition is delayed by the length of the
+   fade so the logo actually fades out instead of vanishing on frame one, and
+   the base rule above delays it by nothing so it comes straight back. */
+.nb-nav-logo[data-hidden="true"] {
+  opacity: 0;
+  visibility: hidden;
+  transition-delay: 0s, 0s, 0.2s;
+}
 
 .nb-nav-link {
   font-family: var(--font-fredoka), ui-sans-serif, system-ui, sans-serif;

@@ -86,6 +86,12 @@ export interface PlaygroundTool {
    *  - image tools send them as `input_references` on /images (image-to-image
    *    / editing); the ceiling comes from
    *    `supported_parameters.input_references.max`.
+   *  - video tools send the single attached picture as the clip's first frame
+   *    (`frame_images` — see startVideo); eligibility is
+   *    `supported_frame_images` containing "first_frame" in
+   *    GET /videos/models. Sora 2 Pro is the one live video tool that accepts
+   *    no frame image at all and stays unset. The cap is 1 by nature: a clip
+   *    has exactly one first frame.
    *
    * Several models allow far more than we expose (gpt-image-* 16, Seedream 14,
    * Gemini 3 14) — 3 is a deliberate product cap so a kid can't quietly run up
@@ -93,6 +99,23 @@ export interface PlaygroundTool {
    * Recraft V4, MAI-Image and Krea 2 accept exactly 1.
    */
   maxImageInputs?: number;
+  /**
+   * Ask the model to stream its thinking on the separate `reasoning` channel,
+   * shown in the transcript as a collapsible panel above the answer.
+   *
+   * Only set on models that reason *by default*, where exposing it is free:
+   * they already generate (and bill) those tokens whether or not anyone looks.
+   * Verified live on OpenRouter — DeepSeek R1 and GPT-5 Mini both stream
+   * `delta.reasoning`; Llama 3.3 ignores the parameter rather than erroring,
+   * so nothing breaks if it is set by mistake.
+   *
+   * Deliberately NOT set on Claude Sonnet 5: it only thinks when asked, so
+   * turning this on would buy a visible panel at the price of billed thinking
+   * tokens against a flat per-message ore price. Before adding another model,
+   * check both things the same way — that it really streams the channel, and
+   * that it was already going to think anyway.
+   */
+  reasoning?: boolean;
 }
 
 /**
@@ -103,8 +126,13 @@ export interface PlaygroundTool {
  *    flat 0.05 base cost, we don't price per-model.)
  *  - image: OpenRouter bills a flat $0.01 per input image (verified live on
  *    grok-imagine: $0.05 output + $0.01 input = $0.06) → 0.25 cevher.
+ *  - video: free. A first frame is either itemised at a rounding error
+ *    (grok-imagine-video prices `cents_per_image_input` at 0.2¢ = 0.05 cevher
+ *    against a 7-cevher clip) or folded into the per-second rate outright
+ *    (Kling charges image_to_video and text_to_video identically). Charging
+ *    for it would cost a student more in surprise than it saves us.
  */
-const IMAGE_INPUT_ORE = { text: 0.1, image: 0.25 } as const;
+const IMAGE_INPUT_ORE = { text: 0.1, image: 0.25, video: 0 } as const;
 
 /**
  * Authoritative ore price for one generation. The server charges with this;
@@ -113,7 +141,12 @@ const IMAGE_INPUT_ORE = { text: 0.1, image: 0.25 } as const;
  */
 export function generationOreCost(tool: PlaygroundTool, imageCount: number): number {
   if (imageCount <= 0) return tool.oreCost;
-  const perImage = tool.modality === "image" ? IMAGE_INPUT_ORE.image : IMAGE_INPUT_ORE.text;
+  const perImage =
+    tool.modality === "image"
+      ? IMAGE_INPUT_ORE.image
+      : tool.modality === "video"
+        ? IMAGE_INPUT_ORE.video
+        : IMAGE_INPUT_ORE.text;
   return Math.round((tool.oreCost + imageCount * perImage) * 100) / 100;
 }
 
@@ -164,6 +197,7 @@ export const CATEGORIES: PlaygroundCategory[] = [
         modality: "text",
         provider: "openai",
         providerModel: "openai/gpt-5-mini",
+        reasoning: true,
         oreCost: 0.05,
         maxImageInputs: 3,
       },
@@ -188,6 +222,7 @@ export const CATEGORIES: PlaygroundCategory[] = [
         modality: "text",
         provider: "deepseek",
         providerModel: "deepseek/deepseek-r1",
+        reasoning: true,
         oreCost: 0.05,
       },
       {
@@ -438,6 +473,7 @@ export const CATEGORIES: PlaygroundCategory[] = [
         provider: "google",
         providerModel: "google/veo-3.1-fast",
         oreCost: 10,
+        maxImageInputs: 1,
       },
       {
         id: "kling-3-std",
@@ -449,6 +485,7 @@ export const CATEGORIES: PlaygroundCategory[] = [
         provider: "kuaishou",
         providerModel: "kwaivgi/kling-v3.0-std",
         oreCost: 9,
+        maxImageInputs: 1,
       },
       {
         id: "wan-2-7",
@@ -460,6 +497,7 @@ export const CATEGORIES: PlaygroundCategory[] = [
         provider: "alibaba",
         providerModel: "alibaba/wan-2.7",
         oreCost: 10,
+        maxImageInputs: 1,
       },
       {
         id: "grok-imagine-video",
@@ -471,6 +509,7 @@ export const CATEGORIES: PlaygroundCategory[] = [
         provider: "xai",
         providerModel: "x-ai/grok-imagine-video",
         oreCost: 7,
+        maxImageInputs: 1,
       },
       {
         id: "hailuo-2-3",
@@ -484,6 +523,7 @@ export const CATEGORIES: PlaygroundCategory[] = [
         oreCost: 12,
         videoDuration: 6,
         videoResolution: "1080p",
+        maxImageInputs: 1,
       },
       {
         id: "seedance-2",
@@ -495,6 +535,7 @@ export const CATEGORIES: PlaygroundCategory[] = [
         provider: "bytedance",
         providerModel: "bytedance/seedance-2.0",
         oreCost: 15,
+        maxImageInputs: 1,
       },
       {
         id: "happyhorse",
@@ -506,6 +547,7 @@ export const CATEGORIES: PlaygroundCategory[] = [
         provider: "alibaba",
         providerModel: "alibaba/happyhorse-1.1",
         oreCost: 12,
+        maxImageInputs: 1,
       },
       {
         id: "veo-3-1-lite",
@@ -517,6 +559,7 @@ export const CATEGORIES: PlaygroundCategory[] = [
         provider: "google",
         providerModel: "google/veo-3.1-lite",
         oreCost: 5,
+        maxImageInputs: 1,
       },
       {
         id: "runway",

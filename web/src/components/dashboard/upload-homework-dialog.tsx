@@ -182,7 +182,7 @@ export function UploadHomeworkDialog({ open, onOpenChange, studentId, teacherId,
                 {files.map((file, index) => (
                   <div key={index} className="flex items-center gap-2 text-sm text-muted-foreground bg-muted/50 p-2 rounded min-w-0">
                     <span className="flex-1 truncate min-w-0">{file.name}</span>
-                    <Button type="button" variant="ghost" size="icon" className="h-6 w-6 flex-shrink-0" onClick={() => removeFile(index)} disabled={uploading}>
+                    <Button type="button" variant="ghost" size="icon-sm" aria-label={`${file.name} dosyasını kaldır`} className="shrink-0" onClick={() => removeFile(index)} disabled={uploading}>
                       <X className="h-4 w-4" />
                     </Button>
                   </div>

@@ -7,6 +7,7 @@ export function Logo({
   className,
   showText = true,
   light = false,
+  lockupTone = "white",
   disableLink = false,
   large = false,
 }: {
@@ -18,6 +19,10 @@ export function Logo({
    *  horizontal lockup doesn't have room — floating transparent panel
    *  headers read better with this solid brand mark than tokenized ink. */
   light?: boolean;
+  /** Which pre-made lockup `light` draws. The wordmark is baked into the
+   *  artwork, so it can't be re-tinted with a token: a header on paper needs
+   *  the navy-ink file or the wordmark is invisible. Ignored unless `light`. */
+  lockupTone?: "white" | "ink";
   /** Dashboard panels: the logo is a brand mark only there, not a link
    *  back out to the public marketing site. */
   disableLink?: boolean;
@@ -36,7 +41,7 @@ export function Logo({
           nothing shifts) and lands the 2x candidate at 640px — still ~4x
           oversampled at the largest size this ever draws at. */}
       <Image
-        src="/brand/nebula-lockup-white.png"
+        src={lockupTone === "ink" ? "/brand/nebula-lockup.png" : "/brand/nebula-lockup-white.png"}
         alt="Nebula Genç Zeka"
         width={288}
         height={144}
@@ -49,7 +54,11 @@ export function Logo({
         width={128}
         height={128}
         priority
-        className={cn("rounded-full ring-1 ring-white/10 sm:hidden", large ? "size-[3.75rem]" : "size-10")}
+        className={cn(
+          "rounded-full sm:hidden",
+          lockupTone === "ink" ? "ring-1 ring-on-surface/15" : "ring-1 ring-white/10",
+          large ? "size-[3.75rem]" : "size-10",
+        )}
       />
     </>
   ) : (

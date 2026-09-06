@@ -37,7 +37,7 @@ export function StudentLessonTracker({ studentId }: StudentLessonTrackerProps) {
 
     const { data } = await supabase
       .from("lesson_instances")
-      .select("*")
+      .select("id, lesson_date, start_time, end_time, status, original_date, is_manual_override")
       .eq("student_id", studentId)
       .eq("teacher_id", teacherId)
       .eq("package_cycle", currentCycle)
@@ -119,7 +119,7 @@ export function StudentLessonTracker({ studentId }: StudentLessonTrackerProps) {
         >
           {displayPosition + 1}
         </div>
-        <span className={cn("text-[10px] whitespace-nowrap", isRescheduled ? "text-amber-600 dark:text-amber-400 font-medium" : "text-muted-foreground")}>
+        <span className={cn("whitespace-nowrap text-xs tabular-nums", isRescheduled ? "font-semibold text-tertiary" : "text-muted-foreground")}>
           {format(new Date(inst.lesson_date), "dd.MM")}
         </span>
       </div>

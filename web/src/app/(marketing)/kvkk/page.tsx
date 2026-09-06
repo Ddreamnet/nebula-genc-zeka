@@ -2,10 +2,13 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { LegalPage } from "@/components/landing/legal-page";
 import { siteConfig } from "@/lib/site";
+import { canonical } from "@/lib/seo";
 
 export const metadata: Metadata = {
   title: "KVKK Aydınlatma Metni",
-  description: "Nebula Genç Zeka kişisel verilerin korunması aydınlatma metni.",
+  description:
+    "Nebula Genç Zeka KVKK aydınlatma metni: hangi kişisel verileri işlediğimiz, hangi amaçla, ne kadar sürede sakladığımız ve veli olarak haklarınız.",
+  alternates: canonical("/kvkk"),
 };
 
 export default function KvkkPage() {

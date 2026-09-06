@@ -43,9 +43,25 @@ interface ScheduleGridCellProps {
   trialLessons: TrialLesson[];
   weekStart: Date;
   studentColors: Map<string, string>;
+  /** Lets the grid hide every column but one on a phone. */
+  className?: string;
   onActualLessonClick: (lesson: ActualLesson) => void;
   onTrialLessonClick: (trial: TrialLesson) => void;
 }
+
+/**
+ * Shared by every lesson chip in this cell.
+ *
+ * `h-auto` is the important one. These are <Button>s with no `size`, so they
+ * inherited `h-8` — a hard 32px — while the content inside is two stacked
+ * lines plus padding, about 46px. The text spilled out of the coloured box and
+ * over the table rules, which is most of why this grid looked broken.
+ * `min-h-11` then keeps the chip a legal touch target.
+ */
+const CHIP_BASE = "h-auto min-h-11 flex-col justify-center leading-tight whitespace-normal";
+
+/** Neutral fallback in theme tokens, not Tailwind's stock grey. */
+const CHIP_FALLBACK = "bg-surface-dim text-on-surface-variant border-outline-variant";
 
 export function ScheduleGridCell({
   showTemplate,
@@ -56,18 +72,19 @@ export function ScheduleGridCell({
   trialLessons,
   weekStart,
   studentColors,
+  className,
   onActualLessonClick,
   onTrialLessonClick,
 }: ScheduleGridCellProps) {
   if (showTemplate) {
     const lesson = lessons.find((l) => l.day_of_week === dayIndexToDbDayOfWeek(dayIndex) && l.start_time === timeSlot);
     return (
-      <td className="border border-border p-2">
+      <td className={cn("border border-border p-2", className)}>
         {lesson && (
-          <div className={cn("w-full py-2 px-3 rounded border-2", studentColors.get(lesson.student_id) ?? "bg-gray-100 text-gray-800 border-gray-300")}>
+          <div className={cn("w-full rounded border-2 px-3 py-2", studentColors.get(lesson.student_id) ?? CHIP_FALLBACK)}>
             <div className="text-center">
-              <div className="font-medium text-xs">{lesson.note ? `${lesson.student_name} - ${lesson.note}` : lesson.student_name}</div>
-              <div className="text-[10px] mt-1 font-mono">
+              <div className="text-xs font-medium">{lesson.note ? `${lesson.student_name} - ${lesson.note}` : lesson.student_name}</div>
+              <div className="mt-1 font-mono text-xs tabular-nums">
                 {formatTime(lesson.start_time)} - {formatTime(lesson.end_time)}
               </div>
             </div>
@@ -83,7 +100,7 @@ export function ScheduleGridCell({
   const visibleLessons = slotLessons.filter((l) => !isSecondaryInBackToBack(actualLessons, dayIndex, l.id, weekStart));
 
   if (visibleLessons.length === 0 && !trialLesson) {
-    return <td className="border border-border p-2"></td>;
+    return <td className={cn("border border-border p-2", className)} />;
   }
 
   type RenderItem = { type: "b2b"; lesson: ActualLesson; group: ActualLesson[] } | { type: "single"; lesson: ActualLesson } | { type: "trial"; trial: TrialLesson };
@@ -105,8 +122,8 @@ export function ScheduleGridCell({
   const isMulti = renderItems.length > 1;
 
   return (
-    <td className="border border-border p-1">
-      <div className="flex gap-0.5 h-full">
+    <td className={cn("border border-border p-1", className)}>
+      <div className="flex h-full gap-1">
         {renderItems.map((item) => {
           if (item.type === "b2b") {
             const al = item.lesson;
@@ -116,24 +133,25 @@ export function ScheduleGridCell({
                   <Button
                     variant="outline"
                     className={cn(
-                      isMulti ? "flex-1 min-w-0 px-1 py-1" : "w-full py-2",
-                      "justify-center cursor-pointer relative",
+                      CHIP_BASE,
+                      isMulti ? "min-w-0 flex-1 px-1 py-1.5" : "w-full px-2 py-2",
+                      "relative cursor-pointer",
                       al.status === "completed" && "opacity-40",
-                      al.is_manual_override && "ring-2 ring-amber-400 ring-offset-1",
-                      studentColors.get(al.student_id) ?? "bg-gray-100 text-gray-800",
+                      al.is_manual_override && "ring-2 ring-tertiary ring-offset-1",
+                      studentColors.get(al.student_id) ?? CHIP_FALLBACK,
                     )}
                   >
                     <div className="text-center truncate">
-                      <div className={cn("font-medium flex items-center justify-center gap-1", isMulti && "text-[10px]")}>
-                        {al.is_manual_override && <Calendar className="h-3 w-3 text-amber-600 shrink-0" />}
+                      <div className="flex items-center justify-center gap-1 text-xs font-medium">
+                        {al.is_manual_override && <Calendar className="h-3 w-3 shrink-0 text-tertiary" />}
                         <span className="truncate">{al.student_name}</span>
-                        <Badge variant="secondary" className="ml-1 text-[10px] px-1 py-0">
+                        <Badge variant="secondary" className="ml-1 px-1 py-0 text-xs">
                           {item.group.length} ders
                         </Badge>
                       </div>
                       {!isMulti &&
                         item.group.map((l) => (
-                          <div key={l.id} className="text-xs mt-0.5 font-mono">
+                          <div key={l.id} className="mt-0.5 font-mono text-xs tabular-nums">
                             {formatTime(l.start_time)} - {formatTime(l.end_time)}
                           </div>
                         ))}
@@ -160,22 +178,23 @@ export function ScheduleGridCell({
                 key={al.id}
                 variant="outline"
                 className={cn(
-                  isMulti ? "flex-1 min-w-0 px-1 py-1" : "w-full py-2",
-                  "justify-center relative",
+                  CHIP_BASE,
+                  isMulti ? "min-w-0 flex-1 px-1 py-1.5" : "w-full px-2 py-2",
+                  "relative",
                   al.isGhost ? "cursor-default" : "cursor-pointer",
                   !al.isGhost && al.status === "completed" && "opacity-40",
-                  !al.isGhost && al.is_manual_override && "ring-2 ring-amber-400 ring-offset-1",
-                  studentColors.get(al.student_id) ?? "bg-gray-100 text-gray-800",
+                  !al.isGhost && al.is_manual_override && "ring-2 ring-tertiary ring-offset-1",
+                  studentColors.get(al.student_id) ?? CHIP_FALLBACK,
                 )}
                 onClick={() => !al.isGhost && onActualLessonClick(al)}
               >
-                {al.isGhost && <AlertCircle className="absolute top-1 right-1 h-3 w-3 text-amber-500" />}
-                <div className="text-center truncate">
-                  <div className={cn("font-medium flex items-center justify-center gap-1", isMulti && "text-[10px]")}>
-                    {!al.isGhost && al.is_manual_override && <Calendar className="h-3 w-3 text-amber-600 shrink-0" />}
+                {al.isGhost && <AlertCircle className="absolute right-1 top-1 h-3 w-3 text-tertiary" />}
+                <div className="w-full truncate text-center">
+                  <div className="flex items-center justify-center gap-1 text-xs font-medium">
+                    {!al.isGhost && al.is_manual_override && <Calendar className="h-3 w-3 shrink-0 text-tertiary" />}
                     <span className="truncate">{al.student_name}</span>
                   </div>
-                  <div className={cn(isMulti ? "text-[9px]" : "text-xs", "mt-0.5 font-mono")}>
+                  <div className="mt-0.5 font-mono text-xs tabular-nums">
                     {formatTime(al.start_time)} - {formatTime(al.end_time)}
                   </div>
                 </div>
@@ -189,15 +208,18 @@ export function ScheduleGridCell({
               key={tl.id}
               variant="outline"
               className={cn(
-                isMulti ? "flex-1 min-w-0 px-1 py-1" : "w-full py-2",
+                CHIP_BASE,
+                isMulti ? "min-w-0 flex-1 px-1 py-1.5" : "w-full px-2 py-2",
                 "border-2 transition-all",
-                tl.is_completed ? "bg-red-50/30 text-red-300 border-red-100 hover:bg-red-50/50 opacity-40" : "bg-red-100 text-red-800 border-red-300 hover:bg-red-200",
+                tl.is_completed
+                  ? "border-error/30 bg-error/10 text-error/60 opacity-40 hover:bg-error/15"
+                  : "border-error/60 bg-error/20 text-error hover:bg-error/30",
               )}
               onClick={() => onTrialLessonClick(tl)}
             >
               <div className="text-center w-full truncate">
-                <div className={cn("font-medium", isMulti && "text-[10px]")}>Deneme</div>
-                <div className={cn(isMulti ? "text-[9px]" : "text-xs", "mt-0.5 font-mono")}>
+                <div className="text-xs font-medium">Deneme</div>
+                <div className="mt-0.5 font-mono text-xs tabular-nums">
                   {formatTime(tl.start_time)} - {formatTime(tl.end_time)}
                 </div>
               </div>

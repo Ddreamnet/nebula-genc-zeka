@@ -39,7 +39,7 @@ const COLORS = [
 
 function ToolToggle({ pressed, onClick, title, children }: { pressed: boolean; onClick: () => void; title: string; children: React.ReactNode }) {
   return (
-    <Button type="button" variant={pressed ? "default" : "ghost"} size="sm" className="h-8 w-8 p-0" onClick={onClick} title={title} aria-label={title}>
+    <Button type="button" variant={pressed ? "default" : "ghost"} size="icon" aria-pressed={pressed} onClick={onClick} title={title} aria-label={title}>
       {children}
     </Button>
   );
@@ -125,14 +125,27 @@ export function StudentAboutDialog({ open, onOpenChange, studentId, studentName,
     const supabase = createClient();
     try {
       const htmlContent = editor.getHTML();
-      const { error } = await supabase.from("students").update({ about_text: htmlContent === "<p></p>" ? null : htmlContent }).eq("student_id", studentId);
+      // `.select()` is what turns a silent RLS refusal into a real failure.
+      // `students` had no UPDATE policy for teachers at all, so this write
+      // matched zero rows and PostgREST answered 204 with error === null —
+      // which this function read as success and reported as "kaydedildi",
+      // while the note was thrown away. The policy is fixed (migration
+      // 20260905093000); this makes the next such gap impossible to miss.
+      const { data, error } = await supabase
+        .from("students")
+        .update({ about_text: htmlContent === "<p></p>" ? null : htmlContent })
+        .eq("student_id", studentId)
+        .select("student_id");
       if (error) throw error;
+      if (!data || data.length === 0) {
+        throw new Error("Kaydedilemedi — bu öğrenci üzerinde düzenleme yetkiniz yok görünüyor.");
+      }
 
       toast.success("Bilgiler kaydedildi");
       await onSaved?.();
       onOpenChange(false);
-    } catch {
-      toast.error("Kaydetme sırasında bir hata oluştu");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Kaydetme sırasında bir hata oluştu");
     } finally {
       setSaving(false);
     }
@@ -182,7 +195,7 @@ export function StudentAboutDialog({ open, onOpenChange, studentId, studentName,
 
               <Popover>
                 <PopoverTrigger asChild>
-                  <Button variant="ghost" size="sm" className="h-8 w-8 p-0" title="Yazı rengi">
+                  <Button variant="ghost" size="icon" title="Yazı rengi" aria-label="Yazı rengi">
                     <Palette className="h-4 w-4" />
                   </Button>
                 </PopoverTrigger>
@@ -209,10 +222,10 @@ export function StudentAboutDialog({ open, onOpenChange, studentId, studentName,
 
               <Separator orientation="vertical" className="h-6 mx-1" />
 
-              <Button variant="ghost" size="sm" onClick={() => editor.chain().focus().undo().run()} disabled={!editor.can().undo()} className="h-8 w-8 p-0" title="Geri al">
+              <Button variant="ghost" size="icon" onClick={() => editor.chain().focus().undo().run()} disabled={!editor.can().undo()} title="Geri al" aria-label="Geri al">
                 <Undo className="h-4 w-4" />
               </Button>
-              <Button variant="ghost" size="sm" onClick={() => editor.chain().focus().redo().run()} disabled={!editor.can().redo()} className="h-8 w-8 p-0" title="İleri al">
+              <Button variant="ghost" size="icon" onClick={() => editor.chain().focus().redo().run()} disabled={!editor.can().redo()} title="İleri al" aria-label="İleri al">
                 <Redo className="h-4 w-4" />
               </Button>
             </div>

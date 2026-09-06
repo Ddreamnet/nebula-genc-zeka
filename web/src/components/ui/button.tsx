@@ -8,9 +8,12 @@ type Size = "md" | "lg";
 const base =
   "inline-flex items-center justify-center gap-2 rounded-full font-mono text-sm font-medium tracking-wide transition duration-200 active:scale-[0.97] disabled:opacity-50 disabled:pointer-events-none whitespace-nowrap";
 
+// `lg` was `text-[15px]` — one pixel above the base's text-sm, which is not a
+// scale step, it is a nudge. A large button should be a real step up, so it
+// takes the next size on the actual scale.
 const sizeCls: Record<Size, string> = {
   md: "px-5 py-2.5",
-  lg: "px-7 py-3.5 text-[15px]",
+  lg: "px-7 py-3.5 text-base",
 };
 
 const variantCls: Record<Variant, string> = {

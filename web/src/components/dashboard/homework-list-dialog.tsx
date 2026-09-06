@@ -22,6 +22,8 @@ import { format } from "date-fns";
 import { tr } from "date-fns/locale";
 import { createClient } from "@/lib/supabase/client";
 import { EditHomeworkDialog } from "./edit-homework-dialog";
+import { useAsyncAction } from "@/lib/use-async-action";
+import { cn } from "@/lib/cn";
 
 interface HomeworkListDialogProps {
   open: boolean;
@@ -82,7 +84,7 @@ export function HomeworkListDialog({ open, onOpenChange, studentId, teacherId, c
     const supabase = createClient();
     const { data, error } = await supabase
       .from("homework_submissions")
-      .select("*")
+      .select("id, student_id, teacher_id, title, description, file_url, file_type, file_name, created_at, uploaded_by_user_id, batch_id")
       .eq("student_id", studentId)
       .eq("teacher_id", teacherId)
       .order("created_at", { ascending: false });
@@ -213,6 +215,8 @@ export function HomeworkListDialog({ open, onOpenChange, studentId, teacherId, c
     }
   }
 
+  const [runDelete, deleting] = useAsyncAction(handleDelete);
+
   function canEdit(group: GroupedHomework) {
     return group.uploaded_by_user_id === currentUserId;
   }
@@ -244,7 +248,12 @@ export function HomeworkListDialog({ open, onOpenChange, studentId, teacherId, c
               <div className="flex flex-col gap-3 pr-1">
                 {groupedHomeworks.map((group) => {
                   const uploadedByStudent = isUploadedByStudent(group);
-                  const cardColorClass = uploadedByStudent ? "border-l-4 border-l-red-500 bg-red-50 dark:bg-red-950/20" : "border-l-4 border-l-blue-500 bg-blue-50 dark:bg-blue-950/20";
+                  // Who uploaded it, in theme tokens. The `dark:` halves this
+                  // carried were dead: .panel-theme is light-only and no .dark
+                  // class is ever set anywhere in the app.
+                  const cardColorClass = uploadedByStudent
+                    ? "border-l-4 border-l-error bg-error/5"
+                    : "border-l-4 border-l-secondary bg-secondary/5";
 
                   return (
                     <Card key={group.batch_id} className={cardColorClass}>
@@ -286,9 +295,13 @@ export function HomeworkListDialog({ open, onOpenChange, studentId, teacherId, c
                                       <AlertDialogDescription>Bu ödevi ve tüm dosyalarını silmek istediğinizden emin misiniz? Bu işlem geri alınamaz.</AlertDialogDescription>
                                     </AlertDialogHeader>
                                     <AlertDialogFooter>
-                                      <AlertDialogCancel>İptal</AlertDialogCancel>
-                                      <AlertDialogAction onClick={() => handleDelete(group.batch_id)} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
-                                        Sil
+                                      <AlertDialogCancel disabled={deleting}>İptal</AlertDialogCancel>
+                                      <AlertDialogAction
+                                        onClick={() => runDelete(group.batch_id)}
+                                        disabled={deleting}
+                                        className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                                      >
+                                        {deleting ? "Siliniyor..." : "Sil"}
                                       </AlertDialogAction>
                                     </AlertDialogFooter>
                                   </AlertDialogContent>
@@ -307,11 +320,11 @@ export function HomeworkListDialog({ open, onOpenChange, studentId, teacherId, c
                               </span>
                               <div className="flex items-center gap-1 flex-shrink-0">
                                 {isPreviewable(file.file_type) && (
-                                  <Button variant="ghost" size="sm" onClick={() => handlePreview(file.file_url, file.file_type)} aria-label="Görüntüle" className="h-8 w-8 p-0">
+                                  <Button variant="ghost" size="icon" onClick={() => handlePreview(file.file_url, file.file_type)} aria-label="Görüntüle">
                                     <Eye className="h-4 w-4" />
                                   </Button>
                                 )}
-                                <Button variant="ghost" size="sm" onClick={() => handleDownload(file.file_url, file.file_name)} aria-label="İndir" className="h-8 w-8 p-0">
+                                <Button variant="ghost" size="icon" onClick={() => handleDownload(file.file_url, file.file_name)} aria-label="İndir">
                                   <Download className="h-4 w-4" />
                                 </Button>
                               </div>
@@ -321,7 +334,10 @@ export function HomeworkListDialog({ open, onOpenChange, studentId, teacherId, c
 
                         <Badge
                           variant="outline"
-                          className={`absolute bottom-2 right-2 text-xs ${uploadedByStudent ? "text-red-700 border-red-300 dark:text-red-400 dark:border-red-800" : "text-blue-700 border-blue-300 dark:text-blue-400 dark:border-blue-800"}`}
+                          className={cn(
+                            "absolute bottom-2 right-2 text-xs",
+                            uploadedByStudent ? "border-error/40 text-error" : "border-secondary/40 text-secondary",
+                          )}
                         >
                           {uploadedByStudent ? "Öğrenci" : "Öğretmen"}
                         </Badge>
@@ -354,7 +370,11 @@ export function HomeworkListDialog({ open, onOpenChange, studentId, teacherId, c
           </button>
 
           <div className="w-full h-full flex items-center justify-center">
-            {preview?.type === "image" && <img src={preview.url} className="max-w-full max-h-full object-contain p-4" alt="Preview" />}
+            {/* blob: object URL, minted from an authenticated download of a PRIVATE
+                bucket. next/image proxies through the optimizer, which carries no
+                session and cannot see a blob from this tab either way. */}
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            {preview?.type === "image" && <img src={preview.url} className="max-h-full max-w-full object-contain p-4" alt="Ödev önizlemesi" />}
             {preview?.type === "pdf" && <iframe src={preview.url} className="w-full h-full border-0" title="PDF Preview" style={{ pointerEvents: "auto" }} />}
           </div>
         </DialogContent>

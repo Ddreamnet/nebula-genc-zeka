@@ -156,19 +156,26 @@ export function TeacherStudentTopics({ members, groupName, teacherId }: TeacherS
                 ) : (
                   <div className="space-y-2">
                     {topic.resources.map((resource) => (
-                      <div key={resource.id} className="flex items-center gap-3 p-2 bg-accent/30 rounded-md">
+                      <div key={resource.id} className="flex min-h-11 items-center gap-3 rounded-md bg-accent/30 p-2">
                         <Checkbox
                           checked={resource.is_completed ?? false}
                           onCheckedChange={() => toggleResourceCompletion(resource, resource.is_completed ?? false, topic.ownerStudentId, topic.isGlobal ?? false)}
                         />
                         {getResourceIcon(resource.resource_type)}
-                        <div className="flex-1 cursor-pointer" onClick={() => window.open(resource.resource_url, "_blank", "noopener,noreferrer")}>
-                          <p className="font-medium text-sm hover:text-primary transition-colors">{resource.title}</p>
-                          {resource.description && <p className="text-xs text-muted-foreground">{resource.description}</p>}
-                        </div>
-                        <Button size="sm" variant="ghost" onClick={() => window.open(resource.resource_url, "_blank", "noopener,noreferrer")}>
-                          <ExternalLink className="h-3 w-3" />
-                        </Button>
+                        {/* One anchor covering the title block, instead of a div
+                            with onClick plus a second button doing the same
+                            window.open. Middle-click and "open in new tab" work
+                            on this; they worked on neither of those. */}
+                        <a
+                          href={resource.resource_url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="group/res min-w-0 flex-1 no-underline"
+                        >
+                          <p className="truncate text-sm font-medium transition-colors group-hover/res:text-primary">{resource.title}</p>
+                          {resource.description && <p className="truncate text-xs text-muted-foreground">{resource.description}</p>}
+                        </a>
+                        <ExternalLink className="h-3 w-3 shrink-0 text-muted-foreground" />
                       </div>
                     ))}
                   </div>
@@ -197,7 +204,7 @@ export function TeacherStudentTopics({ members, groupName, teacherId }: TeacherS
               <Card className="w-full sm:w-auto sm:min-w-[200px]">
                 <CardContent className="p-3 space-y-2">
                   {isGroup && (
-                    <div className="flex items-center gap-1 rounded-full border border-outline-variant bg-surface-container/60 p-1 font-mono text-[10px]">
+                    <div className="flex items-center gap-1 rounded-full border border-outline-variant bg-surface-container/60 p-1 font-mono text-micro">
                       {members.map((m, idx) => (
                         <button
                           key={m.id}

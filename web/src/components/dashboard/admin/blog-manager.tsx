@@ -13,12 +13,13 @@ import { Card } from "@/components/panel-ui/card";
 import { BlogPostEditor } from "./blog-post-editor";
 import { Plus, Pencil, Trash2, Eye, ArrowLeft, Image as ImageIcon } from "lucide-react";
 
-interface BlogPost {
+/** What the list renders. The body (`content`) is loaded on demand. */
+interface BlogPostListItem {
   id: string;
   title: string;
   slug: string;
   excerpt: string | null;
-  content: string | null;
+  content?: string | null;
   cover_image_url: string | null;
   status: string;
   published_at: string | null;
@@ -49,10 +50,10 @@ function generateSlug(title: string): string {
 
 export function BlogManager({ open, onOpenChange }: BlogManagerProps) {
   const [view, setView] = useState<View>("list");
-  const [posts, setPosts] = useState<BlogPost[]>([]);
+  const [posts, setPosts] = useState<BlogPostListItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [editingPost, setEditingPost] = useState<BlogPost | null>(null);
+  const [editingPost, setEditingPost] = useState<BlogPostListItem | null>(null);
   const [title, setTitle] = useState("");
   const [slug, setSlug] = useState("");
   const [excerpt, setExcerpt] = useState("");
@@ -64,7 +65,7 @@ export function BlogManager({ open, onOpenChange }: BlogManagerProps) {
   const fetchPosts = useCallback(async () => {
     setLoading(true);
     const supabase = createClient();
-    const { data, error } = await supabase.from("blog_posts").select("*").order("created_at", { ascending: false });
+    const { data, error } = await supabase.from("blog_posts").select("id, title, slug, excerpt, cover_image_url, status, published_at, created_at, updated_at").order("created_at", { ascending: false });
     if (error) {
       toast.error("Blog yazıları yüklenemedi");
     } else {
@@ -99,15 +100,31 @@ export function BlogManager({ open, onOpenChange }: BlogManagerProps) {
     setView("edit");
   }
 
-  function startEdit(post: BlogPost) {
+  /**
+   * The body is fetched here rather than carried in the list.
+   *
+   * `content` is TipTap HTML and routinely runs to tens of kilobytes; the list
+   * query used to `select("*")`, so opening "Blog Yönetimi" downloaded every
+   * post's entire body just to render a column of titles. Only the post being
+   * edited needs it.
+   */
+  async function startEdit(post: BlogPostListItem) {
     setEditingPost(post);
     setTitle(post.title);
     setSlug(post.slug);
     setExcerpt(post.excerpt ?? "");
-    setContent(post.content ?? "");
     setCoverImageUrl(post.cover_image_url ?? "");
     setSlugManual(true);
+    setContent("");
     setView("edit");
+
+    const supabase = createClient();
+    const { data, error } = await supabase.from("blog_posts").select("content").eq("id", post.id).single();
+    if (error) {
+      toast.error("Yazı içeriği yüklenemedi");
+      return;
+    }
+    setContent(data.content ?? "");
   }
 
   function handleTitleChange(val: string) {
@@ -206,7 +223,7 @@ export function BlogManager({ open, onOpenChange }: BlogManagerProps) {
               <Button
                 variant="ghost"
                 size="icon"
-                className="h-8 w-8"
+                aria-label="Listeye dön"
                 onClick={() => {
                   setView("list");
                   resetForm();
@@ -246,19 +263,19 @@ export function BlogManager({ open, onOpenChange }: BlogManagerProps) {
                     </div>
                     <div className="flex gap-1 shrink-0">
                       {post.status === "published" && (
-                        <Button variant="ghost" size="icon" className="h-8 w-8" asChild>
+                        <Button variant="ghost" size="icon" asChild>
                           <a href={`/blog/${post.slug}`} target="_blank" rel="noopener noreferrer">
                             <Eye className="h-4 w-4" />
                           </a>
                         </Button>
                       )}
-                      <Button variant="ghost" size="icon" className="h-8 w-8" aria-label="Yazıyı düzenle" onClick={() => startEdit(post)}>
+                      <Button variant="ghost" size="icon" aria-label="Yazıyı düzenle" onClick={() => startEdit(post)}>
                         <Pencil className="h-4 w-4" />
                       </Button>
                       <Button
                         variant="ghost"
                         size="icon"
-                        className="h-8 w-8 text-destructive"
+                        className="text-destructive"
                         aria-label="Yazıyı sil"
                         onClick={() => handleDelete(post.id)}
                       >
@@ -301,7 +318,11 @@ export function BlogManager({ open, onOpenChange }: BlogManagerProps) {
             <div>
               <Label>Kapak Görseli</Label>
               <div className="flex items-center gap-3 mt-1">
-                {coverImageUrl && <img src={coverImageUrl} alt="Kapak" className="h-20 w-32 object-cover rounded-md border" />}
+                {/* A 128x80 admin thumbnail on the public blog-media bucket, which is
+                    not in next.config's remotePatterns — the optimizer would cost a
+                    round trip to save nothing at this size. */}
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                {coverImageUrl && <img src={coverImageUrl} alt="Kapak" className="h-20 w-32 rounded-md border object-cover" />}
                 <Button type="button" variant="outline" size="sm" onClick={() => coverInputRef.current?.click()}>
                   <ImageIcon className="h-4 w-4 mr-2" /> {coverImageUrl ? "Değiştir" : "Yükle"}
                 </Button>

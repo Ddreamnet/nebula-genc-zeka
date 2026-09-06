@@ -30,11 +30,11 @@ const TRUST = [
 
 export function Safety() {
   return (
-    <section id="guven" data-navtheme="light" className="nb-section nb-paper">
+    <section id="guven" data-navtheme="light" className="nb-section nb-tint-blue">
       <div className="nb-wrap">
         <div className="nb-measure" style={{ marginBottom: "clamp(34px,4.5vw,52px)" }}>
           <div className="nb-eyebrow" style={{ marginBottom: 18 }}>
-            04 — GÜVEN
+            05 — GÜVEN
           </div>
           <h2 className="nb-h2">Çocuğunuzu kime emanet ediyorsunuz?</h2>
         </div>

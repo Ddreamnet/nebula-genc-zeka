@@ -1,25 +1,26 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import Link from "next/link";
-import { LogOut, BookOpen, Wallet, Calendar, FileUser, Sparkles } from "lucide-react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { Calendar, Gamepad2, Users, Wallet } from "lucide-react";
 import { toast } from "sonner";
 import { createClient } from "@/lib/supabase/client";
 import { useAuth } from "@/contexts/auth-context";
-import { Button } from "@/components/panel-ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/panel-ui/card";
-import { Logo } from "@/components/site/logo";
-import { WelcomeBanner } from "./welcome-banner";
-import { getDayName, formatTime } from "@/lib/lesson/format";
+import { PanelShell, type PanelNavItem } from "@/components/panel-shell/panel-shell";
+import { SideDrawer } from "@/components/panel-shell/side-drawer";
+import { useHomeworkNotifications } from "@/lib/homework/use-notifications";
+import { activeSlot, longDateLabel, nextSlot, slotLabel, type SlotRef } from "@/lib/lesson/next-lesson";
 import { HomeworkNotificationBell } from "./homework-notification-bell";
 import { GlobalTopicsManager } from "./global-topics-manager";
-import { WeeklyScheduleDialog } from "./weekly-schedule-dialog";
-import { TeacherBalanceDialog } from "./teacher-balance-dialog";
 import { StudentAboutDialog } from "./student-about-dialog";
-import { HomeworkListDialog } from "./homework-list-dialog";
-import { TeacherStudentTopics } from "./teacher-student-topics";
-import type { Student, StudentLessonBase } from "@/lib/admin/types";
+import { WeeklyScheduleGrid } from "./weekly-schedule-grid";
+import { StudentRail, type RailRow } from "./teacher/student-rail";
+import { NowStrip } from "./teacher/now-strip";
+import { TopicsCard } from "./teacher/topics-card";
+import { HomeworkDrawer } from "./teacher/homework-drawer";
+import { BalanceDrawer } from "./teacher/balance-drawer";
+import type { Student } from "@/lib/admin/types";
 
+/** Bir liste satırı: tek öğrenci ya da bir grup (aynı saatte ders alan 2 kişi). */
 interface Row {
   key: string;
   groupId: string | null;
@@ -27,132 +28,179 @@ interface Row {
   members: Student[];
 }
 
-function getLessonStatus(dayOfWeek: number, startTime: string): "past" | "upcoming" | "not-this-week" {
-  const now = new Date();
-  const currentDay = now.getDay();
-  const currentTime = now.getHours() * 60 + now.getMinutes();
-  const mondayBasedCurrentDay = currentDay === 0 ? 6 : currentDay - 1;
-  const mondayBasedLessonDay = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
-
-  const startOfWeek = new Date(now);
-  startOfWeek.setDate(now.getDate() - mondayBasedCurrentDay);
-  startOfWeek.setHours(0, 0, 0, 0);
-  const endOfWeek = new Date(startOfWeek);
-  endOfWeek.setDate(startOfWeek.getDate() + 6);
-  endOfWeek.setHours(23, 59, 59, 999);
-
-  const lessonDate = new Date(startOfWeek);
-  lessonDate.setDate(startOfWeek.getDate() + mondayBasedLessonDay);
-  if (lessonDate < startOfWeek || lessonDate > endOfWeek) return "not-this-week";
-
-  const [hours, minutes] = startTime.split(":").map(Number);
-  const lessonTime = hours * 60 + minutes;
-
-  if (mondayBasedLessonDay < mondayBasedCurrentDay || (mondayBasedLessonDay === mondayBasedCurrentDay && lessonTime < currentTime)) return "past";
-  return "upcoming";
+/** Kim seçili olursa olsun, satırın "sıradaki ders"i grubun tüm slotlarıdır. */
+function rowSlots(row: Row): SlotRef[] {
+  return row.members.flatMap((m) => m.lessons);
 }
 
-function getNextLessonTime(lessons: StudentLessonBase[]): number {
-  if (lessons.length === 0) return Number.MAX_SAFE_INTEGER;
-  const now = new Date();
-  const currentDay = now.getDay();
-  const currentTime = now.getHours() * 60 + now.getMinutes();
-  let earliest = Number.MAX_SAFE_INTEGER;
-  for (const lesson of lessons) {
-    const [hours, minutes] = lesson.startTime.split(":").map(Number);
-    const lessonTime = hours * 60 + minutes;
-    let daysUntil = (lesson.dayOfWeek - currentDay + 7) % 7;
-    if (daysUntil === 0 && lessonTime < currentTime) daysUntil = 7;
-    const timeUntil = daysUntil * 24 * 60 + lessonTime;
-    if (timeUntil < earliest) earliest = timeUntil;
-  }
-  return earliest;
+function initialsOf(name: string): string {
+  return (
+    name
+      .split(/\s+/)
+      .filter(Boolean)
+      .slice(0, 2)
+      .map((part) => part[0]?.toLocaleUpperCase("tr-TR") ?? "")
+      .join("") || "NG"
+  );
 }
+
+/** Yan panel yuvası — üçü aynı yeri paylaşır, ikisi aynı anda açılamaz. */
+type Drawer = "homework" | "balance" | "schedule" | null;
 
 export function TeacherDashboard({ userId }: { userId: string }) {
   const { profile, signOut } = useAuth();
+
   const [students, setStudents] = useState<Student[]>([]);
   const [groupNameById, setGroupNameById] = useState<Map<string, string>>(new Map());
-  const [selectedRow, setSelectedRow] = useState<Row | null>(null);
+  const [balanceMinutes, setBalanceMinutes] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   const [signingOut, setSigningOut] = useState(false);
-  const [showGlobalTopics, setShowGlobalTopics] = useState(false);
-  const [showWeeklySchedule, setShowWeeklySchedule] = useState(false);
-  const [showBalance, setShowBalance] = useState(false);
-  const [showStudentAbout, setShowStudentAbout] = useState(false);
-  const [showHomeworkForStudent, setShowHomeworkForStudent] = useState<Student | null>(null);
-  const [studentAboutData, setStudentAboutData] = useState<{ studentId: string; studentName: string; aboutText: string | null } | null>(null);
 
+  // Yalnızca ANAHTAR state'te tutulur; satırın kendisi `students`'tan
+  // türetilir. Row nesnesi tutulsaydı bir refetch'ten sonra detay kolonu
+  // refetch'ten ÖNCE alınmış anlık görüntüyü render etmeye devam ederdi.
+  const [selectedKey, setSelectedKey] = useState<string | null>(null);
+  const [query, setQuery] = useState("");
+  const [drawer, setDrawer] = useState<Drawer>(null);
+  const [showLibrary, setShowLibrary] = useState(false);
+  const [about, setAbout] = useState<{ studentId: string; studentName: string; aboutText: string | null } | null>(null);
+
+  // Saat panelin bir girdisidir: "şu an derste", kalan dakika ve BUGÜN/BU
+  // HAFTA ayrımı bundan türer. 30 saniyede bir tazelenir — dakika göstergesi
+  // için yeterli, saniyede bir yeniden render etmek için bir sebep yok.
+  const [now, setNow] = useState(() => new Date());
   useEffect(() => {
-    fetchStudents();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [userId]);
+    const timer = setInterval(() => setNow(new Date()), 30_000);
+    return () => clearInterval(timer);
+  }, []);
 
-  async function fetchStudents() {
+  const { notifications, unreadCount, unreadByStudent, markAllAsRead } = useHomeworkNotifications(userId);
+
+  const fetchStudents = useCallback(async () => {
     const supabase = createClient();
     try {
-      const [studentsRes, lessonsRes, groupsRes] = await Promise.all([
+      const [studentsRes, lessonsRes, groupsRes, balanceRes] = await Promise.all([
         supabase
           .from("students")
           .select("id, student_id, is_archived, about_text, group_id, profiles!students_student_id_fkey(full_name, email)")
           .eq("teacher_id", userId)
           .eq("is_archived", false),
-        supabase.from("student_lessons").select("*").eq("teacher_id", userId),
+        supabase.from("student_lessons").select("id, student_id, day_of_week, start_time, end_time").eq("teacher_id", userId),
         supabase.from("groups").select("id, name").eq("teacher_id", userId),
+        supabase.from("teacher_balance").select("total_minutes").eq("teacher_id", userId).maybeSingle(),
       ]);
-      const { data: studentsData, error: studentsError } = studentsRes;
-      if (studentsError) throw studentsError;
-      const { data: lessonsData, error: lessonsError } = lessonsRes;
-      if (lessonsError) throw lessonsError;
-      const { data: groupsData, error: groupsError } = groupsRes;
-      if (groupsError) throw groupsError;
+      if (studentsRes.error) throw studentsRes.error;
+      if (lessonsRes.error) throw lessonsRes.error;
+      if (groupsRes.error) throw groupsRes.error;
 
-      const withLessons: Student[] = (studentsData ?? []).map((student) => ({
-        ...student,
-        about_text: student.about_text ?? null,
-        group_id: student.group_id ?? null,
-        lessons: (lessonsData ?? [])
-          .filter((l) => l.student_id === student.student_id)
-          .map((l) => ({ id: l.id, dayOfWeek: l.day_of_week, startTime: l.start_time, endTime: l.end_time })),
-      }));
+      const lessonsByStudent = new Map<string, Student["lessons"]>();
+      for (const lesson of lessonsRes.data ?? []) {
+        const list = lessonsByStudent.get(lesson.student_id) ?? [];
+        list.push({ id: lesson.id, dayOfWeek: lesson.day_of_week, startTime: lesson.start_time, endTime: lesson.end_time });
+        lessonsByStudent.set(lesson.student_id, list);
+      }
 
-      withLessons.sort((a, b) => getNextLessonTime(a.lessons) - getNextLessonTime(b.lessons));
-      setStudents(withLessons);
-      setGroupNameById(new Map((groupsData ?? []).map((g) => [g.id, g.name])));
+      setStudents(
+        (studentsRes.data ?? []).map((student) => ({
+          ...student,
+          about_text: student.about_text ?? null,
+          group_id: student.group_id ?? null,
+          lessons: lessonsByStudent.get(student.student_id) ?? [],
+        })),
+      );
+      setGroupNameById(new Map((groupsRes.data ?? []).map((g) => [g.id, g.name])));
+      setBalanceMinutes(balanceRes.data?.total_minutes ?? 0);
     } catch {
       toast.error("Öğrenciler yüklenemedi");
     } finally {
       setLoading(false);
     }
-  }
+  }, [userId]);
 
-  const rows: Row[] = (() => {
+  useEffect(() => {
+    fetchStudents();
+  }, [fetchStudents]);
+
+  /** Gruplar tek satıra katlanır, sonra hepsi SIRADAKİ DERSE göre sıralanır. */
+  const rows: Row[] = useMemo(() => {
     const byGroup = new Map<string, Student[]>();
-    const soloRows: Row[] = [];
-    for (const s of students) {
-      if (s.group_id) {
-        const list = byGroup.get(s.group_id) ?? [];
-        list.push(s);
-        byGroup.set(s.group_id, list);
+    const solo: Row[] = [];
+    for (const student of students) {
+      if (student.group_id) {
+        const list = byGroup.get(student.group_id) ?? [];
+        list.push(student);
+        byGroup.set(student.group_id, list);
       } else {
-        soloRows.push({ key: s.id, groupId: null, groupName: null, members: [s] });
+        solo.push({ key: student.id, groupId: null, groupName: null, members: [student] });
       }
     }
-    const groupRows: Row[] = [...byGroup.entries()].map(([groupId, members]) => ({
+    const grouped: Row[] = [...byGroup.entries()].map(([groupId, members]) => ({
       key: groupId,
       groupId,
       groupName: groupNameById.get(groupId) ?? "Grup",
       members,
     }));
-    return [...soloRows, ...groupRows].sort(
-      (a, b) => getNextLessonTime(a.members.flatMap((m) => m.lessons)) - getNextLessonTime(b.members.flatMap((m) => m.lessons)),
-    );
-  })();
+    return [...solo, ...grouped].sort((a, b) => {
+      const aNext = nextSlot(rowSlots(a), now);
+      const bNext = nextSlot(rowSlots(b), now);
+      // Ders saati tanımlanmamış satırlar listenin sonunda kalır — orada
+      // olmaları bir hata değil, henüz program girilmemiş demek.
+      return (aNext?.minutesUntil ?? Number.MAX_SAFE_INTEGER) - (bNext?.minutesUntil ?? Number.MAX_SAFE_INTEGER);
+    });
+  }, [students, groupNameById, now]);
 
-  async function handleSignOut() {
-    setSigningOut(true);
-    await signOut();
-  }
+  const railRows: RailRow[] = useMemo(() => {
+    const needle = query.trim().toLocaleLowerCase("tr-TR");
+    return rows
+      .map((row) => {
+        const slots = rowSlots(row);
+        const live = activeSlot(slots, now);
+        const next = nextSlot(slots, now);
+        const name = row.groupName ?? row.members[0].profiles.full_name;
+        const unread = row.members.reduce((sum, m) => sum + (unreadByStudent.get(m.student_id) ?? 0), 0);
+        return {
+          key: row.key,
+          name,
+          when: live ? "ŞİMDİ" : next ? slotLabel(next.slot, now) : "—",
+          // "Bugün": bir sonraki başlangıç bugünün içinde kalıyor. Gün
+          // numarasını karşılaştırmak yetmez — Salı 18:00'de bakan biri için
+          // "Salı 09:00" gelecek haftadır.
+          isToday: !!live || (!!next && next.minutesUntil < minutesUntilEndOfDay(now)),
+          isActive: !!live,
+          unread,
+        } satisfies RailRow;
+      })
+      .filter((row) => !needle || row.name.toLocaleLowerCase("tr-TR").includes(needle));
+  }, [rows, now, query, unreadByStudent]);
+
+  const selected = rows.find((row) => row.key === selectedKey) ?? null;
+
+  // Seçili satır kaybolursa (arşivlendi, gruptan çıktı) seçim düşer, yoksa
+  // detay kolonu var olmayan bir öğrenciyi göstermeye çalışır.
+  useEffect(() => {
+    if (selectedKey && !rows.some((row) => row.key === selectedKey)) setSelectedKey(null);
+  }, [rows, selectedKey]);
+
+  const nav: PanelNavItem[] = [
+    { key: "students", label: "Öğrenciler", icon: Users, tone: "blue", active: drawer === null, onClick: () => setDrawer(null) },
+    {
+      key: "schedule",
+      label: "Haftalık program",
+      icon: Calendar,
+      tone: "mint",
+      active: drawer === "schedule",
+      onClick: () => setDrawer(drawer === "schedule" ? null : "schedule"),
+    },
+    {
+      key: "balance",
+      label: "Bakiye",
+      icon: Wallet,
+      tone: "peach",
+      active: drawer === "balance",
+      onClick: () => setDrawer(drawer === "balance" ? null : "balance"),
+    },
+    { key: "playground", label: "Playground", icon: Gamepad2, tone: "violet", href: "/playground" },
+  ];
 
   if (loading) {
     return (
@@ -162,173 +210,151 @@ export function TeacherDashboard({ userId }: { userId: string }) {
     );
   }
 
+  const teacherName = profile?.full_name ?? "";
+  const lessonsToday = rows.filter((row) => {
+    const next = nextSlot(rowSlots(row), now);
+    return !!activeSlot(rowSlots(row), now) || (!!next && next.minutesUntil < minutesUntilEndOfDay(now));
+  }).length;
+
   return (
-    <div className="min-h-dvh">
-      <header className="sticky top-0 z-20">
-        <div className="mx-auto flex h-16 w-full max-w-6xl items-center justify-between gap-3 pl-4 pr-2 sm:grid sm:h-20 sm:grid-cols-[1fr_auto_1fr] sm:pr-4">
-          <Logo light disableLink large />
-          <WelcomeBanner name={profile?.full_name ?? ""} variant="header" />
-          <div className="flex items-center justify-end gap-2">
-            <HomeworkNotificationBell
-              userId={userId}
-              onNotificationClick={(studentId) => {
-                const student = students.find((s) => s.student_id === studentId);
-                if (student) setShowHomeworkForStudent(student);
-              }}
+    <PanelShell
+      greeting={`İyi dersler${teacherName ? `, ${teacherName.split(" ")[0]}` : ""}`}
+      subline={`${longDateLabel(now)} · BUGÜN ${lessonsToday} DERS`}
+      nav={nav}
+      initials={initialsOf(teacherName)}
+      unreadCount={unreadCount}
+      onSignOut={() => {
+        setSigningOut(true);
+        signOut();
+      }}
+      signingOut={signingOut}
+      chip={
+        balanceMinutes !== null ? (
+          <span className="pn-chip pn-chip--mint" title="İşlenen toplam ders süresi">
+            {balanceMinutes}
+            <span className="font-sans text-[9.5px] tracking-wide text-[color:var(--pn-mint-ink-strong)]">DK</span>
+          </span>
+        ) : null
+      }
+      bell={
+        <HomeworkNotificationBell
+          notifications={notifications}
+          unreadCount={unreadCount}
+          onMarkAllRead={markAllAsRead}
+          variant="bar"
+          onNotificationClick={(studentId) => {
+            const row = rows.find((r) => r.members.some((m) => m.student_id === studentId));
+            if (!row) return;
+            setSelectedKey(row.key);
+            setDrawer("homework");
+          }}
+        />
+      }
+    >
+      <div className="grid min-h-0 flex-1 grid-cols-1 gap-3 lg:grid-cols-[195px_1fr] lg:gap-4">
+        <StudentRail
+          rows={railRows}
+          total={rows.length}
+          selectedKey={selectedKey}
+          onSelect={(key) => setSelectedKey(key)}
+          query={query}
+          onQueryChange={setQuery}
+        />
+
+        <div className="flex min-h-0 min-w-0 flex-col gap-3">
+          {selected && (
+            <NowStrip
+              studentId={selected.members[0].student_id}
+              studentName={selected.groupName ?? selected.members[0].profiles.full_name}
+              teacherId={userId}
+              slots={rowSlots(selected)}
+              now={now}
+              homeworkOpen={drawer === "homework"}
+              onToggleHomework={() => setDrawer(drawer === "homework" ? null : "homework")}
+              onOpenAbout={() =>
+                setAbout({
+                  studentId: selected.members[0].student_id,
+                  studentName: selected.members[0].profiles.full_name,
+                  aboutText: selected.members[0].about_text,
+                })
+              }
             />
-            <button type="button" className="pn-btn pn-btn--sm pn-btn--green" onClick={() => setShowGlobalTopics(true)}>
-              <BookOpen className="h-4 w-4" />
-              <span className="hidden sm:inline">Konular</span>
-            </button>
-            <Link href="/playground" className="pn-btn pn-btn--sm pn-btn--orange">
-              <Sparkles className="h-4 w-4" />
-              <span className="hidden sm:inline">Playground</span>
-            </Link>
-            <button type="button" className="pn-btn pn-btn--sm pn-btn--red" disabled={signingOut} onClick={handleSignOut}>
-              <LogOut className="h-4 w-4" />
-              <span className="hidden sm:inline">{signingOut ? "Çıkış..." : "Çıkış"}</span>
-            </button>
-          </div>
-        </div>
-      </header>
-
-      <WelcomeBanner name={profile?.full_name ?? ""} variant="banner" />
-      <div className="mx-auto grid w-full max-w-6xl grid-cols-1 gap-6 px-4 pt-4 pb-6 lg:grid-cols-[320px_1fr]">
-        <Card>
-          <CardHeader>
-            <div className="flex justify-between items-center">
-              <div>
-                <CardTitle>Öğrencilerim</CardTitle>
-                <CardDescription>{students.length} öğrenci kayıtlı</CardDescription>
-              </div>
-              <div className="flex flex-row sm:flex-col items-end gap-1.5 sm:gap-2">
-                <Button onClick={() => setShowBalance(true)} variant="outline" size="sm" className="text-xs px-2">
-                  <Wallet className="h-4 w-4" />
-                  <span className="ml-1 hidden sm:inline">Bakiye</span>
-                </Button>
-                <Button onClick={() => setShowWeeklySchedule(true)} variant="outline" size="sm" className="text-xs px-2">
-                  <Calendar className="h-4 w-4" />
-                  <span className="ml-1 hidden sm:inline">Derslerim</span>
-                </Button>
-              </div>
-            </div>
-          </CardHeader>
-          <CardContent className="space-y-2">
-            {rows.length === 0 ? (
-              <p className="text-sm text-muted-foreground text-center py-4">Henüz öğrenci yok.</p>
-            ) : (
-              rows.map((row) => {
-                const displayLessons = row.members[0]?.lessons ?? [];
-                return (
-                  <Card
-                    key={row.key}
-                    className={`cursor-pointer transition-colors hover:bg-accent ${selectedRow?.key === row.key ? "ring-2 ring-primary" : ""}`}
-                    onClick={() => setSelectedRow(row)}
-                  >
-                    <CardContent className="p-3">
-                      <div className="flex justify-between items-start">
-                        <div className="flex-1">
-                          <div className="flex items-center justify-between">
-                            <h4 className="font-medium">{row.groupName ?? row.members[0].profiles.full_name}</h4>
-                            <div className="flex items-center gap-0.5">
-                              {row.members.map((member) => (
-                                <Button
-                                  key={member.id}
-                                  variant="ghost"
-                                  size="sm"
-                                  className="h-7 w-7 p-0"
-                                  aria-label={`${member.profiles.full_name} hakkında`}
-                                  title={row.groupName ? member.profiles.full_name : undefined}
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    setStudentAboutData({ studentId: member.student_id, studentName: member.profiles.full_name, aboutText: member.about_text });
-                                    setShowStudentAbout(true);
-                                  }}
-                                >
-                                  <FileUser className="h-4 w-4 text-muted-foreground" />
-                                </Button>
-                              ))}
-                            </div>
-                          </div>
-                          <p className="text-sm text-muted-foreground">
-                            {row.groupName ? row.members.map((m) => m.profiles.full_name).join(" & ") : row.members[0].profiles.email}
-                          </p>
-                          {displayLessons.length > 0 && (
-                            <div className="mt-1 space-y-1">
-                              {displayLessons.map((lesson, index) => {
-                                const status = getLessonStatus(lesson.dayOfWeek, lesson.startTime);
-                                return (
-                                  <div key={index} className="flex items-center gap-1 text-xs">
-                                    <span
-                                      className={
-                                        status === "past"
-                                          ? "text-[10px] text-red-600 line-through"
-                                          : status === "upcoming"
-                                            ? "text-sm text-green-600 font-medium"
-                                            : "text-xs text-muted-foreground"
-                                      }
-                                    >
-                                      {getDayName(lesson.dayOfWeek)} {formatTime(lesson.startTime)}-{formatTime(lesson.endTime)}
-                                    </span>
-                                  </div>
-                                );
-                              })}
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                );
-              })
-            )}
-          </CardContent>
-        </Card>
-
-        <div>
-          {selectedRow ? (
-            <TeacherStudentTopics members={selectedRow.members} groupName={selectedRow.groupName ?? undefined} teacherId={userId} />
-          ) : (
-            <Card className="h-96 flex items-center justify-center">
-              <div className="text-center">
-                <BookOpen className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-                <h3 className="text-lg font-medium mb-2">Bir Öğrenci Seç</h3>
-                <p className="text-muted-foreground">Konuları görüntülemek ve yönetmek için listeden bir öğrenci seçin</p>
-              </div>
-            </Card>
           )}
+
+          {/* Konular kartı ve yan panel AYNI flex satırının iki çocuğu:
+              yükseklikleri bu yüzden yapısal olarak eşit ve panel kartı
+              gerçekten sıkıştırıyor. Panel bir overlay olsaydı "aynı
+              yükseklik" şartı ilk içerik değişiminde kaybolurdu.
+              Üç panel de (ödevler, bakiye, program) AYNI yuvayı paylaşır;
+              ikisi aynı anda açılamaz, çünkü `drawer` tek bir değerdir. */}
+          <div className="flex min-h-0 flex-1 items-stretch gap-3">
+            {drawer !== "schedule" &&
+              (selected ? (
+                <TopicsCard
+                  members={selected.members}
+                  groupName={selected.groupName ?? undefined}
+                  onOpenLibrary={() => setShowLibrary(true)}
+                />
+              ) : (
+                // Dolu bir kart değil, bilinçli olarak BOŞ bir yuva: kesikli
+                // çerçeve "seçim bekliyor" der, "yüklenemedi" demez.
+                <div className="flex min-h-[220px] flex-1 flex-col items-center justify-center gap-1.5 rounded-[16px] border-[1.5px] border-dashed border-[color:rgba(36,55,166,.32)] px-6 text-center">
+                  <p className="font-display text-[15px] font-semibold text-[color:var(--pn-blue-ink)]">Bir öğrenci seç</p>
+                  <p className="max-w-[240px] text-[12px] text-on-surface-variant">Dersleri ve konuları burada görünür.</p>
+                </div>
+              ))}
+
+            {selected && (
+              <HomeworkDrawer
+                open={drawer === "homework"}
+                onClose={() => setDrawer(null)}
+                members={selected.members}
+                teacherId={userId}
+              />
+            )}
+
+            <BalanceDrawer open={drawer === "balance"} onClose={() => setDrawer(null)} teacherId={userId} />
+
+            {/* Program tam genişlik ister: haftalık ızgara 376px'e sığmaz.
+                `wide` konular kartının yerine geçmesini sağlar. */}
+            {drawer === "schedule" && (
+              <SideDrawer
+                open
+                wide
+                onClose={() => setDrawer(null)}
+                tone="mint"
+                title="Haftalık program"
+                subtitle="Dersleri buradan işaretleyebilirsin"
+              >
+                <WeeklyScheduleGrid teacherId={userId} />
+              </SideDrawer>
+            )}
+          </div>
         </div>
       </div>
 
-      <GlobalTopicsManager open={showGlobalTopics} onOpenChange={setShowGlobalTopics} isAdmin={false} />
-      <WeeklyScheduleDialog open={showWeeklySchedule} onOpenChange={setShowWeeklySchedule} teacherId={userId} />
-      <TeacherBalanceDialog open={showBalance} onOpenChange={setShowBalance} teacherId={userId} />
+      <GlobalTopicsManager open={showLibrary} onOpenChange={setShowLibrary} isAdmin={false} />
 
-      {studentAboutData && (
+      {about && (
         <StudentAboutDialog
-          key={studentAboutData.studentId}
-          open={showStudentAbout}
-          onOpenChange={setShowStudentAbout}
-          studentId={studentAboutData.studentId}
-          studentName={studentAboutData.studentName}
-          aboutText={studentAboutData.aboutText}
+          key={about.studentId}
+          open
+          onOpenChange={(open) => !open && setAbout(null)}
+          studentId={about.studentId}
+          studentName={about.studentName}
+          aboutText={about.aboutText}
           isReadOnly={false}
           onSaved={async () => {
             await fetchStudents();
-            setStudentAboutData(null);
+            setAbout(null);
           }}
         />
       )}
-
-      {showHomeworkForStudent && (
-        <HomeworkListDialog
-          open={!!showHomeworkForStudent}
-          onOpenChange={(open) => !open && setShowHomeworkForStudent(null)}
-          studentId={showHomeworkForStudent.student_id}
-          teacherId={userId}
-          currentUserId={userId}
-        />
-      )}
-    </div>
+    </PanelShell>
   );
+}
+
+/** Günün sonuna kalan dakika — "bugün mü" sorusunun tek eşiği. */
+function minutesUntilEndOfDay(now: Date): number {
+  return (24 - now.getHours()) * 60 - now.getMinutes();
 }

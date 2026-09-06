@@ -27,6 +27,7 @@ import { checkTeacherConflicts, type ConflictInfo } from "./conflict-detection";
 import { checkNonTemplateWeekday } from "./date-calculation";
 import { clearWeekCache } from "./week-cache";
 import type { StudentLessonBase } from "@/lib/admin/types";
+import { validateLessonSlots } from "./validate-slots";
 
 interface UseEditStudentDialogProps {
   open: boolean;
@@ -37,6 +38,23 @@ interface UseEditStudentDialogProps {
   currentLessons: StudentLessonBase[];
   /** true when opened from the admin panel (acting on behalf of a teacher) */
   asAdmin: boolean;
+}
+
+/**
+ * Grows or trims a slot list to `count`, preserving what is already typed.
+ *
+ * This lived in an effect keyed on `lessonsPerWeek` that read `lessons` from a
+ * stale closure (the dependency was suppressed). Changing the count twice
+ * quickly could therefore rebuild the list from an out-of-date snapshot and
+ * drop a slot the user had just filled in. It is a pure function of
+ * (list, count), so it belongs in the change handler.
+ */
+function resizeSlots(current: StudentLessonBase[], count: number): StudentLessonBase[] {
+  if (count === current.length) return current;
+  if (count < current.length) return current.slice(0, count);
+  const next = [...current];
+  while (next.length < count) next.push({ dayOfWeek: 1, startTime: "", endTime: "", note: "" });
+  return next;
 }
 
 export function useEditStudentDialog({
@@ -84,17 +102,6 @@ export function useEditStudentDialog({
         : syncStudentSchedule(sId, slots, perWeek),
   };
 
-  useEffect(() => {
-    if (open) {
-      setName(currentName);
-      setLessonsPerWeek(currentLessons.length || 1);
-      setLessons(currentLessons.length > 0 ? currentLessons : [{ dayOfWeek: 1, startTime: "", endTime: "", note: "" }]);
-      setConflicts([]);
-      initializeDialog();
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, currentName, currentLessons]);
-
   async function initializeDialog() {
     try {
       const { data, error } = await supabase
@@ -120,7 +127,7 @@ export function useEditStudentDialog({
           .maybeSingle(),
         supabase
           .from("lesson_instances")
-          .select("*")
+          .select("id, student_id, teacher_id, lesson_number, lesson_date, start_time, end_time, status, original_date, is_manual_override, package_cycle, group_id")
           .eq("student_id", sUserId)
           .eq("teacher_id", tUserId)
           .in("status", ["planned", "completed"])
@@ -144,6 +151,21 @@ export function useEditStudentDialog({
     }
   }
 
+  // Placed after initializeDialog rather than before it: the call hoisted
+  // fine, but react-hooks/immutability cannot verify a closure referenced
+  // ahead of its declaration. Pure reordering, same behaviour.
+  useEffect(() => {
+    if (open) {
+      setName(currentName);
+      setLessonsPerWeek(currentLessons.length || 1);
+      setLessons(currentLessons.length > 0 ? currentLessons : [{ dayOfWeek: 1, startTime: "", endTime: "", note: "" }]);
+      setConflicts([]);
+      initializeDialog();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, currentName, currentLessons]);
+
+
   async function fetchInstances() {
     if (!studentUserId || !teacherUserId) return;
     try {
@@ -156,7 +178,7 @@ export function useEditStudentDialog({
           .maybeSingle(),
         supabase
           .from("lesson_instances")
-          .select("*")
+          .select("id, student_id, teacher_id, lesson_number, lesson_date, start_time, end_time, status, original_date, is_manual_override, package_cycle, group_id")
           .eq("student_id", studentUserId)
           .eq("teacher_id", teacherUserId)
           .in("status", ["planned", "completed"])
@@ -179,19 +201,6 @@ export function useEditStudentDialog({
       console.error("Failed to fetch lesson instances:", error);
     }
   }
-
-  useEffect(() => {
-    if (lessonsPerWeek > lessons.length) {
-      const newLessons = [...lessons];
-      for (let i = lessons.length; i < lessonsPerWeek; i++) {
-        newLessons.push({ dayOfWeek: 1, startTime: "", endTime: "", note: "" });
-      }
-      setLessons(newLessons);
-    } else if (lessonsPerWeek < lessons.length) {
-      setLessons(lessons.slice(0, lessonsPerWeek));
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [lessonsPerWeek]);
 
   function updateLesson(index: number, field: keyof StudentLessonBase, value: string | number) {
     const updated = [...lessons];
@@ -465,8 +474,9 @@ export function useEditStudentDialog({
       toast.error("Öğrenci adı gereklidir");
       return;
     }
-    if (!lessons.every((lesson) => lesson.dayOfWeek !== undefined && lesson.startTime && lesson.endTime)) {
-      toast.error("Tüm ders programı alanlarını doldurun");
+    const slotError = validateLessonSlots(lessons);
+    if (slotError) {
+      toast.error(slotError);
       return;
     }
 
@@ -502,19 +512,31 @@ export function useEditStudentDialog({
         // ran sequentially with no error check at all, so a failed note
         // update on any slot was silently swallowed while the toast still
         // claimed success.
-        const noteResults = await Promise.all(
+        //
+        // `.select("id")` is load-bearing, not decoration: without a returning
+        // clause PostgREST answers a blocked-by-RLS update with 204 and NO
+        // error, which this code would read as success. With it, a write that
+        // matched nothing comes back as an empty array and is caught below.
+        const slotResults = await Promise.all(
           lessons.map((lesson) =>
             supabase
               .from("student_lessons")
-              .update({ note: lesson.note || null })
+              .update({
+                note: lesson.note || null,
+                meeting_url: lesson.meetingUrl?.trim() || null,
+              })
               .eq("student_id", studentUserId)
               .eq("teacher_id", teacherUserId)
               .eq("day_of_week", lesson.dayOfWeek)
-              .eq("start_time", lesson.startTime),
+              .eq("start_time", lesson.startTime)
+              .select("id"),
           ),
         );
-        const failedNote = noteResults.find((r) => r.error);
-        if (failedNote?.error) throw failedNote.error;
+        const failedSlot = slotResults.find((r) => r.error);
+        if (failedSlot?.error) throw failedSlot.error;
+        if (slotResults.some((r) => (r.data?.length ?? 0) === 0)) {
+          throw new Error("Ders bilgileri kaydedilemedi (yetki veya eşleşen kayıt yok)");
+        }
       }
 
       toast.success("Öğrenci ayarları güncellendi");
@@ -900,6 +922,7 @@ export function useEditStudentDialog({
       return;
     }
     setLessonsPerWeek(newCount);
+    setLessons((prev) => resizeSlots(prev, newCount));
   }
 
   return {

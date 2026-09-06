@@ -1,201 +1,191 @@
-import { Nova } from "@/components/cast/nova";
-import { Star, Planet, Rocket, PromptBubble } from "@/components/cast/props";
-import { ContactCtas } from "./contact-ctas";
-import { PaperButton } from "@/components/ui/paper-button";
+import Image from "next/image";
+import { HERO_DECOR_HTML } from "./hero-decor";
 
-/** What a student walks out with. Doubles as the hero's proof strip — the
- *  "100+ araç" claim means nothing on its own, but the list of things those
- *  tools produce is concrete and is exactly what the curriculum section then
- *  expands on. */
-const OUTPUTS = [
-  "kendi web sitesi",
-  "konuşan 3D avatar",
-  "oynanabilir oyun",
-  "baskıya hazır afiş",
-  "kendi şarkısı",
-  "kısa film",
-];
-
+/**
+ * Hero — cream paper on the left, a shuttle flying left with its exhaust
+ * plume filling the right of the frame.
+ *
+ * Almost all of the pixels here come from <HERO_DECOR_HTML>: the wavy clip
+ * path, the plume, the warm exhaust core, the nine planets, the comets, the
+ * crumbs and the shuttle, lifted verbatim from the design handoff. What this
+ * file owns is the frame those layers position against (.nb-hero) and the
+ * text column that sits on top of them.
+ *
+ * The decor is injected inside a `display: contents` wrapper rather than a
+ * real box. Every layer in it is absolutely positioned against the hero
+ * frame's padding box and several read --nb-shift from it; a wrapper that
+ * generated a box would become their containing block instead and shift the
+ * whole field by the frame's own padding.
+ */
 export function Hero() {
   return (
     <section
       id="top"
-      data-navtheme="dark"
-      className="nb-space nb-on-space"
-      style={{
-        position: "relative",
-        overflow: "hidden",
-        // Clears the fixed header (82–94px across breakpoints) plus room to
-        // breathe. Static rather than JS-measured: the header is transparent
-        // over this same navy, so a few pixels either way is invisible.
-        padding: "clamp(124px, 11vw, 160px) clamp(18px, 5vw, 64px) 0",
-      }}
+      data-navtheme="light"
+      className="nb-scale"
+      style={
+        {
+          position: "relative",
+          overflow: "hidden",
+          background: "#FFFBF2",
+          color: "var(--ink)",
+          // The hero is drawn 20% down from the handoff's own scale, the rest
+          // of the page 10% (see page.tsx). The section carries the zoom, not
+          // the .nb-hero frame inside it, so the band's own height comes down
+          // with its contents instead of leaving a stripe of bare cream.
+          "--nb-scale": 0.8,
+        } as React.CSSProperties
+      }
     >
-      <div className="nb-stars" aria-hidden />
-      <div className="nb-stars nb-stars--twinkle" aria-hidden />
+      <div className="nb-hero">
+        <div style={{ display: "contents" }} dangerouslySetInnerHTML={{ __html: HERO_DECOR_HTML }} />
 
-      <div className="nb-wrap nb-split" style={{ paddingBottom: "clamp(48px, 6vw, 76px)" }}>
-        {/* ---- Copy ---- */}
-        <div>
-          {/* The original segmented status bar, restored. The only thing not
-              brought back is its backdrop-filter: the blinking dot lives
-              inside this element, and an opacity animation on top of a
-              backdrop-filtered box is exactly what pinned the old hero to
-              19fps. A flat translucent fill looks the same here. */}
-          <div
+        {/* Text column. The wordmark is the page's identity here — which is
+            why the header hides its own logo while the hero is in view — and
+            the paragraph sits at the bottom of the same column, so the two
+            bracket the cream field instead of clumping at the top. */}
+        <div
+          style={{
+            position: "relative",
+            zIndex: 2,
+            flex: 1,
+            width: "100%",
+            display: "flex",
+            flexDirection: "column",
+            justifyContent: "space-between",
+            gap: "clamp(28px,4vw,56px)",
+          }}
+        >
+          {/* The page's <h1>.
+              The homepage had none at all: the hero's identity is the wordmark
+              artwork, and an <img> is not a heading — so the single strongest
+              on-page signal Google has was simply missing, and the document
+              outline started at the <h2> of the second section.
+
+              The element wraps the artwork instead of replacing it, so nothing
+              moves by a pixel: the heading box is the same flex column that was
+              here before, the visible text is the wordmark image exactly as
+              drawn, and the machine-readable text is the sr-only span. The
+              image's alt is empty because the span already names the same
+              thing — with both, a screen reader would read the brand twice. */}
+          <h1
             style={{
-              display: "inline-flex",
-              flexWrap: "wrap",
-              maxWidth: "100%",
-              alignItems: "stretch",
-              marginBottom: 30,
-              fontFamily: "var(--font-plex-mono), ui-monospace, monospace",
-              border: "1.5px solid rgba(239,231,214,.34)",
-              clipPath:
-                "polygon(9px 0,100% 0,100% calc(100% - 9px),calc(100% - 9px) 100%,0 100%,0 9px)",
-              background: "rgba(15,26,52,.35)",
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "flex-start",
+              margin: 0,
+              font: "inherit",
             }}
           >
-            <span
+            <span className="sr-only">
+              Nebula Genç Zeka — 10–18 yaş çocuklar ve gençler için canlı, birebir yapay zeka kursu
+            </span>
+            <Image
+              src="/landing/logo-black.png"
+              alt=""
+              width={1024}
+              height={512}
+              priority
+              // The two breakpoints are where the clamp() below stops moving:
+              // 26vw hits its 215px floor at 827px and its 430px ceiling at
+              // 1654px. Without a `sizes`, next/image assumes this wordmark is
+              // viewport-wide and ships a 2048px-wide render of it for a box
+              // that is never more than 430px across.
+              sizes="(max-width: 827px) 215px, (min-width: 1654px) 430px, 26vw"
+              style={{ display: "block", width: "clamp(215px,26vw,430px)", height: "auto" }}
+            />
+          </h1>
+
+          <div
+            style={{
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "flex-start",
+              gap: "clamp(16px,1.9vw,28px)",
+              // Not a max-width: the column has to hold this exact width so
+              // the paragraph never runs under the plume's edge, which is
+              // itself placed as a percentage of the same frame.
+              width: "clamp(230px,27.5vw,440px)",
+            }}
+          >
+            <p
+              style={{
+                fontSize: "clamp(15px,1.25vw,19px)",
+                lineHeight: 1.72,
+                color: "var(--ink-soft)",
+                textWrap: "pretty",
+                margin: 0,
+              }}
+            >
+              Canlı yapay zeka kullanımı eğitimi. Her ders bitmiş bir ürünle bitiyor: bir web
+              sitesi, oynanabilir bir oyun, kendi şarkısı, kendi kısa filmi.
+            </p>
+
+            <a
+              href="#ne-uretiyor"
               style={{
                 display: "inline-flex",
                 alignItems: "center",
-                gap: 8,
-                background: "var(--blue)",
-                color: "#F5F7FF",
-                fontWeight: 600,
-                fontSize: 12,
-                letterSpacing: ".14em",
-                padding: "9px 14px",
+                gap: 12,
+                flexShrink: 0,
+                whiteSpace: "nowrap",
+                color: "var(--ink)",
               }}
             >
-              <span className="nb-blip" style={{ width: 8, height: 8, background: "#F5F7FF" }} />
-              CANLI DERS
-            </span>
-            {/* "FORMAT: ONLİNE AKADEMİ" was engineer's shorthand — a parent
-                scanning this strip is asking where their child has to be, not
-                what category the product is filed under. */}
-            {[
-              { label: "YAŞ", value: "10–18" },
-              { label: "NEREDE", value: "EVDEN" },
-            ].map((m) => (
-              <span
-                key={m.label}
+              {/* A bare chevron: two strokes meeting at a point, no baseline
+                  and no circle around it. */}
+              <svg
+                viewBox="0 0 28 28"
+                fill="none"
+                aria-hidden
                 style={{
-                  display: "inline-flex",
-                  flexDirection: "column",
-                  justifyContent: "center",
-                  padding: "5px 16px",
-                  borderLeft: "1.5px solid rgba(239,231,214,.24)",
+                  width: "clamp(20px,1.8vw,26px)",
+                  height: "auto",
+                  flexShrink: 0,
+                  color: "var(--coral-deep)",
                 }}
               >
-                <span style={{ fontSize: 9, letterSpacing: ".24em", color: "var(--on-space-soft)", lineHeight: 1 }}>
-                  {m.label}
-                </span>
-                <span style={{ fontSize: 14, fontWeight: 600, letterSpacing: ".06em", color: "#fff", lineHeight: 1.25 }}>
-                  {m.value}
-                </span>
+                <path
+                  d="M5 9.5 L14 19 L23 9.5"
+                  stroke="currentColor"
+                  strokeWidth="2.6"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              </svg>
+              {/* The handoff sets this in Nasalization, which is not a Google
+                  font and is not bundled with the project; it names Fredoka
+                  as the accepted fallback, which is what renders today. */}
+              <span
+                style={{
+                  fontFamily: "Nasalization, var(--font-fredoka), ui-sans-serif, sans-serif",
+                  fontSize: "clamp(13px,1.11vw,17px)",
+                  letterSpacing: ".1em",
+                }}
+              >
+                Aşağı kaydır
               </span>
-            ))}
-          </div>
-
-          <h1 className="nb-h1" style={{ marginBottom: 24 }}>
-            Çocuğunuz yapay zekayı izlemesin,{" "}
-            <span style={{ color: "var(--amber)" }}>kullansın.</span>
-          </h1>
-
-          {/* Three short beats, then four concrete nouns. The previous version
-              was one 34-word breath carrying a semicolon, an em dash and a
-              false range ("web sitesinden ... kısa bir filme kadar" — those
-              are not two ends of a scale), and it promised something "elle
-              tutulur" without ever naming the thing being held. */}
-          <p className="nb-lead" style={{ maxWidth: 560, marginBottom: 32 }}>
-            Haftada bir ders, tamamen birebir, karşısında hep bir öğretmen. Her ders bitmiş bir
-            işle bitiyor: bir web sitesi, oynanabilir bir oyun, kendi şarkısı, kendi kısa filmi.
-          </p>
-
-          <ContactCtas variant="trial">
-            <PaperButton href="#nasil" tone="ghost-space">
-              Nasıl işliyor?
-            </PaperButton>
-          </ContactCtas>
-
-          <p
-            style={{
-              fontFamily: "var(--font-plex-mono), ui-monospace, monospace",
-              fontSize: 12.5,
-              letterSpacing: ".03em",
-              color: "var(--on-space-soft)",
-              margin: "26px 0 0",
-            }}
-          >
-            İlk ders bizden: 30 dk çocuğunuzla birebir, 10 dk sizinle. Kayıt şartı yok.
-          </p>
-        </div>
-
-        {/* ---- Nova's stage ----
-            Every prop floats on its own clock (negative delays offset the
-            shared keyframes) so the cluster never pulses in unison, which is
-            what makes looping CSS motion read as mechanical. */}
-        <div className="nb-cast nb-stage" aria-hidden>
-          <Planet className="nb-cast__prop nb-drift nb-delay-2" style={{ width: "26%", top: "4%", left: "-2%" }} />
-          <Star className="nb-cast__prop nb-float nb-delay-1" style={{ width: "9%", top: "22%", right: "6%" }} color="#FFD27A" />
-          <Star className="nb-cast__prop nb-float nb-delay-3" style={{ width: "6%", top: "62%", left: "2%" }} color="#9BE7FF" />
-          <Rocket className="nb-cast__prop nb-float nb-delay-4" style={{ width: "15%", bottom: "20%", right: "0%" }} />
-
-          <Nova
-            pose="float"
-            className="nb-float"
-            style={{ position: "absolute", top: "9%", left: "18%", width: "64%" }}
-          />
-
-          <div
-            className="nb-cast__prop nb-bob nb-delay-2"
-            style={{ bottom: "2%", left: "-4%", maxWidth: "72%" }}
-          >
-            <PromptBubble text="bana uzayda geçen bir oyun yap" />
+            </a>
           </div>
         </div>
-      </div>
 
-      {/* ---- Proof strip ---- */}
-      <div
-        style={{
-          position: "relative",
-          borderTop: "1px solid var(--space-line)",
-          padding: "18px 0",
-        }}
-      >
-        <div className="nb-marquee">
-          {/* Two identical copies; the track slides exactly -50% so the seam
-              always lands on a duplicate and the loop is invisible. */}
-          {[0, 1].map((copy) => (
-            <div className="nb-marquee__track" key={copy} aria-hidden={copy === 1}>
-              {OUTPUTS.map((o) => (
-                <span
-                  key={o}
-                  style={{
-                    display: "inline-flex",
-                    alignItems: "center",
-                    gap: 12,
-                    fontFamily: "var(--font-fredoka), ui-sans-serif, sans-serif",
-                    fontWeight: 500,
-                    fontSize: "clamp(15px, 1.6vw, 19px)",
-                    color: "var(--on-space-soft)",
-                    whiteSpace: "nowrap",
-                  }}
-                >
-                  <Star className="size-[14px] shrink-0" color="#FF9F45" outlined={false} />
-                  {o}
-                </span>
-              ))}
-            </div>
-          ))}
-        </div>
+        {/* Bottom seam: a flat band of --paper that hands the page over to the
+            section below. Straight rather than the torn .nb-seam primitive —
+            the plume now runs all the way to the frame's edge, and a second
+            wavy edge under it read as two curves competing. */}
+        <div
+          aria-hidden
+          style={{
+            position: "absolute",
+            left: 0,
+            right: 0,
+            bottom: 0,
+            height: "clamp(30px,4.6%,64px)",
+            background: "var(--paper)",
+            zIndex: 3,
+          }}
+        />
       </div>
-
-      {/* Torn edge into the paper world below. */}
-      <div className="nb-seam" style={{ marginLeft: "calc(clamp(18px, 5vw, 64px) * -1)", marginRight: "calc(clamp(18px, 5vw, 64px) * -1)" }} />
     </section>
   );
 }

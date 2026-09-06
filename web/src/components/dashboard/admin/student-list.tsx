@@ -74,7 +74,7 @@ export function StudentList({
                     <div className="flex items-center gap-1.5">
                       <h4 className="font-medium">{student.profiles.full_name}</h4>
                       {student.group_id && groupNameById.has(student.group_id) && (
-                        <Badge variant="secondary" className="text-[10px]">
+                        <Badge variant="secondary" className="text-micro">
                           Grup: {groupNameById.get(student.group_id)}
                         </Badge>
                       )}

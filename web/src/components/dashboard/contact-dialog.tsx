@@ -10,7 +10,7 @@ export function ContactDialog() {
   return (
     <Dialog>
       <DialogTrigger asChild>
-        <button type="button" className="pn-btn pn-btn--sm pn-btn--navy">
+        <button type="button" aria-label="İletişim" className="pn-btn pn-btn--sm pn-btn--navy">
           <Phone className="h-4 w-4" />
           <span className="hidden sm:inline">İletişim</span>
         </button>

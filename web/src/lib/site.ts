@@ -38,6 +38,7 @@ export const siteConfig = {
     { label: "Ne?", href: "/#ne-uretiyor" },
     { label: "Nasıl?", href: "/#nasil" },
     { label: "AI", href: "/#ai" },
+    { label: "Bülten", href: "/#bulten" },
     { label: "Güven", href: "/#guven" },
   ],
 } as const;

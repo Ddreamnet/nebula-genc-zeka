@@ -16,10 +16,13 @@ import { Button } from "@/components/panel-ui/button";
 import { Switch } from "@/components/panel-ui/switch";
 import { Label } from "@/components/panel-ui/label";
 import { ChevronLeft, ChevronRight } from "lucide-react";
+import { cn } from "@/lib/cn";
 import { format, addDays } from "date-fns";
 import { createClient } from "@/lib/supabase/client";
 import { formatTime } from "@/lib/lesson/format";
-import { completeTrialLesson, undoTrialLesson } from "@/lib/lesson/service";
+import { completeTrialLesson, undoTrialLesson, completeLesson, undoCompleteLesson } from "@/lib/lesson/service";
+import { useAsyncAction } from "@/lib/use-async-action";
+import { translateLessonError } from "@/lib/lesson/errors";
 import {
   getAllTimeSlots,
   getAllTimeSlotsActual,
@@ -53,13 +56,23 @@ interface WeeklyScheduleGridProps {
   teacherId: string;
 }
 
+/**
+ * Six student chips, built from the "Kâğıt Uzay" accents rather than
+ * Tailwind's stock blue-100/blue-800 family — those belong to no palette this
+ * product owns, and they were the single biggest reason the weekly grid read
+ * as a different application from the page around it.
+ *
+ * Each entry is a light paper fill, the navy-leaning ink that is legible on
+ * it, and a border in the accent's own deep tone. Contrast on every pair is
+ * above 7:1 against its fill.
+ */
 const STUDENT_COLORS = [
-  "bg-blue-100 text-blue-800 hover:bg-blue-200 border-blue-300",
-  "bg-green-100 text-green-800 hover:bg-green-200 border-green-300",
-  "bg-purple-100 text-purple-800 hover:bg-purple-200 border-purple-300",
-  "bg-orange-100 text-orange-800 hover:bg-orange-200 border-orange-300",
-  "bg-pink-100 text-pink-800 hover:bg-pink-200 border-pink-300",
-  "bg-cyan-100 text-cyan-800 hover:bg-cyan-200 border-cyan-300",
+  "bg-[#c9d9ff] text-[#16215c] border-[#3d5fe0] hover:bg-[#b5cbff]",
+  "bg-[#c4f0dc] text-[#05231a] border-[#17915b] hover:bg-[#aee7cd]",
+  "bg-[#ffe0c2] text-[#5c2f00] border-[#d2701a] hover:bg-[#ffd3ab]",
+  "bg-[#ffd4dd] text-[#5a1024] border-[#ce3b5f] hover:bg-[#ffc2cf]",
+  "bg-[#e2d6f7] text-[#2a1a4d] border-[#8b6bff] hover:bg-[#d5c4f3]",
+  "bg-[#fff2b8] text-[#4a3a00] border-[#c9a227] hover:bg-[#ffec9c]",
 ];
 
 const DAYS = ["Pazartesi", "Salı", "Çarşamba", "Perşembe", "Cuma", "Cumartesi", "Pazar"];
@@ -72,6 +85,15 @@ export function WeeklyScheduleGrid({ teacherId }: WeeklyScheduleGridProps) {
   const [selectedTrialLesson, setSelectedTrialLesson] = useState<TrialLesson | null>(null);
   const [confirmAction, setConfirmAction] = useState<"complete" | "incomplete" | null>(null);
   const [processing, setProcessing] = useState(false);
+  // A real (non-trial) lesson awaiting confirmation. Clicking one used to do
+  // nothing at all — onActualLessonClick was an empty arrow function.
+  const [selectedLesson, setSelectedLesson] = useState<ActualLesson | null>(null);
+  // Which single day the phone layout shows. Monday-indexed like DAYS; the
+  // week starts on today so the first thing a teacher sees is today.
+  const [mobileDayIndex, setMobileDayIndex] = useState(() => {
+    const jsDay = new Date().getDay();
+    return jsDay === 0 ? 6 : jsDay - 1;
+  });
 
   const [showTemplate, setShowTemplate] = useState(false);
   const [actualLessons, setActualLessons] = useState<ActualLesson[]>([]);
@@ -100,7 +122,10 @@ export function WeeklyScheduleGrid({ teacherId }: WeeklyScheduleGridProps) {
     const supabase = createClient();
     const channel = supabase
       .channel(`schedule-grid-trial-lessons-${teacherId}`)
-      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "trial_lessons", filter: `teacher_id=eq.${teacherId}` }, () => {
+      // "*" rather than "UPDATE": a trial lesson being ADDED or REMOVED is
+      // exactly as relevant to this grid as one being edited, and neither
+      // used to refresh it.
+      .on("postgres_changes", { event: "*", schema: "public", table: "trial_lessons", filter: `teacher_id=eq.${teacherId}` }, () => {
         clearWeekCache();
         fetchSchedule();
         if (!showTemplate) fetchActualSchedule();
@@ -181,12 +206,20 @@ export function WeeklyScheduleGrid({ teacherId }: WeeklyScheduleGridProps) {
       }));
       setLessons(formattedLessons);
 
-      const uniqueStudents = Array.from(new Set(formattedLessons.map((l) => l.student_id)));
-      const colors: Record<string, string> = {};
-      uniqueStudents.forEach((studentId, index) => {
-        colors[studentId] = STUDENT_COLORS[index % STUDENT_COLORS.length];
+      // Merge, never replace. fetchSchedule and fetchActualSchedule both run
+      // on mount and both assign colours; this one used to overwrite the map
+      // wholesale, so whichever request finished last decided the palette and
+      // a student's colour changed between loads.
+      setStudentColors((prev) => {
+        const newStudents = [...new Set(formattedLessons.map((l) => l.student_id))].filter((id) => !prev[id]);
+        if (newStudents.length === 0) return prev;
+        const colors: Record<string, string> = { ...prev };
+        const existingCount = Object.keys(colors).length;
+        newStudents.forEach((studentId, i) => {
+          colors[studentId] = STUDENT_COLORS[(existingCount + i) % STUDENT_COLORS.length];
+        });
+        return colors;
       });
-      setStudentColors(colors);
     } catch {
       toast.error("Ders programı yüklenemedi");
     } finally {
@@ -199,48 +232,84 @@ export function WeeklyScheduleGrid({ teacherId }: WeeklyScheduleGridProps) {
 
   function handleTrialLessonClick(lesson: TrialLesson) {
     setSelectedTrialLesson(lesson);
+    setSelectedLesson(null);
     setConfirmAction(lesson.is_completed ? "incomplete" : "complete");
   }
 
-  async function handleMarkComplete() {
-    if (!selectedTrialLesson || processing) return;
+  /**
+   * Clicking a real lesson now marks it complete (or undoes it), which is
+   * what the grid always looked like it did. The RPC is still the authority
+   * on ORDER — it refuses anything that isn't the next completable lesson —
+   * so this only has to ask, and translate the refusal.
+   */
+  function handleActualLessonClick(lesson: ActualLesson) {
+    if (lesson.isGhost) return;
+    setSelectedLesson(lesson);
+    setSelectedTrialLesson(null);
+    setConfirmAction(lesson.status === "completed" ? "incomplete" : "complete");
+  }
+
+  async function runComplete() {
+    if (selectedLesson) return settleLesson(selectedLesson.id, "complete");
+    if (selectedTrialLesson) return settleTrial(selectedTrialLesson.id, "complete");
+  }
+
+  async function runIncomplete() {
+    if (selectedLesson) return settleLesson(selectedLesson.id, "incomplete");
+    if (selectedTrialLesson) return settleTrial(selectedTrialLesson.id, "incomplete");
+  }
+
+  async function refreshAfterWrite() {
+    clearWeekCache();
+    await fetchSchedule();
+    if (!showTemplate) await fetchActualSchedule();
+  }
+
+  function closeConfirm() {
+    setSelectedTrialLesson(null);
+    setSelectedLesson(null);
+    setConfirmAction(null);
+  }
+
+  async function settleLesson(id: string, mode: "complete" | "incomplete") {
     setProcessing(true);
     try {
-      const result = await completeTrialLesson(selectedTrialLesson.id);
-      if (!result.success) throw new Error(result.error ?? "İşlem başarısız");
-      toast.success("Deneme dersi işlendi olarak işaretlendi");
-      clearWeekCache();
-      await fetchSchedule();
-      if (!showTemplate) await fetchActualSchedule();
-    } catch {
-      toast.error("İşlem başarısız oldu");
+      const result = mode === "complete" ? await completeLesson(id) : await undoCompleteLesson(id);
+      if (!result.success) throw new Error(translateLessonError(result.error));
+      toast.success(mode === "complete" ? "Ders işlendi olarak işaretlendi" : "Ders geri alındı");
+      await refreshAfterWrite();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "İşlem başarısız oldu");
     } finally {
-      setSelectedTrialLesson(null);
-      setConfirmAction(null);
+      closeConfirm();
       setProcessing(false);
     }
   }
 
-  async function handleMarkIncomplete() {
-    if (!selectedTrialLesson || processing) return;
+  async function settleTrial(id: string, mode: "complete" | "incomplete") {
     setProcessing(true);
     try {
-      const result = await undoTrialLesson(selectedTrialLesson.id);
-      if (!result.success) throw new Error(result.error ?? "İşlem başarısız");
-      toast.success("Deneme dersi işlenmedi olarak işaretlendi");
-      clearWeekCache();
-      await fetchSchedule();
-      if (!showTemplate) await fetchActualSchedule();
-    } catch {
-      toast.error("İşlem başarısız oldu");
+      const result = mode === "complete" ? await completeTrialLesson(id) : await undoTrialLesson(id);
+      if (!result.success) throw new Error(translateLessonError(result.error));
+      toast.success(mode === "complete" ? "Deneme dersi işlendi olarak işaretlendi" : "Deneme dersi işlenmedi olarak işaretlendi");
+      await refreshAfterWrite();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "İşlem başarısız oldu");
     } finally {
-      setSelectedTrialLesson(null);
-      setConfirmAction(null);
+      closeConfirm();
       setProcessing(false);
     }
   }
 
   const timeSlots = computedTimeSlots;
+  const isTrialTarget = !!selectedTrialLesson;
+
+  // AlertDialogAction closes on click, but a genuine double-click fires both
+  // handlers in the same tick before the close lands — and `processing` is
+  // still false on the second one. useAsyncAction holds a ref as well as
+  // state, so the second call never starts.
+  const [completeAction] = useAsyncAction(runComplete);
+  const [incompleteAction] = useAsyncAction(runIncomplete);
 
   return (
     <div>
@@ -257,7 +326,7 @@ export function WeeklyScheduleGrid({ teacherId }: WeeklyScheduleGridProps) {
       </div>
       {!showTemplate && (
         <div className="flex items-center justify-center gap-2 mt-2">
-          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setWeekOffset((o) => o - 1)}>
+          <Button variant="ghost" size="icon" aria-label="Önceki hafta" onClick={() => setWeekOffset((o) => o - 1)}>
             <ChevronLeft className="h-4 w-4" />
           </Button>
           {weekOffset !== 0 && (
@@ -266,7 +335,7 @@ export function WeeklyScheduleGrid({ teacherId }: WeeklyScheduleGridProps) {
             </Button>
           )}
           <span className="text-sm font-medium text-muted-foreground min-w-[140px] text-center">{weekLabel}</span>
-          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setWeekOffset((o) => o + 1)}>
+          <Button variant="ghost" size="icon" aria-label="Sonraki hafta" onClick={() => setWeekOffset((o) => o + 1)}>
             <ChevronRight className="h-4 w-4" />
           </Button>
         </div>
@@ -274,74 +343,115 @@ export function WeeklyScheduleGrid({ teacherId }: WeeklyScheduleGridProps) {
 
       {loading ? (
         <div className="flex items-center justify-center py-8">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
+          <div className="size-8 animate-spin rounded-full border-2 border-outline-variant border-t-secondary" />
         </div>
       ) : lessons.length === 0 && actualLessons.length === 0 ? (
-        <div className="text-center py-8 text-muted-foreground">Henüz planlanmış ders yok</div>
+        <div className="py-8 text-center text-muted-foreground">Henüz planlanmış ders yok</div>
       ) : (
-        <div className="mt-3 overflow-x-auto">
-          <table className="w-full border-collapse min-w-[900px]">
-            <thead>
-              <tr>
-                <th className="border bg-primary/10 p-2 text-sm font-semibold w-24">Saat</th>
-                {DAYS.map((day) => (
-                  <th key={day} className="border bg-primary/10 p-2 text-sm font-semibold">
-                    {day}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {timeSlots.map((timeSlot) => (
-                <tr key={timeSlot}>
-                  <td className="border bg-muted/50 p-2 text-center text-sm font-mono">{formatTime(timeSlot)}</td>
-                  {DAYS.map((_, dayIndex) => (
-                    <ScheduleGridCell
-                      key={dayIndex}
-                      showTemplate={showTemplate}
-                      dayIndex={dayIndex}
-                      timeSlot={timeSlot}
-                      lessons={lessons}
-                      actualLessons={actualLessons}
-                      trialLessons={trialLessons}
-                      weekStart={weekStart}
-                      studentColors={studentColorsMap}
-                      // Not yet wired to anything — clicking a real (non-ghost)
-                      // lesson in "Güncel" mode currently does nothing. Flagged
-                      // to Fatih rather than guessing at intended behavior.
-                      onActualLessonClick={() => {}}
-                      onTrialLessonClick={handleTrialLessonClick}
-                    />
+        <>
+          {/* Day picker, phone only. A seven-column table needs ~900px to be
+              legible, so on a phone the grid shows ONE day and this chooses
+              which — instead of handing the teacher a horizontal scrollbar
+              nested inside the dialog's vertical one. */}
+          <div className="-mx-1 mt-3 flex gap-1 overflow-x-auto px-1 pb-1 lg:hidden">
+            {DAYS.map((day, i) => (
+              <button
+                key={day}
+                type="button"
+                onClick={() => setMobileDayIndex(i)}
+                aria-pressed={mobileDayIndex === i}
+                className={cn(
+                  "min-h-11 shrink-0 rounded-full border-2 px-3 text-sm font-semibold transition",
+                  mobileDayIndex === i
+                    ? "border-secondary bg-secondary text-on-secondary"
+                    : "border-outline-variant bg-surface-container text-on-surface-variant",
+                )}
+              >
+                {day.slice(0, 3)}
+              </button>
+            ))}
+          </div>
+
+          <div className="mt-3 lg:overflow-x-auto">
+            <table className="w-full border-collapse lg:min-w-[900px]">
+              <thead>
+                <tr>
+                  <th className="w-20 border bg-primary/10 p-2 text-sm font-semibold lg:w-24">Saat</th>
+                  {DAYS.map((day, dayIndex) => (
+                    <th
+                      key={day}
+                      className={cn(
+                        "border bg-primary/10 p-2 text-sm font-semibold",
+                        dayIndex !== mobileDayIndex && "hidden lg:table-cell",
+                      )}
+                    >
+                      {day}
+                    </th>
                   ))}
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              <tbody>
+                {timeSlots.map((timeSlot) => (
+                  <tr key={timeSlot}>
+                    <td className="border bg-muted/50 p-2 text-center font-mono text-sm tabular-nums">{formatTime(timeSlot)}</td>
+                    {DAYS.map((_, dayIndex) => (
+                      <ScheduleGridCell
+                        key={dayIndex}
+                        showTemplate={showTemplate}
+                        dayIndex={dayIndex}
+                        timeSlot={timeSlot}
+                        lessons={lessons}
+                        actualLessons={actualLessons}
+                        trialLessons={trialLessons}
+                        weekStart={weekStart}
+                        studentColors={studentColorsMap}
+                        className={dayIndex !== mobileDayIndex ? "hidden lg:table-cell" : undefined}
+                        onActualLessonClick={handleActualLessonClick}
+                        onTrialLessonClick={handleTrialLessonClick}
+                      />
+                    ))}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </>
       )}
 
-      <AlertDialog open={confirmAction === "complete"} onOpenChange={(o) => !o && setConfirmAction(null)}>
+      <AlertDialog open={confirmAction === "complete"} onOpenChange={(o) => !o && closeConfirm()}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Deneme Dersini İşle</AlertDialogTitle>
-            <AlertDialogDescription>Bu deneme dersini işlendi olarak işaretlemek istediğinize emin misiniz?</AlertDialogDescription>
+            <AlertDialogTitle>{isTrialTarget ? "Deneme Dersini İşle" : "Dersi İşle"}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {isTrialTarget
+                ? "Bu deneme dersini işlendi olarak işaretlemek istediğinize emin misiniz?"
+                : `${selectedLesson?.student_name ?? "Bu öğrenci"} için bu dersi işlendi olarak işaretlemek istiyor musunuz? Öğretmen bakiyesine ders süresi eklenecek.`}
+            </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>İptal</AlertDialogCancel>
-            <AlertDialogAction onClick={handleMarkComplete}>İşlendi Olarak İşaretle</AlertDialogAction>
+            <AlertDialogCancel disabled={processing}>İptal</AlertDialogCancel>
+            <AlertDialogAction onClick={completeAction} disabled={processing}>
+              {processing ? "İşleniyor..." : "İşlendi Olarak İşaretle"}
+            </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
 
-      <AlertDialog open={confirmAction === "incomplete"} onOpenChange={(o) => !o && setConfirmAction(null)}>
+      <AlertDialog open={confirmAction === "incomplete"} onOpenChange={(o) => !o && closeConfirm()}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>İşlediyi Geri Al</AlertDialogTitle>
-            <AlertDialogDescription>Bu deneme dersinin işlendiğini geri almak istediğinize emin misiniz?</AlertDialogDescription>
+            <AlertDialogDescription>
+              {isTrialTarget
+                ? "Bu deneme dersinin işlendiğini geri almak istediğinize emin misiniz?"
+                : "Bu dersin işlendiğini geri almak istediğinize emin misiniz? Öğretmen bakiyesi de düzeltilecektir."}
+            </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>İptal</AlertDialogCancel>
-            <AlertDialogAction onClick={handleMarkIncomplete}>İşlendiyi Geri Al</AlertDialogAction>
+            <AlertDialogCancel disabled={processing}>İptal</AlertDialogCancel>
+            <AlertDialogAction onClick={incompleteAction} disabled={processing}>
+              {processing ? "İşleniyor..." : "İşlendiyi Geri Al"}
+            </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

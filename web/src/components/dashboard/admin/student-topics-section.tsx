@@ -67,8 +67,8 @@ export function StudentTopicsSection({
                   className={cn(
                     "border-l-4",
                     isFullyCompleted
-                      ? "border-l-green-500 bg-green-50/50 dark:bg-green-950/20"
-                      : "border-l-amber-500 bg-amber-50/50 dark:bg-amber-950/20",
+                      ? "border-l-success bg-success/10"
+                      : "border-l-tertiary bg-tertiary/10",
                   )}
                 >
                   <Collapsible>
@@ -95,12 +95,14 @@ export function StudentTopicsSection({
                             <div key={resource.id} className="flex items-center gap-2 py-1">
                               <Checkbox checked className="h-3 w-3" disabled />
                               {getResourceIcon(resource.resource_type)}
-                              <span
-                                className="text-xs flex-1 cursor-pointer hover:text-primary"
-                                onClick={() => window.open(resource.resource_url, "_blank", "noopener,noreferrer")}
+                              <a
+                                href={resource.resource_url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="flex-1 truncate text-xs no-underline hover:text-primary hover:underline"
                               >
                                 {resource.title}
-                              </span>
+                              </a>
                             </div>
                           ))}
                       </CollapsibleContent>
@@ -160,12 +162,14 @@ export function StudentTopicsSection({
                         <div key={resource.id} className="flex items-center gap-2 pl-8">
                           <Checkbox checked={resource.is_completed} className="h-3 w-3" disabled />
                           {getResourceIcon(resource.resource_type)}
-                          <span
-                            className="text-xs flex-1 cursor-pointer hover:text-primary"
-                            onClick={() => window.open(resource.resource_url, "_blank", "noopener,noreferrer")}
+                          <a
+                            href={resource.resource_url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="flex-1 truncate text-xs no-underline hover:text-primary hover:underline"
                           >
                             {resource.title}
-                          </span>
+                          </a>
                           <Button variant="ghost" size="sm" aria-label="Kaynağı düzenle" onClick={() => onEditResource(resource)}>
                             <Settings className="h-3 w-3" />
                           </Button>

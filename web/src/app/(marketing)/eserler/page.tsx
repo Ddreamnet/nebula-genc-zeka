@@ -4,6 +4,7 @@ import { ArrowRight } from "lucide-react";
 import { ClosingCta } from "@/components/landing/closing-cta";
 import { OUTPUT_ART } from "@/components/landing/output-art";
 import { OUTPUT_CATEGORIES } from "@/lib/outputs";
+import { JsonLd, breadcrumbLd, canonical, itemListLd, openGraphFor } from "@/lib/seo";
 
 /**
  * Index of the six output pages.
@@ -15,14 +16,37 @@ import { OUTPUT_CATEGORIES } from "@/lib/outputs";
  */
 
 export const metadata: Metadata = {
-  title: "Öğrencilerin işleri",
+  title: "Öğrenci İşleri — Yapay Zeka ile Üretilen Projeler",
   description:
-    "Nebula Genç Zeka öğrencilerinin derslerde ürettiği işler: web siteleri, karakterler, oyunlar, afişler, şarkılar ve kısa filmler.",
+    "Nebula Genç Zeka öğrencilerinin derslerde yapay zeka ile ürettiği gerçek işler: web siteleri, karakterler, oyunlar, afişler, şarkılar ve kısa filmler.",
+  alternates: canonical("/eserler"),
+  openGraph: openGraphFor({
+    title: "Öğrenci işleri — yapay zeka ile üretilen projeler",
+    description:
+      "Web siteleri, karakterler, oyunlar, afişler, şarkılar ve kısa filmler — hepsi 10–18 yaş öğrencilerin elinden.",
+    path: "/eserler",
+  }),
 };
 
 export default function EserlerPage() {
   return (
     <div data-navtheme="light">
+      {/* Breadcrumbs render as the "nebulagenczeka.com › Eserler" trail under
+          the SERP title instead of the raw URL; the ItemList tells Google the
+          six category pages are a set worth crawling from here rather than
+          six leaves hanging off a homepage fragment link. */}
+      <JsonLd
+        data={[
+          breadcrumbLd([
+            { name: "Ana sayfa", path: "/" },
+            { name: "Öğrenci işleri", path: "/eserler" },
+          ]),
+          itemListLd(
+            "Nebula Genç Zeka öğrenci işleri",
+            OUTPUT_CATEGORIES.map((c) => ({ name: c.pageTitle, path: `/eserler/${c.slug}` })),
+          ),
+        ]}
+      />
       <section className="nb-section nb-paper" style={{ paddingTop: "clamp(112px,13vw,156px)" }}>
         <div className="nb-wrap">
           <div className="nb-measure" style={{ marginBottom: "clamp(32px,4.4vw,50px)" }}>

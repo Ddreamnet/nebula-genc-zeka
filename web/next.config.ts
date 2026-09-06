@@ -40,13 +40,87 @@ const nextConfig: NextConfig = {
   },
   // `next build`'s own "Running TypeScript" pass (~25-35s) re-checks the
   // whole project with `tsc` in addition to compiling it — redundant with
-  // running `tsc --noEmit` ourselves, which we do (and verify clean) before
-  // every deploy. Skipping it here buys back that time on every GoDaddy
-  // build. This does NOT disable type-checking in the editor or `tsc
-  // --noEmit` — only this specific redundant re-check during production
+  // running `tsc --noEmit` ourselves. Skipping it here buys back that time on
+  // every GoDaddy build. This does NOT disable type-checking in the editor or
+  // `tsc --noEmit` — only this specific redundant re-check during production
   // builds.
+  //
+  // The catch, learned the hard way: this trade is only safe if the separate
+  // check is ACTUALLY run. It was not, and three real type errors sat in
+  // app/api/playground/generate/route.ts for weeks — the route referenced a
+  // table (`playground_generation_inputs`) whose migration had never been
+  // applied, and nothing said so because the build could not fail.
+  //
+  // `npm run verify` (typecheck + lint) is now the one command that has to
+  // pass before a deploy. Run it, or delete this block.
   typescript: {
     ignoreBuildErrors: true,
+  },
+  // `X-Powered-By: Next.js` on every response. It fingerprints the stack for
+  // anyone scanning for framework-specific CVEs and buys nothing.
+  poweredByHeader: false,
+  // Trailing-slash URLs are a duplicate-content source: /eserler and
+  // /eserler/ are two URLs serving one page. Next already 308s one to the
+  // other; stating it here keeps that behaviour pinned to the version the
+  // canonical tags were written against.
+  trailingSlash: false,
+  images: {
+    // AVIF first, WebP behind it. next/image serves whichever the requesting
+    // browser accepts, so the landing wordmark and the student work ship
+    // ~30-50% smaller than the WebP-only default to every modern browser and
+    // fall back cleanly on the ones that can't take it. Core Web Vitals is a
+    // ranking signal and LCP is the one this moves.
+    formats: ["image/avif", "image/webp"],
+    // 31 days. The default is 4 hours (Next 16 raised it from 60s), which for
+    // artwork that changes when a designer ships a new file means re-encoding
+    // the same PNGs six times a day on a shared host.
+    minimumCacheTTL: 2678400,
+    // Everything under /public is authored by us; SVG is only ever served as
+    // a static asset here, never optimized, so the sandbox flags stay off.
+  },
+  async redirects() {
+    return [
+      {
+        // https://www.nebulagenczeka.com served the entire site with a 200,
+        // not a redirect — verified live. Two hostnames, byte-identical pages:
+        // Google sees one site twice, splits every link and engagement signal
+        // between the two, and picks a canonical host itself. The canonical
+        // tags all point at the bare domain, which mitigates it; a 308 is what
+        // actually fixes it, and it also stops the www copy from ever being
+        // crawled in the first place.
+        source: "/:path*",
+        has: [{ type: "host", value: "www.nebulagenczeka.com" }],
+        destination: "https://nebulagenczeka.com/:path*",
+        permanent: true,
+      },
+    ];
+  },
+  async headers() {
+    return [
+      {
+        // Files under /public are served with no cache headers at all by
+        // default, so the hero artwork, the brand lockups and the student
+        // work are re-fetched on every navigation. These are content-addressed
+        // by hand (a changed image gets a changed filename), so a year of
+        // immutable caching is safe and removes them from the critical path
+        // on every repeat visit.
+        source: "/:dir(brand|landing|eserler)/:path*",
+        headers: [
+          { key: "Cache-Control", value: "public, max-age=31536000, immutable" },
+        ],
+      },
+      {
+        // Applies to every route. Referrer-Policy and the two below are
+        // security headers rather than SEO ones, but Search Console's "page
+        // experience" surfaces them and they cost nothing.
+        source: "/:path*",
+        headers: [
+          { key: "X-Content-Type-Options", value: "nosniff" },
+          { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
+          { key: "X-DNS-Prefetch-Control", value: "on" },
+        ],
+      },
+    ];
   },
 };
 

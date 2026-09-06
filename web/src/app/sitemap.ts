@@ -20,13 +20,26 @@ export const dynamic = "force-dynamic";
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const staticRoutes: MetadataRoute.Sitemap = [
-    { url: siteConfig.url, changeFrequency: "monthly", priority: 1 },
+    {
+      url: siteConfig.url,
+      changeFrequency: "monthly",
+      priority: 1,
+      images: [`${siteConfig.url}/brand/og-card.jpg`],
+    },
     { url: `${siteConfig.url}/blog`, changeFrequency: "weekly", priority: 0.7 },
     { url: `${siteConfig.url}/eserler`, changeFrequency: "monthly", priority: 0.7 },
     ...OUTPUT_CATEGORIES.map((c) => ({
       url: `${siteConfig.url}/eserler/${c.slug}`,
       changeFrequency: "monthly" as const,
       priority: 0.6,
+      // Student work is the only genuinely unique imagery on the site, and
+      // an image sitemap is how it gets into Google Images — where "çocuk
+      // yapay zeka projesi" style searches actually land. Files under
+      // /public are absolute-ised here; the entry is dropped for a category
+      // that has no pieces in yet rather than pointing at nothing.
+      ...(c.works.length
+        ? { images: c.works.map((w) => `${siteConfig.url}${w.image.src}`) }
+        : {}),
     })),
     { url: `${siteConfig.url}/kvkk`, changeFrequency: "yearly", priority: 0.2 },
     { url: `${siteConfig.url}/gizlilik`, changeFrequency: "yearly", priority: 0.2 },
@@ -40,7 +53,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     if (process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY) {
       const { data } = await createPublicClient()
         .from("blog_posts")
-        .select("slug, updated_at, published_at")
+        .select("slug, updated_at, published_at, cover_image_url")
         .eq("status", "published")
         .order("published_at", { ascending: false });
 
@@ -49,6 +62,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
         lastModified: new Date(post.updated_at ?? post.published_at ?? Date.now()),
         changeFrequency: "monthly",
         priority: 0.6,
+        ...(post.cover_image_url ? { images: [post.cover_image_url] } : {}),
       }));
     }
   } catch {

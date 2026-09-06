@@ -1,20 +1,22 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { findTool, generationOreCost } from "@/lib/playground/tools";
+import { readAdminOreBalance } from "@/lib/playground/treasury";
 import {
-  generateText,
+  streamText,
   generateImage,
   generateAudio,
   startVideo,
   type ChatMessage,
   type ContentPart,
 } from "@/lib/ai/openrouter";
+import { isAspectRatio, DEFAULT_ASPECT_RATIO } from "@/lib/playground/aspect";
 
 const SYSTEM_PROMPT =
   "Sen Nebula Genç Zeka'nın çocuklara yönelik yaratıcı yapay zeka asistanısın. 10-18 yaş arası öğrencilerle Türkçe, sıcak, meraklandırıcı ve güvenli bir dille konuş. Kısa ve anlaşılır cevaplar ver.";
 
 const WEB_SYSTEM_PROMPT =
-  "Sen bir web geliştirme ve oyun kodlama AI'sısın. Kullanıcının tarif ettiği web sitesini, tarayıcı oyununu ya da arayüzü TEK BİR HTML dosyası olarak üret: tüm CSS'i <style> içine, tüm JavaScript'i <script> içine göm — harici dosya, harici link veya CDN kullanma. Kod kaliteli, çalışan ve görsel olarak hoş olsun (kids 10-18 yaş için). SADECE ```html ile başlayıp ``` ile biten TEK bir kod bloğu döndür; kod bloğunun dışına hiçbir açıklama, giriş veya kapanış cümlesi yazma.";
+  "Sen bir web geliştirme ve oyun kodlama AI'sısın. Kullanıcının tarif ettiği web sitesini, tarayıcı oyununu ya da arayüzü TEK BİR HTML dosyası olarak üret: tüm CSS'i <style> içine, tüm JavaScript'i <script> içine göm — harici dosya, harici link veya CDN kullanma. Kod kaliteli, çalışan ve görsel olarak hoş olsun (kids 10-18 yaş için). SADECE ```html ile başlayıp ``` ile biten TEK bir kod bloğu döndür; kod bloğunun dışına hiçbir açıklama, giriş veya kapanış cümlesi yazma. ÖNEMLİ: Sayfa güvenli bir sandbox içinde önizleniyor — localStorage, sessionStorage ve çerezler ERİŞİLEMEZ ve kullanılırsa sayfa hata verip çalışmaz. Skor, ilerleme, kayıt gibi her şeyi sadece JavaScript değişkenlerinde tut.";
 
 // Session memory for text chat only — caps how much prior conversation gets
 // resent as input tokens on every turn. Enforced server-side too (not just
@@ -87,6 +89,89 @@ function toChatMessage(role: "user" | "assistant", text: string, images: string[
   return { role, content: parts };
 }
 
+/** How long a signed input URL needs to live — just long enough to be fetched. */
+const INPUT_SIGN_TTL = 3600;
+
+/**
+ * Signed URLs for the pictures attached to the most recent user turn of a
+ * chat, read from storage rather than from the request.
+ *
+ * Only the newest turn is looked up, matching the inline carry rule above:
+ * the point is to make a direct follow-up work, not to resend an album.
+ */
+async function loadPreviousTurnInputs(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  chatId: string,
+  limit: number,
+): Promise<string[]> {
+  const { data: rows } = await supabase
+    .from("playground_chat_messages")
+    .select("generation_id")
+    .eq("chat_id", chatId)
+    .eq("role", "user")
+    .not("generation_id", "is", null)
+    .order("seq", { ascending: false })
+    .limit(1);
+
+  const generationId = rows?.[0]?.generation_id;
+  if (!generationId) return [];
+
+  // RLS keeps this to the caller's own rows, and the write path already
+  // refused any path outside their folder.
+  const { data: inputs } = await supabase
+    .from("playground_generation_inputs")
+    .select("path")
+    .eq("generation_id", generationId)
+    .order("seq", { ascending: true })
+    .limit(limit);
+  if (!inputs?.length) return [];
+
+  const { data: signed } = await supabase.storage
+    .from("playground-inputs")
+    .createSignedUrls(inputs.map((i) => i.path), INPUT_SIGN_TTL);
+
+  return (signed ?? []).map((s) => s.signedUrl).filter((u): u is string => !!u);
+}
+
+/**
+ * A signed URL for the most recent picture this chat produced, or [].
+ *
+ * This is what the composer's memory switch buys on the image/video side.
+ * Image models are one-shot and stateless: without an explicit reference,
+ * "same character, now surprised" draws a different character, which is why
+ * week 1's sticker-pack task came back as twelve unrelated faces.
+ *
+ * Only the newest output is looked up, matching the inline carry rule for
+ * text: the point is to continue from the last frame, not to resend a gallery
+ * — and every extra reference is billed to the student.
+ *
+ * Signed here from a stored path, never taken from the request. RLS keeps the
+ * lookup to the caller's own rows; forwarding a client-supplied URL to the
+ * model would be an SSRF hole and could point at another student's file.
+ */
+async function loadLastOutputImage(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  chatId: string,
+): Promise<string[]> {
+  const { data: rows } = await supabase
+    .from("playground_chat_messages")
+    .select("output_path")
+    .eq("chat_id", chatId)
+    .eq("role", "assistant")
+    .eq("kind", "image")
+    .not("output_path", "is", null)
+    .order("seq", { ascending: false })
+    .limit(1);
+
+  const path = rows?.[0]?.output_path;
+  if (!path) return [];
+
+  const { data: signed } = await supabase.storage
+    .from("playground-outputs")
+    .createSignedUrl(path, INPUT_SIGN_TTL);
+  return signed?.signedUrl ? [signed.signedUrl] : [];
+}
+
 export async function POST(request: Request) {
   const body = await request.json().catch(() => null);
   const toolId: string | undefined = body?.toolId;
@@ -94,6 +179,13 @@ export async function POST(request: Request) {
   // Null on the first message of a thread: rpc_append_turn opens the chat and
   // hands back the id the client keeps for the rest of the conversation.
   const chatId: string | null = typeof body?.chatId === "string" ? body.chatId : null;
+  // The composer's memory switch. Absent means on — an older client (or a
+  // reconnect from a cached bundle) keeps the behaviour it was built against.
+  const memory: boolean = body?.memory !== false;
+  // Anything that isn't one of the offered ratios falls back to the default
+  // rather than 400-ing: the value is cosmetic, and a student shouldn't lose a
+  // typed prompt because a stale tab sent a ratio we no longer list.
+  const aspectRatio = isAspectRatio(body?.aspectRatio) ? body.aspectRatio : DEFAULT_ASPECT_RATIO;
 
   if (!toolId || typeof prompt !== "string" || !prompt.trim()) {
     return NextResponse.json({ error: "invalid_request" }, { status: 400 });
@@ -112,7 +204,23 @@ export async function POST(request: Request) {
   const imageBudget = tool.maxImageInputs ?? 0;
   const attachments = sanitizeImages(body?.attachments).slice(0, imageBudget);
 
-  const history = tool.modality === "text" ? sanitizeHistory(body?.history) : [];
+  // Memory off means the transcript is not resent at all: the model answers
+  // this one message and nothing else. Enforced here rather than trusted to
+  // the client, which is also what stops a crafted payload from re-adding
+  // history the student switched off.
+  const history = tool.modality === "text" && memory ? sanitizeHistory(body?.history) : [];
+
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  // Signed-in accounts only — anonymous/public access was removed, not merely
+  // bypassed. Students, teachers and admins all reach the Playground; what
+  // differs is how a generation is paid for (wallet / unlimited / treasury).
+  if (!user || user.is_anonymous) {
+    return NextResponse.json({ error: "not_authenticated" }, { status: 401 });
+  }
 
   // Images ride along from the most recent user turn, and only that one.
   // Resending every past image would multiply cost without bound — 20 turns
@@ -121,21 +229,57 @@ export async function POST(request: Request) {
   // rengi ne?" right after "bu görselde ne var?") work, for at most a few
   // extra images per request.
   const carryIndex = lastUserTurnIndex(history);
-  const carried = carryIndex >= 0 ? history[carryIndex].images.slice(0, Math.max(0, imageBudget - attachments.length)) : [];
+  const carryRoom = Math.max(0, imageBudget - attachments.length);
+  const carriedInline = carryIndex >= 0 ? history[carryIndex].images.slice(0, carryRoom) : [];
+
+  // A reopened chat has no data URLs left to carry — the browser only ever
+  // held them for the life of the tab. The previous turn's pictures are read
+  // back from storage instead, so "peki rengi ne?" still works tomorrow.
+  //
+  // These are signed by us from a stored path, never taken from the request:
+  // forwarding a client-supplied URL to the model would be an SSRF hole and
+  // could point at another student's file.
+  const carriedStored =
+    carryIndex >= 0 && carriedInline.length === 0 && chatId && carryRoom > 0
+      ? await loadPreviousTurnInputs(supabase, chatId, carryRoom)
+      : [];
+  const carried = [...carriedInline, ...carriedStored];
+
+  // The image/video side of the same switch. Skipped entirely when the student
+  // attached something themselves — a picture they just picked is a more
+  // deliberate instruction than one we remembered for them, and the budget is
+  // small enough that filling it with both would push theirs out.
+  const remembered =
+    memory && chatId && (tool.modality === "image" || tool.modality === "video") && attachments.length === 0 && imageBudget > 0
+      ? await loadLastOutputImage(supabase, chatId)
+      : [];
 
   // Charge for every image that actually reaches the model, freshly attached
   // or carried forward, so the ore price never understates the real bill.
-  const oreCost = generationOreCost(tool, attachments.length + carried.length);
+  // (IMAGE_INPUT_ORE.video is 0 — providers fold the frame image into the
+  // clip's price — so a remembered first frame costs a student nothing.)
+  const oreCost = generationOreCost(tool, attachments.length + carried.length + remembered.length);
 
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  // Temporary: Playground is student-only for now, no anonymous access.
-  if (!user || user.is_anonymous) {
-    return NextResponse.json({ error: "not_authenticated" }, { status: 401 });
-  }
+  /**
+   * Staff don't spend a wallet (see rpc_start_generation), so the balance sent
+   * back to them isn't one — and the two kinds of staff get different answers.
+   *
+   * An admin spends the OpenRouter balance itself, so they get the treasury in
+   * cevher: the same number /api/playground/balance and the admin panel's kasa
+   * card report. Read AFTER the generation, so the figure they see already
+   * reflects what they just spent (as far as OpenRouter's own usage endpoint
+   * has caught up).
+   *
+   * A teacher has no allowance at all, so there is no number to report — the
+   * response carries `unlimited` instead and the composer stops gating.
+   */
+  const [{ data: isAdmin }, { data: isTeacher }] = await Promise.all([
+    supabase.rpc("has_role", { _user_id: user.id, _role: "admin" }),
+    supabase.rpc("has_role", { _user_id: user.id, _role: "teacher" }),
+  ]);
+  const unlimited = !!isTeacher && !isAdmin;
+  const remainingOre = async (walletRemaining: number) =>
+    isAdmin ? ((await readAdminOreBalance(supabase)) ?? walletRemaining) : walletRemaining;
 
   const { data: startRows, error: startError } = await supabase.rpc("rpc_start_generation", {
     p_tool_id: tool.id,
@@ -194,39 +338,150 @@ export async function POST(request: Request) {
     if (error) console.error("[playground] rpc_settle_message failed", error.message);
   };
 
-  try {
-    if (tool.modality === "text") {
-      const priorTurns = history.map((m, i) =>
-        // Only the most recent user turn keeps its images; `carried` is that
-        // turn's list, already trimmed to the remaining image budget.
-        toChatMessage(m.role, m.content, i === carryIndex ? carried : []),
-      );
-      const { content, costUsd } = await generateText(
-        [
-          { role: "system", content: isWebTool ? WEB_SYSTEM_PROMPT : SYSTEM_PROMPT },
-          ...priorTurns,
-          toChatMessage("user", prompt.trim(), attachments),
-        ],
-        tool.providerModel,
-      );
-      await supabase.rpc("rpc_finalize_generation", {
-        p_generation_id: generationId,
-        p_status: "completed",
-        p_real_cost_usd: costUsd,
-      });
-      await settle(isWebTool ? "code" : "text", content);
-      return NextResponse.json({
-        generationId,
-        ...thread,
-        modality: "text",
-        kind: isWebTool ? "code" : "text",
-        content,
-        remaining: result.remaining_ore,
-      });
-    }
+  /**
+   * Text answers stream; every other modality still replies as one JSON body.
+   *
+   * The split is deliberate rather than uniform: an image, a sound file or a
+   * video job has nothing to show until it is finished, so streaming them
+   * would add a protocol for no gain. Text is the one place where a partial
+   * answer is worth more than a spinner.
+   *
+   * Everything before this point — validation, the balance gate, opening the
+   * thread — still answers as JSON, so a refusal is a plain response the
+   * client can read without touching a reader. Only once the generation is
+   * certain to run does the response become a stream.
+   */
+  if (tool.modality === "text") {
+    const priorTurns = history.map((m, i) =>
+      // Only the most recent user turn keeps its images; `carried` is that
+      // turn's list, already trimmed to the remaining image budget.
+      toChatMessage(m.role, m.content, i === carryIndex ? carried : []),
+    );
+    const messages: ChatMessage[] = [
+      { role: "system", content: isWebTool ? WEB_SYSTEM_PROMPT : SYSTEM_PROMPT },
+      ...priorTurns,
+      toChatMessage("user", prompt.trim(), attachments),
+    ];
+    const kind = isWebTool ? "code" : "text";
 
+    // Cancels the upstream call when the student presses stop or the browser
+    // hangs up. `request.signal` covers the disconnect; `stop` covers the
+    // explicit press, which arrives as the same disconnect once the client
+    // aborts its fetch.
+    const upstream = new AbortController();
+    request.signal.addEventListener("abort", () => upstream.abort(), { once: true });
+
+    const encoder = new TextEncoder();
+    const stream = new ReadableStream<Uint8Array>({
+      async start(controller) {
+        let open = true;
+        const send = (event: string, data: unknown) => {
+          if (!open) return;
+          try {
+            controller.enqueue(encoder.encode(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`));
+          } catch {
+            // The client is gone. Stop writing, but let the loop below finish
+            // settling the transcript — that work is for the database, not
+            // for the socket.
+            open = false;
+          }
+        };
+
+        // Sent before the first token so the client can bind this stream to a
+        // thread immediately: an answer that lands after the student has
+        // navigated still knows which chat row it belongs to.
+        send("meta", { generationId, ...thread, kind });
+
+        let answer = "";
+        let costUsd: number | null = null;
+
+        try {
+          for await (const event of streamText(messages, tool.providerModel, {
+            reasoning: tool.reasoning,
+            signal: upstream.signal,
+          })) {
+            if (event.type === "usage") {
+              costUsd = event.costUsd;
+            } else if (event.type === "reasoning") {
+              send("reasoning", { text: event.text });
+            } else {
+              answer += event.text;
+              send("delta", { text: event.text });
+            }
+          }
+
+          if (!answer.trim()) throw new Error("empty response (possibly content-filtered)");
+
+          await supabase.rpc("rpc_finalize_generation", {
+            p_generation_id: generationId,
+            p_status: "completed",
+            p_real_cost_usd: costUsd ?? undefined,
+          });
+          await settle(kind, answer);
+          send("done", { remaining: await remainingOre(result.remaining_ore), unlimited });
+        } catch (err) {
+          // A stop is not a failure. The model wrote real tokens and
+          // OpenRouter billed them, so the generation settles as completed and
+          // the ore stays spent — refunding here would make "press stop" a way
+          // to read half an answer for free.
+          //
+          // The real cost is left null rather than zeroed: usage only arrives
+          // on the final chunk, which an aborted stream never receives, and
+          // recording 0 would quietly under-report the treasury spend.
+          if (upstream.signal.aborted) {
+            await supabase.rpc("rpc_finalize_generation", {
+              p_generation_id: generationId,
+              p_status: "completed",
+              p_real_cost_usd: costUsd ?? undefined,
+            });
+            await settle(kind, answer);
+          } else {
+            await supabase.rpc("rpc_finalize_generation", {
+              p_generation_id: generationId,
+              p_status: "failed",
+            });
+            // Whatever arrived before the break is still the student's — it is
+            // written to the transcript so reopening the chat doesn't show an
+            // empty bubble where half an answer had been.
+            if (answer.trim()) await settle(kind, answer);
+            console.error("[playground] stream failed", tool.id, err instanceof Error ? err.message : err);
+            send("error", {});
+          }
+        } finally {
+          open = false;
+          try {
+            controller.close();
+          } catch {
+            // Already closed by the client hanging up.
+          }
+        }
+      },
+      cancel() {
+        upstream.abort();
+      },
+    });
+
+    return new Response(stream, {
+      headers: {
+        "Content-Type": "text/event-stream; charset=utf-8",
+        "Cache-Control": "no-cache, no-transform",
+        Connection: "keep-alive",
+        // Without this a reverse proxy will happily buffer the whole answer
+        // and hand it over in one piece, which looks exactly like no
+        // streaming at all.
+        "X-Accel-Buffering": "no",
+      },
+    });
+  }
+
+  try {
     if (tool.modality === "image") {
-      const { b64, mediaType, costUsd } = await generateImage(prompt.trim(), tool.providerModel, attachments);
+      const { b64, mediaType, costUsd } = await generateImage(
+        prompt.trim(),
+        tool.providerModel,
+        [...attachments, ...remembered],
+        aspectRatio,
+      );
       // Extension follows what the model actually returned — Grok Imagine
       // hands back JPEG, so the old hardcoded `.png` produced files that
       // wouldn't open by name once downloaded.
@@ -252,7 +507,8 @@ export async function POST(request: Request) {
         ...thread,
         modality: "image",
         imageUrl: signed?.signedUrl,
-        remaining: result.remaining_ore,
+        remaining: await remainingOre(result.remaining_ore),
+        unlimited,
       });
     }
 
@@ -279,16 +535,40 @@ export async function POST(request: Request) {
         ...thread,
         modality: "audio",
         audioUrl: signed?.signedUrl,
-        remaining: result.remaining_ore,
+        remaining: await remainingOre(result.remaining_ore),
+        unlimited,
       });
     }
 
     // Video: async job — kick off, persist the job id, client polls for completion.
-    const { jobId } = await startVideo(prompt.trim(), tool.providerModel, tool.videoDuration ?? 4, tool.videoResolution ?? "720p");
+    // An attached picture becomes the clip's first frame (image-to-video); the
+    // catalog only allows one, and `attachments` is already capped to the
+    // tool's own `maxImageInputs`, so Sora 2 Pro — which supports no frame
+    // image — can never be handed one even if the client sends it.
+    // With memory on and nothing attached, the clip animates out of the last
+    // picture this chat made — "draw my character, now make it move" in two
+    // messages. NOTE: the data-URL form of frame_images is the one verified
+    // live (see startVideo); this passes a signed HTTPS URL instead, which is
+    // the form OpenRouter's own cookbook documents but has not been exercised
+    // here yet. A rejected reference fails the job, which refunds — it cannot
+    // silently produce an unrelated clip.
+    const { jobId } = await startVideo(
+      prompt.trim(),
+      tool.providerModel,
+      tool.videoDuration ?? 4,
+      tool.videoResolution ?? "720p",
+      attachments[0] ?? remembered[0],
+    );
     await supabase.rpc("rpc_attach_video_job", { p_generation_id: generationId, p_job_id: jobId });
     // No settle() here: the row stays empty until the poller reports the file,
     // which is why its id is reserved up front and handed to the client.
-    return NextResponse.json({ generationId, ...thread, modality: "video", remaining: result.remaining_ore });
+    return NextResponse.json({
+      generationId,
+      ...thread,
+      modality: "video",
+      remaining: await remainingOre(result.remaining_ore),
+      unlimited,
+    });
   } catch (err) {
     await supabase.rpc("rpc_finalize_generation", {
       p_generation_id: generationId,

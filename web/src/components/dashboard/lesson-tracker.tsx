@@ -18,6 +18,8 @@ import { getRowConfig } from "@/lib/lesson/format";
 import { clearWeekCache } from "@/lib/lesson/week-cache";
 import { completeLesson, undoCompleteLesson, getNextCompletableInstance, getLastCompletedInstance } from "@/lib/lesson/service";
 import type { LessonInstance } from "@/lib/lesson/types";
+import { useAsyncAction } from "@/lib/use-async-action";
+import { translateLessonError } from "@/lib/lesson/errors";
 import { cn } from "@/lib/cn";
 
 interface LessonTrackerProps {
@@ -46,7 +48,7 @@ export function LessonTracker({ studentId, studentName, teacherId }: LessonTrack
     const [instancesResult, templateResult, nextResult, lastResult] = await Promise.all([
       supabase
         .from("lesson_instances")
-        .select("*")
+        .select("id, lesson_date, start_time, end_time, status, original_date, is_manual_override")
         .eq("student_id", studentId)
         .eq("teacher_id", teacherId)
         .eq("package_cycle", currentCycle)
@@ -90,7 +92,7 @@ export function LessonTracker({ studentId, studentName, teacherId }: LessonTrack
     try {
       const result = await completeLesson(pendingInstanceId);
       if (!result.success) {
-        toast.error(result.error ?? "Ders işaretlenemedi");
+        toast.error(translateLessonError(result.error));
         return;
       }
 
@@ -117,7 +119,7 @@ export function LessonTracker({ studentId, studentName, teacherId }: LessonTrack
     try {
       const result = await undoCompleteLesson(undoInstanceId);
       if (!result.success) {
-        toast.error(result.error ?? "Ders geri alınamadı");
+        toast.error(translateLessonError(result.error));
         return;
       }
 
@@ -138,11 +140,22 @@ export function LessonTracker({ studentId, studentName, teacherId }: LessonTrack
     }
   }
 
+  const [confirmComplete, completing] = useAsyncAction(confirmLessonComplete);
+  const [confirmUndoAction, undoing] = useAsyncAction(confirmUndo);
+
   const totalLessonsPerMonth = templateCount * 4;
   const rowConfig = getRowConfig(templateCount);
 
   if (loading) {
-    return <div className="animate-pulse h-40 bg-muted rounded-lg" />;
+    // Sized from the same rowConfig the real grid uses, so the block that
+    // appears while loading is the block that stays — this used to be a flat
+    // h-40 that jumped to whatever the real height turned out to be.
+    return (
+      <div
+        className="animate-pulse rounded-xl border-[2.5px] border-primary/30 bg-muted"
+        style={{ height: rowConfig.rows * 62 + 20 }}
+      />
+    );
   }
 
   return (
@@ -170,7 +183,12 @@ export function LessonTracker({ studentId, studentName, teacherId }: LessonTrack
                         onClick={() => handleLessonClick(inst.id, isCompleted)}
                         disabled={!isNextCompletable && !isUndoable}
                         className={cn(
-                          "h-8 w-8 sm:h-9 sm:w-9 rounded-lg border-2 transition-all duration-200 font-semibold text-xs flex items-center justify-center shadow-[0_3px_0_0_var(--pn-ink)] relative",
+                          // 44px under a finger, 36px under a mouse. This was
+                          // `h-8 w-8 sm:h-9 sm:w-9`: a WIDTH query, so the
+                          // square was SMALLER on a phone than on a desktop —
+                          // backwards for a hit target, on the control a
+                          // teacher taps more than any other in the product.
+                          "relative flex size-11 items-center justify-center rounded-lg border-2 text-sm font-semibold shadow-[0_3px_0_0_var(--pn-ink)] transition-all duration-200 pointer-fine:size-9 pointer-fine:text-xs",
                           isCompleted
                             ? isUndoable
                               ? "bg-primary text-primary-foreground border-primary scale-95 hover:bg-primary/80 hover:scale-100 cursor-pointer"
@@ -183,7 +201,15 @@ export function LessonTracker({ studentId, studentName, teacherId }: LessonTrack
                       >
                         {displayPosition + 1}
                       </button>
-                      <span className={cn("text-[10px] whitespace-nowrap", inst.original_date && inst.is_manual_override ? "text-amber-600 dark:text-amber-400 font-medium" : "text-muted-foreground")}>
+                      <span
+                        className={cn(
+                          "whitespace-nowrap text-xs tabular-nums",
+                          // `dark:` never applies here — the panel scope is
+                          // light-only and no .dark class is ever set — so the
+                          // second half of that pair was dead code.
+                          inst.original_date && inst.is_manual_override ? "font-semibold text-tertiary" : "text-muted-foreground",
+                        )}
+                      >
                         {format(new Date(inst.lesson_date), "dd.MM")}
                       </span>
                     </div>
@@ -202,8 +228,12 @@ export function LessonTracker({ studentId, studentName, teacherId }: LessonTrack
             <AlertDialogDescription>{studentName} için sıradaki dersi işlendi olarak işaretlemek istiyor musunuz?</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel onClick={() => setPendingInstanceId(null)}>İptal</AlertDialogCancel>
-            <AlertDialogAction onClick={confirmLessonComplete}>Onayla</AlertDialogAction>
+            <AlertDialogCancel disabled={completing} onClick={() => setPendingInstanceId(null)}>
+              İptal
+            </AlertDialogCancel>
+            <AlertDialogAction onClick={confirmComplete} disabled={completing}>
+              {completing ? "İşleniyor..." : "Onayla"}
+            </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
@@ -215,8 +245,12 @@ export function LessonTracker({ studentId, studentName, teacherId }: LessonTrack
             <AlertDialogDescription>{studentName} için son işlenen dersi geri almak istiyor musunuz? Öğretmen bakiyesi de düzeltilecektir.</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel onClick={() => setUndoInstanceId(null)}>İptal</AlertDialogCancel>
-            <AlertDialogAction onClick={confirmUndo}>Geri Al</AlertDialogAction>
+            <AlertDialogCancel disabled={undoing} onClick={() => setUndoInstanceId(null)}>
+              İptal
+            </AlertDialogCancel>
+            <AlertDialogAction onClick={confirmUndoAction} disabled={undoing}>
+              {undoing ? "Geri alınıyor..." : "Geri Al"}
+            </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

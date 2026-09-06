@@ -5,6 +5,8 @@ import { ArrowLeft } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { ClosingCta } from "@/components/landing/closing-cta";
 import { archivo } from "@/lib/prose-font";
+import { JsonLd, blogPostingLd, breadcrumbLd, canonical, openGraphFor } from "@/lib/seo";
+import { siteConfig } from "@/lib/site";
 
 interface PageProps {
   params: Promise<{ slug: string }>;
@@ -14,7 +16,7 @@ async function getPost(slug: string) {
   const supabase = await createClient();
   const { data } = await supabase
     .from("blog_posts")
-    .select("title, excerpt, content, cover_image_url, published_at")
+    .select("title, excerpt, content, cover_image_url, published_at, updated_at")
     .eq("slug", slug)
     .eq("status", "published")
     .maybeSingle();
@@ -31,16 +33,22 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   return {
     title: post.title,
     description: post.excerpt ?? undefined,
-    openGraph: {
+    alternates: canonical(`/blog/${slug}`),
+    openGraph: openGraphFor({
       type: "article",
       title: post.title,
       description: post.excerpt ?? undefined,
-      publishedTime: post.published_at ?? undefined,
+      path: `/blog/${slug}`,
       // The post's own cover is what people expect to see when the link is
       // pasted into WhatsApp; the site-wide lockup only stands in when a post
       // has no cover of its own.
-      ...(post.cover_image_url ? { images: [{ url: post.cover_image_url }] } : {}),
-    },
+      images: [post.cover_image_url],
+      publishedTime: post.published_at ?? undefined,
+      // Google reads dateModified for freshness; without it a post that gets
+      // corrected keeps the age of its first publish in the results.
+      modifiedTime: post.updated_at ?? post.published_at ?? undefined,
+      authors: [siteConfig.founder],
+    }),
   };
 }
 
@@ -54,6 +62,23 @@ export default async function BlogPostPage({ params }: PageProps) {
 
   return (
     <div className={archivo.variable} style={{ background: "var(--paper)", minHeight: "100vh" }}>
+      <JsonLd
+        data={[
+          blogPostingLd({
+            slug,
+            title: post.title,
+            excerpt: post.excerpt,
+            coverImageUrl: post.cover_image_url,
+            publishedAt: post.published_at,
+            updatedAt: post.updated_at,
+          }),
+          breadcrumbLd([
+            { name: "Ana sayfa", path: "/" },
+            { name: "Blog", path: "/blog" },
+            { name: post.title, path: `/blog/${slug}` },
+          ]),
+        ]}
+      />
       <main style={{ paddingTop: "clamp(96px,12vw,140px)", paddingBottom: 80, paddingInline: "clamp(18px,5vw,64px)" }}>
         <div style={{ maxWidth: 720, margin: "0 auto" }}>
           {post.cover_image_url && (
@@ -61,7 +86,17 @@ export default async function BlogPostPage({ params }: PageProps) {
             <img
               src={post.cover_image_url}
               alt={post.title}
-              style={{ width: "100%", aspectRatio: "16/9", objectFit: "cover", borderRadius: 14, marginBottom: 32 }}
+              // This is the LCP element on a post. Covers come from arbitrary
+              // URLs typed into the admin editor, so next/image is out (it
+              // would need every host allowlisted); high fetch priority plus a
+              // declared intrinsic size gets most of the same win — the
+              // browser requests it in the first wave instead of after the
+              // fonts, and the box is reserved before it arrives.
+              width={1200}
+              height={675}
+              fetchPriority="high"
+              decoding="async"
+              style={{ width: "100%", height: "auto", aspectRatio: "16/9", objectFit: "cover", borderRadius: 14, marginBottom: 32 }}
             />
           )}
 

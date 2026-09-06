@@ -121,7 +121,7 @@ function monogram(label: string, bg: string) {
   return function Monogram({ className }: { className?: string }) {
     return (
       <span
-        className={cn("flex size-full items-center justify-center rounded-full text-[9px] font-bold tracking-tight text-white", className)}
+        className={cn("flex size-full items-center justify-center rounded-full text-micro font-bold tracking-tight text-white", className)}
         style={{ background: bg }}
       >
         {label}

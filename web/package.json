@@ -5,9 +5,11 @@
   "main": ".next/standalone/server.js",
   "scripts": {
     "dev": "next dev",
-    "build": "rm -rf .next && next build --webpack && cp .next/server/middleware.js .next/server/proxy.js && cp .next/server/middleware.js.nft.json .next/server/proxy.js.nft.json && cp -r public .next/standalone/ && mkdir -p .next/standalone/.next && cp -r .next/static .next/standalone/.next/",
+    "build": "NODE_OPTIONS=--dns-result-order=ipv4first rm -rf .next && NODE_OPTIONS=--dns-result-order=ipv4first next build --webpack && cp .next/server/middleware.js .next/server/proxy.js && cp .next/server/middleware.js.nft.json .next/server/proxy.js.nft.json && cp -r public .next/standalone/ && mkdir -p .next/standalone/.next && cp -r .next/static .next/standalone/.next/",
     "start": "HOSTNAME=0.0.0.0 node .next/standalone/server.js",
-    "lint": "eslint"
+    "lint": "eslint",
+    "typecheck": "tsc --noEmit",
+    "verify": "npm run typecheck && npm run lint"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",
@@ -33,6 +35,9 @@
     "radix-ui": "^1.6.7",
     "react": "19.2.4",
     "react-dom": "19.2.4",
+    "react-markdown": "^10.1.0",
+    "rehype-highlight": "^7.0.2",
+    "remark-gfm": "^4.0.1",
     "sonner": "^2.0.7",
     "tailwind-merge": "^3.6.0"
   },

@@ -56,16 +56,10 @@ export function BalanceManager({ teacherId }: BalanceManagerProps) {
   // concurrently (double-credits or double-charges real balance minutes).
   const [actionBusy, setActionBusy] = useState(false);
 
-  useEffect(() => {
-    fetchBalance();
-    fetchPaymentHistory();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [teacherId]);
-
   async function fetchBalance() {
     try {
       setLoading(true);
-      const { data, error } = await supabase.from("teacher_balance").select("*").eq("teacher_id", teacherId).maybeSingle();
+      const { data, error } = await supabase.from("teacher_balance").select("total_minutes, completed_regular_lessons, completed_trial_lessons, regular_lessons_minutes, trial_lessons_minutes, manual_adjustment_minutes").eq("teacher_id", teacherId).maybeSingle();
       if (error) throw error;
       setBalance(
         data ?? {
@@ -83,15 +77,25 @@ export function BalanceManager({ teacherId }: BalanceManagerProps) {
     }
   }
 
+  // Declared AFTER the two fetchers on purpose. Function declarations hoist,
+  // so calling them from above worked — but the React Compiler cannot prove
+  // the closure is stable when the call precedes the declaration, which is
+  // what react-hooks/immutability was reporting. Pure reordering.
   async function fetchPaymentHistory() {
     try {
-      const { data, error } = await supabase.from("payment_history").select("*").eq("teacher_id", teacherId).order("payment_date", { ascending: false });
+      const { data, error } = await supabase.from("payment_history").select("id, amount_minutes, completed_regular_lessons, completed_trial_lessons, payment_date, notes").eq("teacher_id", teacherId).order("payment_date", { ascending: false });
       if (error) throw error;
       setPaymentHistory(data ?? []);
     } catch (error) {
       console.error("Error fetching payment history:", error);
     }
   }
+
+  useEffect(() => {
+    fetchBalance();
+    fetchPaymentHistory();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [teacherId]);
 
   async function handleAddMinutes() {
     if (actionBusy) return;
@@ -149,7 +153,7 @@ export function BalanceManager({ teacherId }: BalanceManagerProps) {
     if (actionBusy) return;
     setActionBusy(true);
     try {
-      const { data: existingBalance } = await supabase.from("teacher_balance").select("*").eq("teacher_id", teacherId).maybeSingle();
+      const { data: existingBalance } = await supabase.from("teacher_balance").select("total_minutes, completed_regular_lessons, completed_trial_lessons").eq("teacher_id", teacherId).maybeSingle();
 
       if (existingBalance && existingBalance.total_minutes > 0) {
         const { error: historyError } = await supabase.from("payment_history").insert({
@@ -229,7 +233,7 @@ export function BalanceManager({ teacherId }: BalanceManagerProps) {
           <CardContent className="pt-6">
             <div className="text-center">
               <div className="flex items-center justify-center gap-2 mb-2">
-                <CheckCircle2 className="h-5 w-5 text-blue-500" />
+                <CheckCircle2 className="h-5 w-5 text-secondary" />
                 <p className="text-sm font-medium text-muted-foreground">Normal Dersler</p>
               </div>
               <p className="text-lg sm:text-3xl font-bold">
@@ -243,7 +247,7 @@ export function BalanceManager({ teacherId }: BalanceManagerProps) {
           <CardContent className="pt-6">
             <div className="text-center">
               <div className="flex items-center justify-center gap-2 mb-2">
-                <Calendar className="h-5 w-5 text-purple-500" />
+                <Calendar className="h-5 w-5 text-tertiary" />
                 <p className="text-sm font-medium text-muted-foreground">Deneme Dersleri</p>
               </div>
               <p className="text-lg sm:text-3xl font-bold">
@@ -323,11 +327,11 @@ export function BalanceManager({ teacherId }: BalanceManagerProps) {
                         </div>
                         <div className="flex gap-4 text-sm text-muted-foreground">
                           <span className="flex items-center gap-1">
-                            <CheckCircle2 className="h-3 w-3 text-blue-500" />
+                            <CheckCircle2 className="h-3 w-3 text-secondary" />
                             {payment.completed_regular_lessons} ders
                           </span>
                           <span className="flex items-center gap-1">
-                            <Calendar className="h-3 w-3 text-purple-500" />
+                            <Calendar className="h-3 w-3 text-tertiary" />
                             {payment.completed_trial_lessons} ders
                           </span>
                         </div>

@@ -3,10 +3,20 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { ClosingCta } from "@/components/landing/closing-cta";
 import { archivo } from "@/lib/prose-font";
+import { JsonLd, absoluteUrl, breadcrumbLd, canonical, openGraphFor } from "@/lib/seo";
+import { siteConfig } from "@/lib/site";
 
 export const metadata: Metadata = {
-  title: "Blog",
-  description: "Nebula Genç Zeka'dan yapay zeka, eğitim ve çocuklarla yaratıcılık üzerine yazılar.",
+  title: "Blog — Çocuklar ve Yapay Zeka",
+  description:
+    "Velilere yönelik yazılar: çocuklar yapay zekayı nasıl güvenle kullanır, hangi araçlar hangi yaşa uygun, evde neler denenebilir.",
+  alternates: canonical("/blog"),
+  openGraph: openGraphFor({
+    title: "Blog — çocuklar ve yapay zeka",
+    description:
+      "Velilere yönelik yazılar: çocuklar yapay zekayı nasıl güvenle kullanır, hangi araçlar hangi yaşa uygun, evde neler denenebilir.",
+    path: "/blog",
+  }),
 };
 
 export default async function BlogPage() {
@@ -19,6 +29,33 @@ export default async function BlogPage() {
 
   return (
     <div className={archivo.variable} style={{ background: "var(--paper)", minHeight: "100vh" }}>
+      {/* Blog + breadcrumb. The post list is included so a crawler that lands
+          here has every published URL in the markup as well as in the sitemap. */}
+      <JsonLd
+        data={[
+          breadcrumbLd([
+            { name: "Ana sayfa", path: "/" },
+            { name: "Blog", path: "/blog" },
+          ]),
+          {
+            "@context": "https://schema.org",
+            "@type": "Blog",
+            "@id": absoluteUrl("/blog"),
+            name: `${siteConfig.name} Blog`,
+            description:
+              "Çocuklar, gençler ve yapay zeka üzerine velilere yönelik yazılar.",
+            inLanguage: "tr-TR",
+            publisher: { "@id": `${siteConfig.url}/#organization` },
+            blogPost: (posts ?? []).map((post) => ({
+              "@type": "BlogPosting",
+              "@id": absoluteUrl(`/blog/${post.slug}`),
+              headline: post.title,
+              url: absoluteUrl(`/blog/${post.slug}`),
+              datePublished: post.published_at ?? undefined,
+            })),
+          },
+        ]}
+      />
       <main style={{ paddingTop: "clamp(96px,12vw,140px)", paddingBottom: 80, paddingInline: "clamp(18px,5vw,64px)" }}>
         <div style={{ maxWidth: 1180, margin: "0 auto" }}>
           <h1
@@ -58,8 +95,19 @@ export default async function BlogPage() {
                     // eslint-disable-next-line @next/next/no-img-element
                     <img
                       src={post.cover_image_url}
-                      alt={post.title}
-                      style={{ width: "100%", aspectRatio: "16/10", objectFit: "cover" }}
+                      alt={`${post.title} — kapak görseli`}
+                      // Covers are pasted as arbitrary URLs in the admin
+                      // editor, so they can't go through next/image (that
+                      // would mean allowlisting every host, or `**`). These
+                      // four attributes are what next/image would have added
+                      // anyway: intrinsic size so the card reserves its box
+                      // before the bytes land (CLS), and lazy+async so a
+                      // twelve-post grid doesn't block the first paint.
+                      width={640}
+                      height={400}
+                      loading="lazy"
+                      decoding="async"
+                      style={{ width: "100%", height: "auto", aspectRatio: "16/10", objectFit: "cover" }}
                     />
                   ) : (
                     <div

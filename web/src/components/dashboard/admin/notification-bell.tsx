@@ -30,7 +30,7 @@ export function NotificationBell() {
     const supabase = createClient();
     const { data, error } = await supabase
       .from("admin_notifications")
-      .select("*")
+      .select("id, notification_type, teacher_id, student_id, message, is_read, created_at")
       .order("created_at", { ascending: false })
       .limit(50);
 
@@ -87,7 +87,7 @@ export function NotificationBell() {
         <button type="button" className="pn-btn pn-btn--icon pn-btn--purple relative" aria-label="Bildirimler">
           <Bell className="h-5 w-5" />
           {unreadCount > 0 && (
-            <Badge className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center p-0 bg-red-500 text-white text-xs">
+            <Badge className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center p-0 bg-error text-on-secondary text-xs">
               {unreadCount > 9 ? "9+" : unreadCount}
             </Badge>
           )}
@@ -101,7 +101,7 @@ export function NotificationBell() {
                 <CardTitle className="text-lg font-semibold">Admin Bildirimleri</CardTitle>
                 <CardDescription className="mt-1">{unreadCount > 0 ? `${unreadCount} okunmamış bildirim` : "Tüm bildirimler okundu"}</CardDescription>
               </div>
-              {unreadCount > 0 && <Badge className="bg-blue-600 text-blue-50">{unreadCount}</Badge>}
+              {unreadCount > 0 && <Badge className="bg-secondary text-on-secondary">{unreadCount}</Badge>}
             </div>
           </CardHeader>
           <CardContent className="p-0">
@@ -119,11 +119,11 @@ export function NotificationBell() {
                   {notifications.map((notification) => (
                     <div
                       key={notification.id}
-                      className={`p-4 transition-colors ${!notification.is_read ? "bg-blue-600/5 border-l-4 border-l-blue-600" : ""}`}
+                      className={`p-4 transition-colors ${!notification.is_read ? "bg-secondary/5 border-l-4 border-l-secondary" : ""}`}
                     >
                       <div className="flex items-start gap-3">
-                        <div className={`mt-0.5 rounded-full p-2 ${!notification.is_read ? "bg-blue-600/10" : "bg-muted"}`}>
-                          <Users className={`h-4 w-4 ${!notification.is_read ? "text-blue-600" : "text-muted-foreground"}`} />
+                        <div className={`mt-0.5 rounded-full p-2 ${!notification.is_read ? "bg-secondary/10" : "bg-muted"}`}>
+                          <Users className={`h-4 w-4 ${!notification.is_read ? "text-secondary" : "text-muted-foreground"}`} />
                         </div>
                         <div className="flex-1 min-w-0">
                           <p className={`text-sm ${!notification.is_read ? "font-semibold text-foreground" : "font-medium text-muted-foreground"}`}>
@@ -134,7 +134,7 @@ export function NotificationBell() {
                             <p className="text-xs text-muted-foreground">{format(new Date(notification.created_at), "dd MMM yyyy, HH:mm", { locale: tr })}</p>
                           </div>
                         </div>
-                        {!notification.is_read && <div className="h-2 w-2 rounded-full bg-blue-600 mt-2" />}
+                        {!notification.is_read && <div className="h-2 w-2 rounded-full bg-secondary mt-2" />}
                       </div>
                     </div>
                   ))}

@@ -1,157 +1,121 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
-import { Bell, FileText, Calendar } from "lucide-react";
-import { toast } from "sonner";
-import { createClient } from "@/lib/supabase/client";
-import { Badge } from "@/components/panel-ui/badge";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/panel-ui/card";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/panel-ui/popover";
-import { ScrollArea } from "@/components/panel-ui/scroll-area";
+import { useState } from "react";
+import { Bell, FileText } from "lucide-react";
 import { format } from "date-fns";
 import { tr } from "date-fns/locale";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/panel-ui/popover";
+import type { HomeworkNotification } from "@/lib/homework/use-notifications";
+import { cn } from "@/lib/cn";
 
-interface Notification {
-  id: string;
-  teacher_id: string;
-  student_id: string;
-  homework_id: string;
-  is_read: boolean;
-  created_at: string;
-  full_name?: string;
-}
-
-interface HomeworkNotificationBellProps {
-  userId: string;
+interface Props {
+  notifications: HomeworkNotification[];
+  unreadCount: number;
+  onMarkAllRead: () => void;
   isStudent?: boolean;
   onNotificationClick?: (studentId: string) => void;
+  /** Lacivert barın üstünde mi, krem bir yüzeyde mi duruyor. */
+  variant?: "bar" | "surface";
 }
 
-export function HomeworkNotificationBell({ userId, isStudent = false, onNotificationClick }: HomeworkNotificationBellProps) {
-  const [notifications, setNotifications] = useState<Notification[]>([]);
-  const [unreadCount, setUnreadCount] = useState(0);
+/**
+ * Bildirim zili — panelin TEK bildirim göstergesi.
+ *
+ * Veriyi kendisi çekmez: aynı sayı öğrenci listesindeki satır sayacında da
+ * görünüyor ve iki ayrı sorgu kaçınılmaz olarak birbirinden ayrı düşerdi.
+ * Sayı yukarıdan gelir (bkz. use-notifications).
+ *
+ * Açılınca hepsi okundu sayılır — kapatınca değil: kullanıcı listeyi
+ * gördüğü anda okumuştur, ve "kapat" ile "okudum" farklı iki niyettir.
+ */
+export function HomeworkNotificationBell({
+  notifications,
+  unreadCount,
+  onMarkAllRead,
+  isStudent = false,
+  onNotificationClick,
+  variant = "surface",
+}: Props) {
   const [open, setOpen] = useState(false);
 
-  const fetchNotifications = useCallback(async () => {
-    if (!userId) return;
-    const supabase = createClient();
-    const { data, error } = await supabase.from("notifications").select("*").eq("recipient_id", userId).order("created_at", { ascending: false }).limit(20);
-    if (error) return;
-
-    const otherIds = [...new Set((data ?? []).map((n) => (isStudent ? n.teacher_id : n.student_id)))];
-    const profiles = otherIds.length > 0 ? (await supabase.from("profiles").select("user_id, full_name").in("user_id", otherIds)).data : [];
-    const nameMap = new Map((profiles ?? []).map((p) => [p.user_id, p.full_name]));
-
-    const enriched = (data ?? []).map((n) => ({
-      ...n,
-      full_name: nameMap.get(isStudent ? n.teacher_id : n.student_id) ?? (isStudent ? "Öğretmen" : "Öğrenci"),
-    }));
-
-    setNotifications(enriched);
-    setUnreadCount(enriched.filter((n) => !n.is_read).length);
-  }, [userId, isStudent]);
-
-  useEffect(() => {
-    if (!userId) return;
-    fetchNotifications();
-
-    const supabase = createClient();
-    const channel = supabase
-      .channel(`notifications-${userId}`)
-      .on("postgres_changes", { event: "INSERT", schema: "public", table: "notifications", filter: `recipient_id=eq.${userId}` }, () => {
-        fetchNotifications();
-        toast.info(isStudent ? "Öğretmeniniz yeni bir dosya yükledi" : "Bir öğrenciniz yeni ödev yükledi");
-      })
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [userId, isStudent, fetchNotifications]);
-
-  async function markAllAsRead() {
-    const unreadIds = notifications.filter((n) => !n.is_read).map((n) => n.id);
-    if (unreadIds.length === 0) return;
-    const supabase = createClient();
-    const { error } = await supabase.from("notifications").update({ is_read: true }).in("id", unreadIds);
-    if (error) {
-      toast.error("Bildirimler okundu olarak işaretlenemedi");
-      return;
-    }
-    setNotifications((prev) => prev.map((n) => ({ ...n, is_read: true })));
-    setUnreadCount(0);
-  }
-
-  function handleOpenChange(newOpen: boolean) {
-    setOpen(newOpen);
-    if (newOpen && unreadCount > 0) markAllAsRead();
-  }
-
-  function handleNotificationClick(notification: Notification) {
-    setOpen(false);
-    onNotificationClick?.(notification.student_id);
-  }
-
   return (
-    <Popover open={open} onOpenChange={handleOpenChange}>
+    <Popover
+      open={open}
+      onOpenChange={(next) => {
+        setOpen(next);
+        if (next && unreadCount > 0) onMarkAllRead();
+      }}
+    >
       <PopoverTrigger asChild>
-        <button type="button" className="pn-btn pn-btn--icon pn-btn--purple relative" aria-label="Bildirimler">
-          <Bell className="h-5 w-5" />
+        <button
+          type="button"
+          aria-label={unreadCount > 0 ? `Bildirimler — ${unreadCount} okunmamış` : "Bildirimler"}
+          title="Bildirimler"
+          className={cn(
+            "relative grid shrink-0 place-items-center rounded-[11px] border transition-transform duration-[.18s] hover:-translate-y-px",
+            variant === "bar"
+              ? "size-[34px] border-[color:rgba(255,214,222,.5)] bg-[color:var(--pn-pink)] text-[color:var(--pn-pink-ink-strong)]"
+              : "pn-btn pn-btn--icon pn-btn--pink",
+          )}
+        >
+          <Bell className="size-4" strokeWidth={1.9} aria-hidden />
           {unreadCount > 0 && (
-            <Badge className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center p-0 bg-red-500 text-white text-xs">{unreadCount > 9 ? "9+" : unreadCount}</Badge>
+            <span className={cn("pn-badge", variant === "surface" && "border-[color:var(--color-surface)]")}>
+              {unreadCount > 9 ? "9+" : unreadCount}
+            </span>
           )}
         </button>
       </PopoverTrigger>
-      <PopoverContent className="w-[calc(100vw-2rem)] sm:w-96 max-w-[400px] p-0" align="end">
-        <Card>
-          <CardHeader className="border-b-[2.5px] border-primary bg-surface-dim pb-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <CardTitle className="text-lg font-semibold">Bildirimler</CardTitle>
-                <CardDescription className="mt-1">{unreadCount > 0 ? `${unreadCount} okunmamış bildirim` : "Tüm bildirimler okundu"}</CardDescription>
-              </div>
-              {unreadCount > 0 && <Badge className="bg-primary text-primary-foreground">{unreadCount}</Badge>}
+
+      <PopoverContent align="end" sideOffset={8} className="w-[min(22rem,calc(100vw-2rem))] gap-0 p-0">
+        <div className="pn-band pn-band--pink justify-between py-3">
+          <h3 className="pn-card-title">Bildirimler</h3>
+          <span className="pn-chip pn-chip--pink">{unreadCount}</span>
+        </div>
+
+        <div className="pn-scroll max-h-[min(60vh,420px)] p-2">
+          {notifications.length === 0 ? (
+            <div className="flex flex-col items-center gap-2 px-4 py-10 text-center">
+              <Bell className="size-7 text-outline" strokeWidth={1.5} aria-hidden />
+              <p className="text-[13px] text-on-surface-variant">Henüz bildirim yok.</p>
             </div>
-          </CardHeader>
-          <CardContent className="p-0">
-            <ScrollArea className="h-[400px]">
-              {notifications.length === 0 ? (
-                <div className="flex flex-col items-center justify-center py-12 px-4">
-                  <div className="rounded-full bg-muted p-4 mb-4">
-                    <Bell className="h-8 w-8 text-muted-foreground" />
-                  </div>
-                  <p className="text-sm font-medium text-muted-foreground">Henüz bildirim yok</p>
-                  <p className="text-xs text-muted-foreground mt-1">Yeni ödev yüklendiğinde burada görünecek</p>
-                </div>
-              ) : (
-                <div className="divide-y">
-                  {notifications.map((notification) => (
-                    <div
-                      key={notification.id}
-                      className={`p-4 transition-colors hover:bg-accent/50 cursor-pointer ${!notification.is_read ? "bg-primary/5 border-l-4 border-l-primary" : ""}`}
-                      onClick={() => handleNotificationClick(notification)}
-                    >
-                      <div className="flex items-start gap-3">
-                        <div className={`mt-0.5 rounded-full p-2 ${!notification.is_read ? "bg-primary/10" : "bg-muted"}`}>
-                          <FileText className={`h-4 w-4 ${!notification.is_read ? "text-primary" : "text-muted-foreground"}`} />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <p className={`text-sm ${!notification.is_read ? "font-semibold text-foreground" : "font-medium text-muted-foreground"}`}>{notification.full_name}</p>
-                          <p className="text-sm text-muted-foreground mt-0.5">{isStudent ? "Yeni bir dosya yükledi" : "Yeni bir ödev yükledi"}</p>
-                          <div className="flex items-center gap-1.5 mt-2">
-                            <Calendar className="h-3 w-3 text-muted-foreground" />
-                            <p className="text-xs text-muted-foreground">{format(new Date(notification.created_at), "dd MMM yyyy, HH:mm", { locale: tr })}</p>
-                          </div>
-                        </div>
-                        {!notification.is_read && <div className="h-2 w-2 rounded-full bg-primary mt-2" />}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </ScrollArea>
-          </CardContent>
-        </Card>
+          ) : (
+            <div className="flex flex-col gap-1">
+              {notifications.map((notification) => (
+                <button
+                  key={notification.id}
+                  type="button"
+                  onClick={() => {
+                    setOpen(false);
+                    onNotificationClick?.(notification.student_id);
+                  }}
+                  className="pn-row items-start gap-2.5 p-2"
+                  style={{
+                    ["--pn-row-stripe" as string]: notification.is_read ? "transparent" : "var(--pn-pink-ink)",
+                    ["--pn-row-fill" as string]: notification.is_read ? "transparent" : "var(--pn-pink-sel)",
+                    ["--pn-row-hover" as string]: "var(--pn-pink-tint)",
+                  }}
+                >
+                  <span
+                    aria-hidden
+                    className="mt-0.5 grid size-7 shrink-0 place-items-center rounded-[8px] bg-[color:var(--pn-pink)] text-[color:var(--pn-pink-ink-strong)]"
+                  >
+                    <FileText className="size-3.5" strokeWidth={1.9} />
+                  </span>
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate text-[13px] font-semibold text-on-surface">{notification.full_name}</span>
+                    <span className="block text-[12px] text-on-surface-variant">
+                      {isStudent ? "yeni bir dosya yükledi" : "yeni bir ödev yükledi"}
+                    </span>
+                    <span className="mt-0.5 block font-mono text-[10px] tabular-nums text-on-surface-variant">
+                      {format(new Date(notification.created_at), "dd MMM · HH:mm", { locale: tr })}
+                    </span>
+                  </span>
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
       </PopoverContent>
     </Popover>
   );

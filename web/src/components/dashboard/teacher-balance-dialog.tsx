@@ -51,7 +51,7 @@ export function TeacherBalanceDialog({ open, onOpenChange, teacherId }: TeacherB
 
     async function fetchBalance() {
       setLoading(true);
-      const { data, error } = await supabase.from("teacher_balance").select("*").eq("teacher_id", teacherId).maybeSingle();
+      const { data, error } = await supabase.from("teacher_balance").select("total_minutes, completed_regular_lessons, completed_trial_lessons, regular_lessons_minutes, trial_lessons_minutes, manual_adjustment_minutes").eq("teacher_id", teacherId).maybeSingle();
       if (error) {
         toast.error("Bakiye bilgisi yüklenirken hata oluştu");
       }
@@ -68,7 +68,7 @@ export function TeacherBalanceDialog({ open, onOpenChange, teacherId }: TeacherB
     }
 
     async function fetchPaymentHistory() {
-      const { data, error } = await supabase.from("payment_history").select("*").eq("teacher_id", teacherId).order("payment_date", { ascending: false });
+      const { data, error } = await supabase.from("payment_history").select("id, amount_minutes, completed_regular_lessons, completed_trial_lessons, payment_date, notes").eq("teacher_id", teacherId).order("payment_date", { ascending: false });
       if (error) {
         toast.error("Ödeme geçmişi yüklenirken hata oluştu");
         return;
@@ -106,7 +106,7 @@ export function TeacherBalanceDialog({ open, onOpenChange, teacherId }: TeacherB
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
               <div className="bg-card border rounded-lg p-3 sm:p-4">
                 <div className="flex items-center gap-2 mb-2">
-                  <CheckCircle2 className="h-4 w-4 text-blue-500 flex-shrink-0" />
+                  <CheckCircle2 className="h-4 w-4 text-secondary flex-shrink-0" />
                   <p className="text-xs text-muted-foreground">Normal Dersler</p>
                 </div>
                 <p className="text-lg sm:text-2xl font-semibold break-words">
@@ -116,7 +116,7 @@ export function TeacherBalanceDialog({ open, onOpenChange, teacherId }: TeacherB
 
               <div className="bg-card border rounded-lg p-3 sm:p-4">
                 <div className="flex items-center gap-2 mb-2">
-                  <Calendar className="h-4 w-4 text-purple-500 flex-shrink-0" />
+                  <Calendar className="h-4 w-4 text-tertiary flex-shrink-0" />
                   <p className="text-xs text-muted-foreground">Deneme Dersleri</p>
                 </div>
                 <p className="text-lg sm:text-2xl font-semibold break-words">
@@ -145,11 +145,11 @@ export function TeacherBalanceDialog({ open, onOpenChange, teacherId }: TeacherB
                             </div>
                             <div className="flex gap-3 text-xs text-muted-foreground">
                               <span className="flex items-center gap-1">
-                                <CheckCircle2 className="h-3 w-3 text-blue-500" />
+                                <CheckCircle2 className="h-3 w-3 text-secondary" />
                                 {payment.completed_regular_lessons} ders
                               </span>
                               <span className="flex items-center gap-1">
-                                <Calendar className="h-3 w-3 text-purple-500" />
+                                <Calendar className="h-3 w-3 text-tertiary" />
                                 {payment.completed_trial_lessons} ders
                               </span>
                             </div>

@@ -600,6 +600,152 @@ export type Database = {
           },
         ]
       }
+      playground_generation_inputs: {
+        Row: {
+          created_at: string
+          generation_id: string
+          id: string
+          path: string
+          seq: number
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          generation_id: string
+          id?: string
+          path: string
+          seq: number
+          user_id?: string
+        }
+        Update: {
+          created_at?: string
+          generation_id?: string
+          id?: string
+          path?: string
+          seq?: number
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "playground_generation_inputs_generation_id_fkey"
+            columns: ["generation_id"]
+            isOneToOne: false
+            referencedRelation: "ai_generations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      site_content: {
+        Row: {
+          key: string
+          updated_at: string
+          updated_by: string | null
+          value: Json
+        }
+        Insert: {
+          key: string
+          updated_at?: string
+          updated_by?: string | null
+          value: Json
+        }
+        Update: {
+          key?: string
+          updated_at?: string
+          updated_by?: string | null
+          value?: Json
+        }
+        Relationships: []
+      }
+      site_moments: {
+        Row: {
+          caption_en: string
+          caption_fr: string
+          caption_tr: string
+          created_at: string
+          id: string
+          is_published: boolean
+          media_type: string
+          media_url: string
+          order_index: number
+          poster_url: string | null
+          tag_en: string
+          tag_fr: string
+          tag_tr: string
+          updated_at: string
+        }
+        Insert: {
+          caption_en?: string
+          caption_fr?: string
+          caption_tr?: string
+          created_at?: string
+          id?: string
+          is_published?: boolean
+          media_type: string
+          media_url: string
+          order_index?: number
+          poster_url?: string | null
+          tag_en?: string
+          tag_fr?: string
+          tag_tr?: string
+          updated_at?: string
+        }
+        Update: {
+          caption_en?: string
+          caption_fr?: string
+          caption_tr?: string
+          created_at?: string
+          id?: string
+          is_published?: boolean
+          media_type?: string
+          media_url?: string
+          order_index?: number
+          poster_url?: string | null
+          tag_en?: string
+          tag_fr?: string
+          tag_tr?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      site_testimonials: {
+        Row: {
+          author_label: string | null
+          created_at: string
+          id: string
+          is_published: boolean
+          order_index: number
+          quote_en: string
+          quote_fr: string
+          quote_tr: string
+          tags: Json
+          updated_at: string
+        }
+        Insert: {
+          author_label?: string | null
+          created_at?: string
+          id?: string
+          is_published?: boolean
+          order_index?: number
+          quote_en?: string
+          quote_fr?: string
+          quote_tr: string
+          tags?: Json
+          updated_at?: string
+        }
+        Update: {
+          author_label?: string | null
+          created_at?: string
+          id?: string
+          is_published?: boolean
+          order_index?: number
+          quote_en?: string
+          quote_fr?: string
+          quote_tr?: string
+          tags?: Json
+          updated_at?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           created_at: string
@@ -757,6 +903,7 @@ export type Database = {
           end_time: string
           id: string
           is_completed: boolean
+          meeting_url: string | null
           note: string | null
           start_time: string
           student_id: string
@@ -771,6 +918,7 @@ export type Database = {
           end_time: string
           id?: string
           is_completed?: boolean
+          meeting_url?: string | null
           note?: string | null
           start_time: string
           student_id: string
@@ -785,6 +933,7 @@ export type Database = {
           end_time?: string
           id?: string
           is_completed?: boolean
+          meeting_url?: string | null
           note?: string | null
           start_time?: string
           student_id?: string
@@ -1037,6 +1186,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      rpc_record_generation_inputs: {
+        Args: { p_generation_id: string; p_paths: string[] }
+        Returns: undefined
+      }
       admin_create_student_relationship: {
         Args: { student_user_id: string; teacher_user_id: string }
         Returns: Json

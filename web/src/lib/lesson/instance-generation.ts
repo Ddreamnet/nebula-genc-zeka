@@ -133,7 +133,9 @@ export async function shiftLessonsForward(
 
   const { data: allInstances } = await supabase
     .from("lesson_instances")
-    .select("*")
+    .select(
+      "id, student_id, teacher_id, lesson_number, lesson_date, start_time, end_time, status, original_date, original_start_time, original_end_time, rescheduled_count, is_manual_override, package_cycle, group_id",
+    )
     .eq("student_id", studentId)
     .eq("teacher_id", teacherId)
     .eq("package_cycle", currentCycle)

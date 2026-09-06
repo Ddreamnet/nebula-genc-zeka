@@ -65,7 +65,7 @@ function ToolBtn({
   title: string;
 }) {
   return (
-    <Button type="button" variant={active ? "default" : "outline"} size="icon" className="h-8 w-8" onClick={onClick} title={title}>
+    <Button type="button" variant={active ? "default" : "outline"} size="icon" aria-pressed={active} onClick={onClick} title={title} aria-label={title}>
       {children}
     </Button>
   );
@@ -202,7 +202,7 @@ export function BlogPostEditor({ content, onChange }: BlogPostEditorProps) {
 
         <Popover>
           <PopoverTrigger asChild>
-            <Button type="button" variant="outline" size="icon" className="h-8 w-8" title="Renk">
+            <Button type="button" variant="outline" size="icon" title="Renk" aria-label="Renk">
               <Palette className="h-4 w-4" />
             </Button>
           </PopoverTrigger>
@@ -223,7 +223,7 @@ export function BlogPostEditor({ content, onChange }: BlogPostEditorProps) {
 
         <Popover>
           <PopoverTrigger asChild>
-            <Button type="button" variant={editor.isActive("link") ? "default" : "outline"} size="icon" className="h-8 w-8" title="Link">
+            <Button type="button" variant={editor.isActive("link") ? "default" : "outline"} size="icon" title="Link" aria-label="Link">
               <LinkIcon className="h-4 w-4" />
             </Button>
           </PopoverTrigger>
@@ -244,7 +244,7 @@ export function BlogPostEditor({ content, onChange }: BlogPostEditorProps) {
 
         <Popover>
           <PopoverTrigger asChild>
-            <Button type="button" variant="outline" size="icon" className="h-8 w-8" title="YouTube video">
+            <Button type="button" variant="outline" size="icon" title="YouTube video" aria-label="YouTube video">
               <YoutubeIcon className="h-4 w-4" />
             </Button>
           </PopoverTrigger>

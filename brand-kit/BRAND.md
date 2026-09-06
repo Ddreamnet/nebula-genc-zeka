@@ -9,23 +9,47 @@ aynı dünyada geçtiği anlaşılsın ama post kendi tasarımı olsun.
 
 ```
 brand-kit/
-  svg/            15 parça, vektör — Claude Design ve Figma için
-  png/            aynı 15 parça, 1600px, şeffaf zemin — Canva ve mobil için
-  build.mjs       üretici script (node brand-kit/build.mjs)
-  BRAND.md        bu dosya
+  CLAUDE-DESIGN.md  Claude Design'a yapıştırılacak tam kaynak — palet,
+                    tipografi, bileşen tarifleri ve Nova'nın çizim sistemi
+                    (23 poz, 5 ifade, 3 bakış yönü, hepsi koordinatlarıyla)
+  svg/              39 parça, vektör — Claude Design ve Figma için
+  png/              aynı 39 parça, 1600px, şeffaf zemin — Canva ve mobil için
+  build.mjs         üretici script (node brand-kit/build.mjs)
+  BRAND.md          bu dosya
 ```
+
+**Yeni bir tasarıma başlıyorsan `CLAUDE-DESIGN.md`'yi olduğu gibi yapıştır.**
+Bu dosya özettir; oradaki koordinat tabloları Nova'yı sıfırdan, istediğin
+pozda çizdirmeye yetiyor.
 
 Kaset (karakterler):
 
 | Dosya | Ne zaman |
 |---|---|
 | `nova-float` | Varsayılan. Süzülüyor, kollar iki yana açık. Duyuru ve kapak postları. |
-| `nova-wave` | El sallıyor. Karşılama, "merhaba", yeni dönem duyurusu. |
-| `nova-cheer` | İki kol havada. Kutlama, öğrenci işi paylaşımı, başarı. |
-| `nova-point` | Sağı gösteriyor. Bir şeye dikkat çekerken, carousel'de "kaydır". |
-| `nova-think` | Elini çenesine götürmüş. Soru sorarken, "biliyor muydun" postları. |
+| `nova-wave` · `nova-wave-left` | El sallıyor. Karşılama, "merhaba", yeni dönem duyurusu. |
+| `nova-cheer` · `nova-jump` | Kutlama, öğrenci işi paylaşımı, başarı. |
+| `nova-point` · `nova-point-left` | Yanı gösteriyor. Carousel'de "kaydır"/"geri". |
+| `nova-point-turned` · `nova-point-left-turned` | Aynısı, ama **gösterdiği yöne dönük**. Yanına konan görselle konuşuyormuş gibi durur. |
+| `nova-point-up` · `nova-point-down` | Üstteki başlığı ya da alttaki detayı gösterir. |
+| `nova-point-far` | Uzun kol. Yanındaki büyük görselin tamamını kapsar. |
+| `nova-raise-right` · `nova-raise-left` | Tek kol havada. `cheer`den sakin bir "evet". |
+| `nova-present-right` · `nova-present-left` | Avuç açık sunuş: "işte burada". |
+| `nova-think` · `nova-focus` | Soru sorarken, "biliyor muydun" postları. |
+| `nova-hold` | İki el iki yanda; aradaki boşluğa tabela/kart koy. |
+| `nova-hips` · `nova-open` · `nova-shrug` · `nova-salute` | Duruşlar: kararlı, kucaklayan, "bilmiyorum", selam. |
+| `nova-walk` · `nova-fly` · `nova-hover` | Hareket. `fly` eğimli çizilmiş. |
+| `nova-happy` · `nova-wow` · `nova-sleep` | Aynı gövde, farklı göz ifadesi. |
 | `nova-float-mint` | Gözleri mint. Yeşil ağırlıklı postlarda Nova'yı yeniden anahtarlar. |
 | `bit-blue` | Nova'nın yardımcısı, tek gözlü küp drone. Konu "makine"yse. |
+
+Listede olmayan bir hâli gerekiyorsa uydurabilirsin — poz, bakış yönü ve göz
+ifadesi bağımsız üç eksen:
+
+```bash
+node brand-kit/build.mjs --list
+node brand-kit/build.mjs --pose raise-right --facing right --eyes happy --name nova-duyuru
+```
 
 Sahne parçaları: `star-amber`, `star-mint`, `star-coral`, `star-blue`,
 `planet-violet`, `planet-coral`, `comet-mint`, `rocket`.
@@ -34,7 +58,10 @@ Sahne parçaları: `star-amber`, `star-mint`, `star-coral`, `star-blue`,
 
 ## Claude Design'a nasıl verilir
 
-Üç yol var, en kolayından zora:
+**En iyisi: `brand-kit/CLAUDE-DESIGN.md`'yi olduğu gibi yapıştır.** İçinde
+Nova'nın taban gövdesi, bütün pozların kol koordinatları, göz varyantları ve
+sitenin tasarım sistemi var; Claude Design oradan istediğin varyantı kendi
+çizebiliyor. Tek bir hazır poz yetiyorsa:
 
 1. **Dosya yolu ver.** Bu repoda çalışıyorsan: "Nova'yı
    `brand-kit/svg/nova-wave.svg` dosyasından al, artboard'a göm."

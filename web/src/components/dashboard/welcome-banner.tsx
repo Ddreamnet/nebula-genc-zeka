@@ -9,7 +9,7 @@ function sizeClass(name: string, variant: "header" | "banner") {
     if (len <= 10) return "text-base";
     if (len <= 16) return "text-sm";
     if (len <= 22) return "text-xs";
-    return "text-[11px]";
+    return "text-micro";
   }
   if (len <= 10) return "text-xl";
   if (len <= 16) return "text-lg";

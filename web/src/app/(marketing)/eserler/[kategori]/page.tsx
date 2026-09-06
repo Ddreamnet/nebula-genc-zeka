@@ -7,6 +7,7 @@ import { ClosingCta } from "@/components/landing/closing-cta";
 import { ContactCtas } from "@/components/landing/contact-ctas";
 import { OUTPUT_ART } from "@/components/landing/output-art";
 import { OUTPUT_CATEGORIES, findOutputCategory, type OutputCategory, type StudentWork } from "@/lib/outputs";
+import { JsonLd, breadcrumbLd, canonical, itemListLd, openGraphFor } from "@/lib/seo";
 
 /**
  * One page per output, opened from the bento card of the same name.
@@ -39,11 +40,17 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   return {
     title: category.pageTitle,
     description: category.lead,
-    openGraph: {
+    // Without this every one of the six pages inherited the homepage's
+    // canonical and was dropped from the index as a duplicate of it.
+    alternates: canonical(`/eserler/${category.slug}`),
+    openGraph: openGraphFor({
       title: category.pageTitle,
       description: category.lead,
-      ...(cover ? { images: [{ url: cover.src }] } : {}),
-    },
+      path: `/eserler/${category.slug}`,
+      // A category with no pieces in yet falls back to the site lockup rather
+      // than shipping a card with no image at all.
+      images: [cover?.src],
+    }),
   };
 }
 
@@ -186,6 +193,26 @@ export default async function OutputCategoryPage({ params }: PageProps) {
 
   return (
     <div data-navtheme="light">
+      <JsonLd
+        data={[
+          breadcrumbLd([
+            { name: "Ana sayfa", path: "/" },
+            { name: "Öğrenci işleri", path: "/eserler" },
+            { name: category.pageTitle, path: `/eserler/${category.slug}` },
+          ]),
+          ...(category.works.length
+            ? [
+                itemListLd(
+                  category.pageTitle,
+                  category.works.map((w) => ({
+                    name: w.title,
+                    path: `/eserler/${category.slug}#${w.slug}`,
+                  })),
+                ),
+              ]
+            : []),
+        ]}
+      />
       <section className="nb-section nb-paper" style={{ paddingTop: "clamp(112px,13vw,156px)" }}>
         <div className="nb-wrap">
           <Link

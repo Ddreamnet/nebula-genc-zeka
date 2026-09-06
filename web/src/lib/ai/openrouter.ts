@@ -1,3 +1,5 @@
+import { DEFAULT_ASPECT_RATIO, type AspectRatio } from "@/lib/playground/aspect";
+
 const BASE_URL = "https://openrouter.ai/api/v1";
 
 /**
@@ -6,25 +8,24 @@ const BASE_URL = "https://openrouter.ai/api/v1";
  * standalone server with no serverless fan-out, so a handful of hung
  * generations is enough to starve everyone else.
  *
- * The budgets differ because the work does: text usually answers in seconds,
- * image generation routinely takes half a minute, and the /videos calls are
+ * The budgets differ because the work does: a streamed answer is bounded by
+ * the whole answer rather than one response, image generation routinely takes
+ * half a minute, and the /videos calls are
  * only ever job bookkeeping (the render itself happens asynchronously and is
  * polled) — except the finished-file download, which really does move bytes.
  */
 const TIMEOUT_MS = {
-  text: 90_000,
+  /**
+   * Streaming needs a longer ceiling than a buffered call: the deadline covers
+   * the whole answer, not just time-to-first-byte, and a reasoning model can
+   * think for a minute before it writes anything a student can see.
+   */
+  stream: 180_000,
   image: 180_000,
   audio: 180_000,
   job: 30_000,
   download: 120_000,
 } as const;
-
-/**
- * Tek yer: tüm modellerin görsel en/boy oranı. OpenRouter'da parametre adı
- * `aspect_ratio` ("9:16" = dikey). Oranı desteklemeyen modelde OpenRouter
- * kendi en yakın boyutuna yuvarlar, ek bir iş gerekmez.
- */
-const ASPECT_RATIO = "9:16";
 
 /** Wraps a fetch failure so callers can tell "we gave up" from "it errored". */
 function timeoutError(what: string, ms: number): Error {
@@ -54,23 +55,109 @@ export interface ChatMessage {
   content: string | ContentPart[];
 }
 
-export async function generateText(
+/**
+ * Reads an SSE body and yields each parsed `data:` payload.
+ *
+ * Two details here are load-bearing and were verified against a live stream,
+ * not assumed:
+ *  - OpenRouter interleaves SSE *comment* lines (`: OPENROUTER PROCESSING`)
+ *    to keep the connection warm while a provider is still thinking. They are
+ *    not events and must be skipped, or JSON.parse throws on every one.
+ *  - the final chunk carries BOTH a `choices` delta and `usage`, so usage can
+ *    never be detected by "the event with no choices".
+ */
+async function* sseEvents(body: ReadableStream<Uint8Array>): AsyncGenerator<Record<string, unknown>> {
+  const reader = body.getReader();
+  const decoder = new TextDecoder();
+  let buffered = "";
+
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buffered += decoder.decode(value, { stream: true });
+      const lines = buffered.split("\n");
+      // The tail is whatever came after the last newline — half a line, kept
+      // until the rest of it arrives.
+      buffered = lines.pop() ?? "";
+      for (const line of lines) {
+        if (!line.startsWith("data: ")) continue;
+        const payload = line.slice(6).trim();
+        if (payload === "[DONE]") return;
+        try {
+          yield JSON.parse(payload);
+        } catch {
+          // A malformed chunk is not worth killing a half-written answer over.
+        }
+      }
+    }
+  } finally {
+    // Releasing the lock lets an abort actually tear the socket down instead
+    // of leaving it pinned open by a reader nobody is draining any more.
+    reader.releaseLock();
+  }
+}
+
+export type TextStreamEvent =
+  | { type: "text"; text: string }
+  | { type: "reasoning"; text: string }
+  | { type: "usage"; costUsd: number };
+
+/**
+ * Streaming text generation.
+ *
+ * Replaces the old buffered `generateText`: the student sees words as they are
+ * written instead of watching a spinner for the whole answer, and an aborted
+ * request stops paying for tokens the moment they stop being wanted.
+ *
+ * `reasoning` asks the model to expose its thinking as a separate `reasoning`
+ * delta channel. Verified live: DeepSeek R1 and GPT-5 Mini both stream it, and
+ * a model that has no such channel (Llama 3.3) ignores the parameter rather
+ * than erroring — so the flag is safe to send. It is still opt-in per tool,
+ * because on a model that only thinks *when asked* (Claude) turning it on buys
+ * visible reasoning at the price of billed thinking tokens, and ore is charged
+ * at a flat rate per message.
+ */
+export async function* streamText(
   messages: ChatMessage[],
   model: string,
-): Promise<{ content: string; costUsd: number }> {
+  options: { reasoning?: boolean; signal?: AbortSignal } = {},
+): AsyncGenerator<TextStreamEvent> {
+  // Two deadlines, one signal: our own ceiling and the caller's cancellation
+  // (a student pressing stop, or the browser hanging up on them).
+  const signals = [AbortSignal.timeout(TIMEOUT_MS.stream)];
+  if (options.signal) signals.push(options.signal);
+
   const res = await fetch(`${BASE_URL}/chat/completions`, {
     method: "POST",
     headers: headers(),
-    body: JSON.stringify({ model, messages }),
-    signal: AbortSignal.timeout(TIMEOUT_MS.text),
-  }).catch(() => {
-    throw timeoutError("text generation", TIMEOUT_MS.text);
+    body: JSON.stringify({
+      model,
+      messages,
+      stream: true,
+      stream_options: { include_usage: true },
+      ...(options.reasoning ? { reasoning: { enabled: true } } : {}),
+    }),
+    signal: AbortSignal.any(signals),
+  }).catch((err) => {
+    // A caller-side abort is a deliberate stop, not a timeout — the route
+    // settles the partial answer instead of reporting a failure.
+    if (options.signal?.aborted) throw err;
+    throw timeoutError("text stream", TIMEOUT_MS.stream);
   });
-  if (!res.ok) throw new Error(`OpenRouter text generation failed: ${res.status} ${await res.text()}`);
-  const data = await res.json();
-  const content = data.choices?.[0]?.message?.content ?? "";
-  if (!content) throw new Error("OpenRouter returned an empty response (possibly content-filtered)");
-  return { content, costUsd: data.usage?.cost ?? 0 };
+
+  if (!res.ok || !res.body) {
+    throw new Error(`OpenRouter text stream failed: ${res.status} ${await res.text()}`);
+  }
+
+  for await (const event of sseEvents(res.body)) {
+    const usage = event.usage as { cost?: number } | undefined;
+    if (usage?.cost) yield { type: "usage", costUsd: usage.cost };
+
+    const delta = (event.choices as { delta?: { content?: string; reasoning?: string } }[] | undefined)?.[0]?.delta;
+    if (delta?.reasoning) yield { type: "reasoning", text: delta.reasoning };
+    if (delta?.content) yield { type: "text", text: delta.content };
+  }
 }
 
 /**
@@ -86,6 +173,7 @@ export async function generateImage(
   prompt: string,
   model: string,
   references: string[] = [],
+  aspectRatio: AspectRatio = DEFAULT_ASPECT_RATIO,
 ): Promise<{ b64: string; mediaType: string; costUsd: number }> {
   const res = await fetch(`${BASE_URL}/images`, {
     method: "POST",
@@ -94,7 +182,7 @@ export async function generateImage(
       model,
       prompt,
       n: 1,
-      aspect_ratio: ASPECT_RATIO,
+      aspect_ratio: aspectRatio,
       ...(references.length > 0
         ? { input_references: references.map((url) => ({ type: "image_url", image_url: { url } })) }
         : {}),
@@ -110,16 +198,49 @@ export async function generateImage(
   return { b64: image.b64_json, mediaType: image.media_type ?? "image/png", costUsd: data.usage?.cost ?? 0 };
 }
 
+/**
+ * `firstFrame` turns text-to-video into image-to-video: the picture becomes
+ * frame 0 and the model animates out of it.
+ *
+ * Two things here were verified live rather than assumed (job
+ * mQV1rACgRQz8KRGwBTZ2 on x-ai/grok-imagine-video, 1s/480p, $0.052):
+ *  - the parameter is `frame_images`, an array of
+ *    `{ type, image_url: { url }, frame_type }` — a third mechanism, distinct
+ *    from chat `image_url` parts and /images `input_references`;
+ *  - a `data:image/...;base64,...` URL is accepted end to end, even though
+ *    the cookbook only shows public HTTPS URLs. The returned MP4's first frame
+ *    was the uploaded picture, so the provider really does receive it. That is
+ *    what lets a student's attachment go straight through without being
+ *    published to a public URL first.
+ *
+ * Which models accept it comes from `supported_frame_images` in
+ * GET /videos/models (mirrored by `maxImageInputs` in the tool catalog);
+ * OpenAI's Sora 2 Pro is the one live tool that supports no frame images at
+ * all, so the catalog leaves it unset and the composer hides the button.
+ */
 export async function startVideo(
   prompt: string,
   model: string,
   duration = 4,
   resolution = "720p",
+  firstFrame?: string,
 ): Promise<{ jobId: string }> {
   const res = await fetch(`${BASE_URL}/videos`, {
     method: "POST",
     headers: headers(),
-    body: JSON.stringify({ model, prompt, duration, resolution }),
+    body: JSON.stringify({
+      model,
+      prompt,
+      duration,
+      resolution,
+      ...(firstFrame
+        ? {
+            frame_images: [
+              { type: "image_url", image_url: { url: firstFrame }, frame_type: "first_frame" },
+            ],
+          }
+        : {}),
+    }),
     signal: AbortSignal.timeout(TIMEOUT_MS.job),
   }).catch(() => {
     throw timeoutError("video start", TIMEOUT_MS.job);
@@ -219,32 +340,14 @@ export async function generateAudio(
   });
   if (!res.ok || !res.body) throw new Error(`OpenRouter audio generation failed: ${res.status} ${await res.text()}`);
 
-  const reader = res.body.getReader();
-  const decoder = new TextDecoder();
   const chunks: Buffer[] = [];
   let costUsd = 0;
-  let buffered = "";
 
-  while (true) {
-    const { done, value } = await reader.read();
-    if (done) break;
-    buffered += decoder.decode(value, { stream: true });
-    const lines = buffered.split("\n");
-    buffered = lines.pop() ?? "";
-    for (const line of lines) {
-      if (!line.startsWith("data: ")) continue;
-      const payload = line.slice(6).trim();
-      if (payload === "[DONE]") continue;
-      let event: { usage?: { cost?: number }; choices?: { delta?: { audio?: { data?: string } } }[] };
-      try {
-        event = JSON.parse(payload);
-      } catch {
-        continue;
-      }
-      if (event.usage?.cost) costUsd = event.usage.cost;
-      const audioData = event.choices?.[0]?.delta?.audio?.data;
-      if (audioData) chunks.push(Buffer.from(audioData, "base64"));
-    }
+  for await (const event of sseEvents(res.body)) {
+    const usage = event.usage as { cost?: number } | undefined;
+    if (usage?.cost) costUsd = usage.cost;
+    const audioData = (event.choices as { delta?: { audio?: { data?: string } } }[] | undefined)?.[0]?.delta?.audio?.data;
+    if (audioData) chunks.push(Buffer.from(audioData, "base64"));
   }
 
   if (chunks.length === 0) throw new Error("OpenRouter returned no audio (possibly content-filtered)");

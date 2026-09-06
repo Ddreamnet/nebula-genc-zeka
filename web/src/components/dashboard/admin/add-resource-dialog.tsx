@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState } from "react";
 import { toast } from "sonner";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/panel-ui/dialog";
 import { Button } from "@/components/panel-ui/button";
@@ -55,15 +55,16 @@ export function AddResourceDialog({ open, onOpenChange, topicId, topicTitle, onA
     }
   }
 
-  const handleDrop = useCallback(
-    (e: React.DragEvent) => {
-      e.preventDefault();
-      setIsDragOver(false);
-      const file = Array.from(e.dataTransfer.files)[0];
-      if (file) applySelectedFile(file);
-    },
-    [title],
-  );
+  // Plain function, not useCallback. It only ever lands on a <div onDrop>,
+  // which memoizes nothing — and the [title] dependency was misleading on top
+  // of that: it calls applySelectedFile, a declaration rebuilt every render,
+  // so the memo could never actually be reused.
+  function handleDrop(e: React.DragEvent) {
+    e.preventDefault();
+    setIsDragOver(false);
+    const file = Array.from(e.dataTransfer.files)[0];
+    if (file) applySelectedFile(file);
+  }
 
   function handleFileSelect(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];

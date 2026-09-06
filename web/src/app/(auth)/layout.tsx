@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
 import { PanelThemeScope } from "@/components/site/panel-theme-scope";
@@ -12,6 +13,19 @@ import { landingFontClass } from "@/lib/landing-fonts";
 // during build. Forcing this dynamic defers all rendering (and the
 // Supabase client creation inside it) to real request time instead.
 export const dynamic = "force-dynamic";
+
+/**
+ * Belt-and-braces noindex for everything behind the login.
+ *
+ * robots.txt already disallows this whole subtree, but a Disallow only stops
+ * the crawl — Google will still list a URL it finds linked from elsewhere,
+ * with no snippet ("A description for this result is not available"). The
+ * meta tag is what actually keeps it out. Both are cheap; the failure modes
+ * they cover are different.
+ */
+export const metadata: Metadata = {
+  robots: { index: false, follow: false, nocache: true },
+};
 
 export default function AuthLayout({
   children,

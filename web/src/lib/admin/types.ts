@@ -6,6 +6,9 @@ export interface StudentLessonBase {
   startTime: string;
   endTime: string;
   note?: string | null;
+  /** Zoom/Meet/Teams room for this weekly slot. Drives the student dashboard's
+   *  "join today's lesson" button; null when the slot has no online room. */
+  meetingUrl?: string | null;
 }
 
 export interface StudentProfile {

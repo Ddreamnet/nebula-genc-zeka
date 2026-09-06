@@ -4,6 +4,14 @@
 
 @custom-variant dark (&:is(.dark *));
 
+/* Touch-first sizing. `sm:` is a WIDTH query, so it makes controls smaller on
+   a phone and larger on a desktop — exactly backwards for hit targets, and
+   it is what left the lesson-tracker squares at 32px under a finger and 36px
+   under a mouse. This variant asks about the INPUT DEVICE instead: the base
+   size is the touch size (>=44px, Apple HIG / WCAG 2.5.8), and
+   `pointer-fine:` trims it back down only where there is a real cursor. */
+@custom-variant pointer-fine (@media (pointer: fine));
+
 /* =========================================================================
    NEBULA GENÇ ZEKA — "Cosmic Intellectual Horizon" design system
    Dark-first. Amber (#ffb68f) primary accent, cosmic blue (#b7c7eb) secondary.
@@ -60,6 +68,28 @@
   /* ---- Easing ---- */
   --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
   --ease-in-out-soft: cubic-bezier(0.65, 0, 0.35, 1);
+}
+
+/* =========================================================================
+   Type scale — the two steps below Tailwind's text-xs.
+
+   The panel and the playground had NINE ad-hoc sizes between them
+   (8, 9, 10, 11, 11.5, 12, 13, 13.5 and 15px, all as text-[Npx]), which is
+   not a scale — it is nine independent decisions, and two of them were below
+   the size at which a ten-year-old can read anything.
+
+   Everything now lands on 11 / 12 / 13 / 14 / 16, where 11px is the floor:
+     text-micro  11px  — dense chrome only: pills, chip captions, meta rows
+     text-mini   13px  — the step between xs and sm
+   Line-heights are stated so a size change never silently changes rhythm.
+   ========================================================================= */
+@utility text-micro {
+  font-size: 11px;
+  line-height: 1.45;
+}
+@utility text-mini {
+  font-size: 13px;
+  line-height: 1.5;
 }
 
 /* =========================================================================
@@ -336,389 +366,1235 @@
 }
 
 /* =========================================================================
-   Panel & auth theme — "Kâğıt Uzay", the same system the marketing site runs.
-   Scoped to .panel-theme so the global dark tokens above (and Playground,
-   which deliberately stays outside this scope) are untouched.
+   Panel teması — "Kâğıt Uzay v2", yumuşak kâğıt.
 
-   Every panel-ui/shadcn component reads --color-* indirectly via
-   --card/--popover/--muted/etc, so retinting the tokens here retints ~50
-   components with no changes to their source. The three component classes
-   below (.pn-btn, .pn-card, and the field rule) are what turn a retint into
-   the actual cut-paper look: flat fill, one navy outline weight, hard offset
-   shadow, no blur and no gradient anywhere.
+   Öncesi: 3px lacivert kontur + 6px sert ofset gölge (marka sitesinin kesik
+   kâğıt dili). Bir pazarlama sayfasında iyi çalışıyor, saatlerce bakılan bir
+   panelde çalışmıyor: her kart aynı ağırlıkta bağırıyor, hiyerarşi kalmıyor.
+
+   Sonrası: krem kart + 1px saç konturu + iki katmanlı yumuşak gölge. Renk
+   kart gövdesinden BAŞLIK BANDINA taşındı, böylece uzun süre bakılan yüzey
+   nötr krem kalıyor ve renk yalnızca "bu ne kartı" sorusunu cevaplıyor.
+
+   Bütün panel-ui/shadcn bileşenleri --card/--popover/--muted/... üzerinden
+   dolaylı olarak buradaki --color-* token'larını okur; dolayısıyla burayı
+   yeniden renklendirmek ~50 bileşeni tek dosyadan yeniden renklendirir.
+   Görünümü asıl kuran üç sınıf altta: .pn-card, .pn-btn ve alan (input)
+   kuralı.
    ========================================================================= */
 .panel-theme {
-  /* ---- Paper surfaces. Warm cream is the ground; there is no dark step. ---- */
-  --color-surface: #f7f0e1;
-  --color-surface-dim: #ede3cf;
-  --color-surface-lowest: #e3d7be;
-  --color-surface-low: #f2ead9;
+  /* ---- Yüzeyler. Çalışma zemini açık mavi, kart krem. ---- */
+  --color-surface: #e9effc;
+  --color-surface-dim: #dfe7f8;
+  --color-surface-lowest: #d3def4;
+  --color-surface-low: #f2f5fc;
   --color-surface-container: #fffbf2;
   --color-surface-high: #fffbf2;
   --color-surface-highest: #ffffff;
   --color-surface-bright: #ffffff;
 
-  /* Ink is navy, never black — it reads warmer against cream. */
+  /* Mürekkep lacivert, asla siyah — kremin üstünde daha sıcak okunur.
+     Ölçülen kontrastlar: #152343 13.9:1, #5B6480 5.68:1 (krem üstünde). */
   --color-on-surface: #152343;
   --color-on-surface-variant: #5b6480;
   --color-outline: #8a93ac;
-  --color-outline-variant: #dccfb4;
+  --color-outline-variant: rgba(21, 35, 67, 0.13);
 
-  /* "secondary" is the accent-token name every component already reads. */
-  --color-secondary: #3d5fe0;
-  --color-secondary-bright: #7a93f5;
+  /* "secondary" her bileşenin zaten okuduğu vurgu token'ı. */
+  --color-secondary: #2437a6;
+  --color-secondary-bright: #3d5fe0;
   --color-on-secondary: #f5f7ff;
-  --color-secondary-container: #2437a6;
-  --color-on-secondary-container: #e7ebff;
+  --color-secondary-container: #cfe1ff;
+  --color-on-secondary-container: #1b2a6b;
 
-  /* "primary" is the deep space navy the marketing bands use. */
-  --color-primary: #141f3c;
-  --color-primary-bright: #1e2e52;
-  --color-on-primary: #f2ecdd;
-  --color-primary-container: #0b1226;
-  --color-on-primary-container: #a9b6d4;
+  /* "primary" barın ve şeridin lacivertidir. */
+  --color-primary: #1b3564;
+  --color-primary-bright: #2b4a82;
+  --color-on-primary: #eaf1ff;
+  --color-primary-container: #132750;
+  --color-on-primary-container: #cfe1ff;
 
-  --color-tertiary: #ff9f45;
-  --color-on-tertiary: #152343;
+  --color-tertiary: #9c4a0a;
+  --color-on-tertiary: #fffbf2;
 
-  --color-error: #ce3b5f;
-  --color-success: #17915b;
+  --color-error: #b22f4f;
+  --color-success: #0f6b41;
 
-  /* ---- Cut-paper geometry. Mirrors landing-theme.ts; change both together. ---- */
-  --pn-stroke: 3px;
+  /* ---- Palet ----------------------------------------------------------
+     Beş aile. Her ailede dört rol var ve ROLLER ASLA KARIŞMAZ:
+       fill  → doygun pastel; küçük yüzeyler (çip, rozet, ikon kutusu, buton)
+       tint  → çok açık; kart başlık bantları ve seçili satır zeminleri
+       ink   → o ailenin üzerine yazılan mürekkep (AA: ≥4.5:1)
+       line  → aynı mürekkebin düşük opaklıklı konturu
+     Bir renk hem büyük bir gövde hem de bir çip olamaz; büyük yüzeyler krem
+     ya da açık mavi kalır. Panelde saatlerce çalışılıyor, doygun bir zemin
+     yirmi dakikada yorar.
+     -------------------------------------------------------------------- */
+  --pn-mint: #c6f1dc;
+  --pn-mint-tint: #e8f4ec;
+  --pn-mint-sel: #e4f3ea;
+  --pn-mint-ink: #0f6b41;
+  --pn-mint-ink-strong: #0e2b1d;
+  --pn-mint-line: rgba(15, 107, 65, 0.26);
+
+  --pn-peach: #ffe1c4;
+  --pn-peach-tint: #fbefe1;
+  --pn-peach-sel: #fdf4e9;
+  --pn-peach-ink: #9c4a0a;
+  --pn-peach-ink-strong: #3b1a05;
+  --pn-peach-line: rgba(156, 74, 10, 0.3);
+
+  --pn-pink: #ffd6de;
+  --pn-pink-tint: #fff1f4;
+  --pn-pink-sel: #fff7f8;
+  --pn-pink-ink: #b22f4f;
+  --pn-pink-ink-strong: #8c1f3b;
+  --pn-pink-line: rgba(178, 47, 79, 0.26);
+
+  --pn-blue: #cfe1ff;
+  --pn-blue-tint: #e9effc;
+  --pn-blue-sel: #f7faff;
+  --pn-blue-ink: #2437a6;
+  --pn-blue-ink-strong: #1b2a6b;
+  --pn-blue-line: rgba(36, 55, 166, 0.24);
+
+  --pn-violet: #dcd2ff;
+  --pn-violet-tint: #efeaff;
+  --pn-violet-sel: #f6f3ff;
+  --pn-violet-ink: #4a2fb8;
+  --pn-violet-ink-strong: #2a1466;
+  --pn-violet-line: rgba(74, 47, 184, 0.24);
+
+  /* Navigasyonun lacivert L'si. Şerit, bar ve dikiş yaması ÜÇÜ DE bu tek
+     düz rengi taşır — gradyan olmadığı için birleşim yerinde dikiş oluşamaz.
+     (Önceki bir sürüm üç gradyanı renk eşleştirerek birleştirdi ve barın 4px
+     altında sert bir basamak bıraktı: iki gradyan yalnızca BİR kenarda
+     eşitlenebilir.) */
+  --pn-navy: #1b3564;
+  --pn-navy-line: rgba(21, 35, 67, 0.22);
+  --pn-on-navy: #eaf1ff;
+  --pn-on-navy-dim: rgba(207, 225, 255, 0.74);
+  --pn-on-navy-fill: rgba(207, 225, 255, 0.13);
+  --pn-on-navy-edge: rgba(207, 225, 255, 0.24);
+
+  /* ---- Geometri -------------------------------------------------------
+     Yarıçap merdiveni ×1.25 civarı bir orandır ve her basamak bir BOYUT
+     sınıfına bağlıdır, keyfi değil: bir öğe ne kadar büyükse yarıçapı o
+     kadar büyük, böylece kenar kavisi her ölçekte aynı görsel yumuşaklıkta
+     okunur.  8 → 10 → 12 → 16 → 20
+     -------------------------------------------------------------------- */
+  --pn-r-chip: 8px; /* çip, küçük rozet */
+  --pn-r-control: 10px; /* ikon düğme, input */
+  --pn-r-button: 12px; /* buton, liste satırı, konu satırı */
+  --pn-r-card: 16px; /* kart, yan panel */
+  --pn-r-bar: 17px; /* yüzen bar / şerit (kartın bir tık üstü) */
+  --pn-r-frame: 20px; /* dış çerçeve */
+
+  /* Tek kontur ağırlığı. Panelde ikinci bir kalınlık yok. */
+  --pn-hair: rgba(21, 35, 67, 0.13);
+  --pn-hair-strong: rgba(21, 35, 67, 0.22);
+
+  /* Gölgeler iki katmanlı: yakın bir temas gölgesi (nesnenin yüzeye
+     değdiği yer) + geniş, düşük opaklıklı bir yayılım (yükseklik). Tek
+     katmanlı gölge ya sert ya bulanık olur; ikisi birlikte kâğıdı kâğıt
+     yapar. Sert ofset gölge (0 Npx 0 0) panelde kullanılmaz. */
+  --pn-shadow-card: 0 1px 2px rgba(21, 35, 67, 0.045), 0 8px 20px -12px rgba(21, 35, 67, 0.12);
+  --pn-shadow-float: 0 2px 4px rgba(21, 35, 67, 0.05), 0 14px 32px -16px rgba(21, 35, 67, 0.28);
+  --pn-shadow-drawer: 0 2px 4px rgba(21, 35, 67, 0.05), 0 16px 38px -18px rgba(21, 35, 67, 0.32);
+  --pn-shadow-lift: 0 4px 12px -6px rgba(21, 35, 67, 0.18);
+
+  /* Tek hareket dili. Süreler kısa: panel bir uygulama, bir gösteri değil.
+     .16s satır zemini · .18s buton/kart · .26s panel girişi. */
+  --pn-ease: cubic-bezier(0.2, 0.7, 0.3, 1);
+  --pn-dur-fast: 0.16s;
+  --pn-dur: 0.18s;
+  --pn-dur-panel: 0.26s;
+
+  /* ---- Boşluk merdiveni ----------------------------------------------
+     ≈√2 oranlı bir merdiven, 5px'e demirli ve piksel ızgarasına
+     yuvarlanmış: 5 · 7 · 9 · 13 · 16 · 22. Panelde kullanılan HER boşluk
+     bu altı değerden biridir; "biraz daha ferah olsun" diye 14 veya 18
+     yazılmaz. Kart içi 9–16, kartlar arası 13–16, çerçeve içi 22.
+     -------------------------------------------------------------------- */
+  --pn-1: 5px;
+  --pn-2: 7px;
+  --pn-3: 9px;
+  --pn-4: 13px;
+  --pn-5: 16px;
+  --pn-6: 22px;
+
+  /* ---- Tipografi -------------------------------------------------------
+     Üç yazı tipi, sekiz boyut. Her boyutun tek bir işi var; ara boyut
+     (12.5px, 13.5px) yok — kesirli px farklı tarayıcılarda farklı
+     yuvarlanır ve hizayı bozar.
+
+       Fredoka 600  → yalnızca başlık (15 / 18 / 22)
+       Nunito       → gövde, isim, açıklama (12 / 13 / 14)
+       Plex Mono 600→ yalnızca etiket ve SAYI (10 / 11)
+
+     Mono'nun tek işi hizalanan şeyler: saat, sayaç, rozet. Sayılar tabular
+     olduğu için satırlar arasında kolon halinde dizilir; bir listede saatin
+     zıplamamasının sebebi budur.
+     -------------------------------------------------------------------- */
+  --pn-t-label: 10px; /* mono, UPPERCASE, .14em */
+  --pn-t-num: 11px; /* mono, sayı */
+  --pn-t-caption: 12px; /* Nunito, ikincil satır */
+  --pn-t-body: 13px; /* Nunito, gövde */
+  --pn-t-row: 14px; /* Nunito 600, liste satırı başlığı */
+  --pn-t-card: 15px; /* Fredoka 600, kart başlığı */
+  --pn-t-section: 18px; /* Fredoka 600, bölüm başlığı */
+  --pn-t-page: 22px; /* Fredoka 600, sayfa başlığı */
+
+  /* Eski adlar, uyum için. --pn-stroke/--pn-lift artık sert ofset gölge
+     üretmiyor (1px / 0), böylece bunları hâlâ okuyan yerler yeni dile
+     kendiliğinden geçiyor. */
   --pn-ink: #152343;
-  --pn-lift: 6px;
-  --pn-radius-card: 22px;
-  --pn-radius-control: 16px;
+  --pn-stroke: 1px;
+  --pn-lift: 0px;
+  --pn-radius-card: var(--pn-r-card);
+  --pn-radius-control: var(--pn-r-button);
 
-  /* shadcn/panel-ui bridge tokens — MUST be redeclared here, not just the
-     --color-* tokens above. `--card: var(--color-surface-container)` in :root
-     gets substituted ONCE at :root's own cascade and that resolved value is
-     what inherits down — overriding --color-surface-container in a nested
-     scope does NOT retroactively change an alias declared elsewhere. Aliases
-     must be redeclared at the same scope as the tokens they point to.
-     (Confirmed empirically — a real CSS custom-property behavior, not a
-     Tailwind quirk.) */
+  /* shadcn/panel-ui köprü token'ları — BURADA yeniden bildirilmek ZORUNDA,
+     sadece yukarıdaki --color-* token'ları yetmez. :root'taki
+     `--card: var(--color-surface-container)` bir kez :root'un kendi
+     cascade'inde çözülür ve aşağı miras kalan o çözülmüş değerdir; iç
+     kapsamda --color-surface-container'ı ezmek başka yerde bildirilmiş bir
+     alias'ı geriye dönük değiştirmez. Alias'lar işaret ettikleri token'larla
+     aynı kapsamda yeniden bildirilmeli. (Deneysel olarak doğrulandı — gerçek
+     bir CSS custom-property davranışı, Tailwind tuhaflığı değil.) */
   --card: var(--color-surface-container);
   --card-foreground: var(--color-on-surface);
   --popover: var(--color-surface-container);
   --popover-foreground: var(--color-on-surface);
-  --muted: var(--color-surface-dim);
+  --muted: var(--color-surface-low);
   --muted-foreground: var(--color-on-surface-variant);
-  --accent: var(--color-surface-dim);
+  --accent: var(--pn-blue-tint);
   --accent-foreground: var(--color-on-surface);
   --destructive: var(--color-error);
   --destructive-foreground: #fffbf2;
-  /* Dividers stay on the soft paper line; form fields get the real navy edge
-     (see the field rule below), which is what --input feeds. */
-  --border: var(--color-outline-variant);
-  --input: var(--pn-ink);
+  --border: var(--pn-hair);
+  --input: var(--pn-hair-strong);
   --ring: var(--color-secondary);
   --sidebar: var(--color-surface-container);
   --sidebar-foreground: var(--color-on-surface);
   --sidebar-primary: var(--color-secondary);
   --sidebar-primary-foreground: var(--color-on-secondary);
-  --sidebar-accent: var(--color-surface-dim);
+  --sidebar-accent: var(--pn-blue-tint);
   --sidebar-accent-foreground: var(--color-on-surface);
-  --sidebar-border: var(--color-outline-variant);
+  --sidebar-border: var(--pn-hair);
   --sidebar-ring: var(--color-secondary);
 
-  /* Landing typefaces, scoped. Playground keeps the Space Grotesk/Manrope set
-     defined at the top of this file. Plex Sans used to be the panel body face
-     and is no longer loaded anywhere — see app/layout.tsx. */
-  /* The inner fallbacks are load-bearing, not decoration: if --font-fredoka or
-     --font-nunito is ever missing on an element (a portal rendered above the
-     layout that defines them), a bare var() would make the whole declaration
-     invalid at computed-value time and the text would drop to the browser
-     default rather than to the intended stack. */
+  /* Yazı tipleri, kapsamlı. İç fallback'ler dekor değil taşıyıcı: bir öğede
+     --font-fredoka veya --font-nunito eksikse (layout'un üstünde render
+     edilen bir portal), çıplak bir var() bildirimin tamamını hesaplanan
+     değer aşamasında geçersiz kılar ve metin hedeflenen yığına değil
+     tarayıcı varsayılanına düşer. */
   --font-display: var(--font-fredoka, ui-rounded), ui-rounded, "Trebuchet MS", sans-serif;
   --font-sans: var(--font-nunito, ui-sans-serif), ui-sans-serif, system-ui, sans-serif;
   --font-mono: var(--font-plex-mono), "IBM Plex Mono", ui-monospace, monospace;
 }
 
-/* Headings take the display face without every panel component having to ask
-   for it — the panels were built before there was a display face to ask for. */
+/* Başlıklar display yüzünü her bileşen ayrıca istemek zorunda kalmadan alır. */
 .panel-theme :is(h1, h2, h3, h4) {
   font-family: var(--font-display);
   font-weight: 600;
-  letter-spacing: -0.015em;
+  letter-spacing: -0.02em;
+  line-height: 1.2;
   text-wrap: balance;
 }
 
-/* Paper ground: cream plus the same 26px dot grid the marketing sections use,
-   so a logged-in page and the homepage are visibly the same material. The old
-   version layered a grid plus three radial glows to give frosted-glass cards
-   something to blur; nothing blurs any more, so the glows only muddied it. */
+/* Çalışma zemini. Eskiden krem + 26px nokta ızgarasıydı; kartlar da kremdi,
+   yani kart kenarını yalnızca kontur ayırıyordu. Artık zemin açık mavi ve
+   kart krem: ayrım rengin kendisinden geliyor, konturdan değil. Izgara da
+   kalktı — tam sayfa tekrarlanan bir radial-gradient her kaydırmada yeniden
+   boyanır ve hiçbir bilgi taşımıyordu. */
 .panel-grid-bg {
   background-color: var(--color-surface);
-  background-image: radial-gradient(var(--color-outline-variant) 1.4px, transparent 1.4px);
-  background-size: 26px 26px;
-}
-
-/* Form fields, themed centrally. Scoped element selectors rather than a class
-   because these inputs live across ~50 components that were written against
-   the old flat theme; add .pn-bare to opt a field out. */
-.panel-theme :is(input, textarea, select):not([type="checkbox"]):not([type="radio"]):not(.pn-bare) {
-  border-width: 2.5px;
-  border-style: solid;
-  border-color: var(--pn-ink);
-  border-radius: 12px;
-  background-color: var(--color-surface-container);
-  color: var(--color-on-surface);
-}
-.panel-theme :is(input, textarea, select):not(.pn-bare)::placeholder {
-  color: var(--color-on-surface-variant);
-  opacity: 0.55;
-}
-.panel-theme :is(input, textarea, select):not(.pn-bare):focus-visible {
-  outline: 3px solid var(--color-tertiary);
-  outline-offset: 2px;
 }
 
 /* =========================================================================
-   Buttons — cut-paper physics, matching .nb-btn on the marketing site.
+   Alanlar (input / textarea / select)
 
-   .nb-btn gets its slab from a ::before pseudo-element, which needs a two-
-   element markup this side can't have without editing every call site. The
-   same shape falls out of two stacked hard shadows instead: the first paints
-   the deep-tone slab 6px down, the second paints 3px of navy around it, and
-   because earlier shadows sit on top the navy reads as the slab's outline.
+   Sınıf yerine kapsamlı eleman seçicisi: bu alanlar ~50 bileşene dağılmış
+   ve hepsi eski düz temaya göre yazılmıştı. Bir alanı hariç tutmak için
+   .pn-bare ekleyin.
+   ========================================================================= */
+.panel-theme :is(input, textarea, select):not([type="checkbox"]):not([type="radio"]):not(.pn-bare) {
+  border: 1px solid var(--pn-hair-strong);
+  border-radius: var(--pn-r-control);
+  background-color: var(--color-surface-container);
+  color: var(--color-on-surface);
+  /* iOS Safari, 16px'ten küçük yazı taşıyan bir alana odaklanınca sayfayı
+     ZORLA yakınlaştırır ve geri çıkmaz — düzeni bozan, kullanıcının geri
+     alamadığı bir hareket. Dokunmatikte taban 16px, ince işaretçide (fare)
+     13px'e iner. Bu bir genişlik sorgusu değil GİRDİ CİHAZI sorgusu: küçük
+     ekranlı bir dizüstü de var, büyük ekranlı bir tablet de. */
+  font-size: 16px;
+  transition: border-color var(--pn-dur) var(--pn-ease), box-shadow var(--pn-dur) var(--pn-ease);
+}
+@media (pointer: fine) {
+  .panel-theme :is(input, textarea, select):not([type="checkbox"]):not([type="radio"]):not(.pn-bare) {
+    font-size: var(--pn-t-body);
+  }
+}
+.panel-theme :is(input, textarea, select):not(.pn-bare)::placeholder {
+  color: var(--color-on-surface-variant);
+  opacity: 0.7;
+}
+/* Odak halkası ayrı bir outline değil, konturun kendisinin koyulaşması +
+   3px'lik yumuşak bir halka. outline+offset kullanmak yuvarlak köşeli bir
+   alanda köşeleri kesiyordu. */
+.panel-theme :is(input, textarea, select):not(.pn-bare):focus-visible {
+  outline: none;
+  border-color: var(--color-secondary);
+  box-shadow: 0 0 0 3px rgba(36, 55, 166, 0.14);
+}
 
-   The scatter of small static white "star" dots on the fill is deliberate and
-   stays — it is the one place the panel is allowed a texture. Never animated,
-   never glowing. Fill/shadow/text come from --pn-btn-fill/-shadow/-fg so a
-   colour variant is three lines instead of a copy of the whole dot stack.
+/* =========================================================================
+   Butonlar
+
+   Fizik yerine ışık: eski buton 6px aşağı basılan bir tuştu (sert ofset
+   gölge + 3px kontur). Yenisi 1px kendi tonunda kontur taşıyan düz bir
+   pastel dolgu; hover'da 1px yükselir ve gölgesi kendi tonunda açılır.
+   Basıldığında yükselme sıfırlanır — "aşağı gitti" hissi hâlâ var ama
+   düzeni 6px kaydırmıyor.
+
+   Boyut dokunma-önce bildirilir: çıplak değer parmak boyudur (44px, Apple
+   HIG / WCAG 2.5.8) ve `pointer: fine` yalnızca gerçek imleç varken geri
+   kısar. `sm:` bir GENİŞLİK sorgusudur ve tam tersini yapardı.
    ========================================================================= */
 .pn-btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 10px;
-  font-family: var(--font-display);
-  font-weight: 600;
-  font-size: 16px;
+  gap: var(--pn-2);
+  font-family: var(--font-sans);
+  font-weight: 700;
+  font-size: var(--pn-t-row);
   line-height: 1;
-  letter-spacing: 0.01em;
   white-space: nowrap;
-  border-radius: var(--pn-radius-control);
-  padding: 15px 26px;
-  min-height: 52px;
-  color: var(--pn-btn-fg, var(--color-on-secondary));
-  background:
-    radial-gradient(1.4px 1.4px at 14% 30%, rgba(255, 255, 255, 0.9), transparent 100%),
-    radial-gradient(1.4px 1.4px at 88% 24%, rgba(255, 255, 255, 0.75), transparent 100%),
-    radial-gradient(1px 1px at 93% 70%, rgba(255, 255, 255, 0.8), transparent 100%),
-    radial-gradient(1px 1px at 7% 74%, rgba(255, 255, 255, 0.65), transparent 100%),
-    radial-gradient(1px 1px at 48% 16%, rgba(255, 255, 255, 0.55), transparent 100%),
-    radial-gradient(1.2px 1.2px at 34% 82%, rgba(255, 255, 255, 0.55), transparent 100%),
-    radial-gradient(1px 1px at 68% 48%, rgba(255, 255, 255, 0.6), transparent 100%),
-    radial-gradient(0.9px 0.9px at 22% 56%, rgba(255, 255, 255, 0.45), transparent 100%),
-    radial-gradient(1px 1px at 78% 86%, rgba(255, 255, 255, 0.5), transparent 100%),
-    radial-gradient(0.8px 0.8px at 60% 6%, rgba(255, 255, 255, 0.45), transparent 100%),
-    radial-gradient(1px 1px at 40% 94%, rgba(255, 255, 255, 0.4), transparent 100%),
-    radial-gradient(0.9px 0.9px at 5% 15%, rgba(255, 255, 255, 0.4), transparent 100%),
-    radial-gradient(0.8px 0.8px at 96% 45%, rgba(255, 255, 255, 0.4), transparent 100%),
-    radial-gradient(1px 1px at 26% 44%, rgba(255, 255, 255, 0.5), transparent 100%),
-    radial-gradient(0.9px 0.9px at 55% 64%, rgba(255, 255, 255, 0.45), transparent 100%),
-    radial-gradient(1.1px 1.1px at 82% 8%, rgba(255, 255, 255, 0.6), transparent 100%),
-    radial-gradient(0.8px 0.8px at 16% 8%, rgba(255, 255, 255, 0.4), transparent 100%),
-    radial-gradient(1px 1px at 44% 38%, rgba(255, 255, 255, 0.45), transparent 100%),
-    radial-gradient(0.9px 0.9px at 70% 78%, rgba(255, 255, 255, 0.5), transparent 100%),
-    radial-gradient(1px 1px at 95% 15%, rgba(255, 255, 255, 0.55), transparent 100%),
-    var(--pn-btn-fill, var(--color-secondary));
-  border: var(--pn-stroke) solid var(--pn-ink);
-  box-shadow:
-    0 var(--pn-lift) 0 0 var(--pn-btn-shadow, var(--color-secondary-container)),
-    0 var(--pn-lift) 0 var(--pn-stroke) var(--pn-ink);
-  transition: transform 0.11s cubic-bezier(0.2, 0.8, 0.3, 1),
-    box-shadow 0.11s cubic-bezier(0.2, 0.8, 0.3, 1);
-  /* No `will-change: transform` here on purpose. It used to sit on this rule,
-     which handed EVERY button on a panel its own permanent compositor layer —
-     an admin dashboard has dozens, and each one costs GPU memory and one more
-     quad for the compositor to walk on every single frame, scrolling
-     included. The press is a 110ms transform transition; the browser promotes
-     it for the duration on its own and drops the layer again afterwards,
-     which is exactly the behaviour wanted. */
+  border-radius: var(--pn-r-button);
+  padding: 0 var(--pn-5);
+  min-height: 44px;
+  cursor: pointer;
+  color: var(--pn-btn-fg, var(--pn-blue-ink-strong));
+  background: var(--pn-btn-fill, var(--pn-blue));
+  border: 1px solid var(--pn-btn-line, var(--pn-blue-line));
+  box-shadow: 0 1px 2px var(--pn-btn-glow, rgba(36, 55, 166, 0.1));
+  /* Yalnızca transform ve box-shadow — ikisi de düzeni yeniden hesaplatmaz.
+     `will-change` BİLEREK yok: bir admin panelinde düzinelerce buton var ve
+     her biri kalıcı bir compositor katmanı demek olurdu. Tarayıcı 180ms'lik
+     bir transform geçişini kendiliğinden zaten yükseltir ve bitince katmanı
+     bırakır. */
+  transition: transform var(--pn-dur) var(--pn-ease), box-shadow var(--pn-dur) var(--pn-ease),
+    background-color var(--pn-dur) var(--pn-ease);
+  /* iOS'ta çift dokunma-yakınlaştırma beklemesini (300ms) kaldırır. */
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+@media (pointer: fine) {
+  .pn-btn {
+    min-height: 36px;
+    padding: 0 var(--pn-4);
+    font-size: var(--pn-t-body);
+  }
 }
 @media (hover: hover) {
   .pn-btn:hover:not(:disabled) {
-    transform: translateY(-2px);
-    box-shadow:
-      0 calc(var(--pn-lift) + 2px) 0 0 var(--pn-btn-shadow, var(--color-secondary-container)),
-      0 calc(var(--pn-lift) + 2px) 0 var(--pn-stroke) var(--pn-ink);
+    transform: translateY(-1px);
+    box-shadow: 0 5px 14px -4px var(--pn-btn-glow-strong, rgba(36, 55, 166, 0.38));
   }
 }
 .pn-btn:active:not(:disabled) {
-  transform: translateY(var(--pn-lift));
-  box-shadow:
-    0 0 0 0 var(--pn-btn-shadow, var(--color-secondary-container)),
-    0 0 0 var(--pn-stroke) var(--pn-ink);
+  transform: translateY(0);
+  box-shadow: inset 0 1px 3px var(--pn-btn-glow-strong, rgba(36, 55, 166, 0.28));
 }
 .pn-btn:focus-visible {
-  outline: 3px solid var(--color-tertiary);
-  outline-offset: 3px;
+  outline: 2px solid var(--color-secondary);
+  outline-offset: 2px;
 }
 .pn-btn:disabled {
-  opacity: 0.55;
+  opacity: 0.5;
   cursor: not-allowed;
   transform: none;
+  box-shadow: none;
 }
 
-/* Colour variants. Each deep tone is the accent's own -deep pair, so every
-   button on the site lifts and presses with identical physics. */
-.pn-btn--amber { --pn-btn-fill: #ff9f45; --pn-btn-shadow: #d2701a; --pn-btn-fg: var(--pn-ink); }
-.pn-btn--red { --pn-btn-fill: #ff6b8a; --pn-btn-shadow: #ce3b5f; --pn-btn-fg: var(--pn-ink); }
-.pn-btn--green { --pn-btn-fill: #2c7a58; --pn-btn-shadow: #194f38; }
-.pn-btn--orange { --pn-btn-fill: #ffc27a; --pn-btn-shadow: #c07b1c; --pn-btn-fg: var(--pn-ink); }
-.pn-btn--navy { --pn-btn-fill: #141f3c; --pn-btn-shadow: #05080f; --pn-btn-fg: #f2ecdd; }
-.pn-btn--purple { --pn-btn-fill: #8b6bff; --pn-btn-shadow: #5d3fd1; }
-.pn-btn--mint { --pn-btn-fill: #2fd08a; --pn-btn-shadow: #17915b; --pn-btn-fg: var(--pn-ink); }
-.pn-btn--paper { --pn-btn-fill: #fffbf2; --pn-btn-shadow: #ede3cf; --pn-btn-fg: var(--pn-ink); }
+/* Renk varyantları. Her biri bir aileden dört rolü birden alır: dolgu,
+   kontur, mürekkep ve kendi tonunda gölge. Eski adlar (amber/red/green/
+   orange/purple) yeni ailelere eşlendi, böylece çağrı yerleri değişmeden
+   yeni dile geçti. */
+.pn-btn--mint,
+.pn-btn--green {
+  --pn-btn-fill: var(--pn-mint);
+  --pn-btn-line: rgba(15, 107, 65, 0.34);
+  --pn-btn-fg: var(--pn-mint-ink-strong);
+  --pn-btn-glow: rgba(15, 107, 65, 0.12);
+  --pn-btn-glow-strong: rgba(15, 107, 65, 0.42);
+}
+.pn-btn--peach,
+.pn-btn--amber,
+.pn-btn--orange {
+  --pn-btn-fill: var(--pn-peach);
+  --pn-btn-line: rgba(156, 74, 10, 0.34);
+  --pn-btn-fg: var(--pn-peach-ink-strong);
+  --pn-btn-glow: rgba(156, 74, 10, 0.12);
+  --pn-btn-glow-strong: rgba(156, 74, 10, 0.42);
+}
+.pn-btn--pink,
+.pn-btn--red {
+  --pn-btn-fill: var(--pn-pink);
+  --pn-btn-line: rgba(178, 47, 79, 0.32);
+  --pn-btn-fg: var(--pn-pink-ink-strong);
+  --pn-btn-glow: rgba(178, 47, 79, 0.12);
+  --pn-btn-glow-strong: rgba(178, 47, 79, 0.4);
+}
+.pn-btn--blue {
+  --pn-btn-fill: var(--pn-blue);
+  --pn-btn-line: rgba(36, 55, 166, 0.3);
+  --pn-btn-fg: var(--pn-blue-ink-strong);
+}
+.pn-btn--violet,
+.pn-btn--purple {
+  --pn-btn-fill: var(--pn-violet);
+  --pn-btn-line: rgba(74, 47, 184, 0.3);
+  --pn-btn-fg: var(--pn-violet-ink-strong);
+  --pn-btn-glow: rgba(74, 47, 184, 0.12);
+  --pn-btn-glow-strong: rgba(74, 47, 184, 0.4);
+}
+.pn-btn--navy {
+  --pn-btn-fill: var(--pn-navy);
+  --pn-btn-line: var(--pn-navy-line);
+  --pn-btn-fg: var(--pn-on-navy);
+  --pn-btn-glow: rgba(21, 35, 67, 0.18);
+  --pn-btn-glow-strong: rgba(21, 35, 67, 0.42);
+}
+.pn-btn--paper {
+  --pn-btn-fill: var(--color-surface-container);
+  --pn-btn-line: var(--pn-hair-strong);
+  --pn-btn-fg: var(--color-on-surface);
+  --pn-btn-glow: rgba(21, 35, 67, 0.08);
+  --pn-btn-glow-strong: rgba(21, 35, 67, 0.24);
+}
 
-/* Compact size for header rows. */
+/* Başlık satırları için sıkı boy. */
 .pn-btn--sm {
-  --pn-lift: 5px;
-  gap: 7px;
-  border-radius: 12px;
-  padding: 10px 16px;
-  min-height: 42px;
-  font-size: 14.5px;
+  gap: var(--pn-1);
+  min-height: 40px;
+  padding: 0 var(--pn-4);
+  font-size: var(--pn-t-body);
+}
+@media (pointer: fine) {
+  .pn-btn--sm {
+    min-height: 32px;
+    padding: 0 var(--pn-3);
+  }
 }
 
-/* Circular icon-only size, for the header's notification-bell trigger. */
+/* Yalnızca ikon. Kare, yuvarlak değil: barın içindeki her şey aynı 10–12px
+   yarıçap ailesinden, tek bir daire o ritmi bozuyordu. */
 .pn-btn--icon {
-  --pn-lift: 5px;
   width: 44px;
   height: 44px;
   min-height: 0;
   padding: 0;
-  border-radius: 9999px;
+  border-radius: var(--pn-r-control);
+}
+@media (pointer: fine) {
+  .pn-btn--icon {
+    width: 34px;
+    height: 34px;
+  }
 }
 
 /* =========================================================================
-   Cards — cut paper, not glass.
+   Kartlar
 
-   The previous version was real frosted glass: a translucent white stack over
-   backdrop-filter: blur(22px) saturate(160%). It was the single biggest reason
-   the panels read as a different product once you logged in — the marketing
-   site's whole rule is that nothing blurs and nothing has a gradient. Flat
-   fill, one navy outline, one hard shadow straight down.
-
-   --pn-tone re-keys a card's shadow to an accent (a stat card, a warning),
-   exactly the way --tone works on .nb-card.
+   Krem gövde, 1px saç konturu, iki katmanlı gölge. Renk gövdede değil
+   başlık bandında (.pn-band) — uzun süre bakılan yüzey nötr kalır.
    ========================================================================= */
 .pn-card {
   position: relative;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
   background: var(--color-surface-container);
-  border: var(--pn-stroke) solid var(--pn-ink);
-  border-radius: var(--pn-radius-card);
-  box-shadow: 0 var(--pn-lift) 0 0 var(--pn-tone, var(--pn-ink));
-  /* Stated, not inherited — a card is a surface, and it owns its text colour. */
+  border: 1px solid var(--pn-card-line, var(--pn-hair));
+  border-radius: var(--pn-r-card);
+  box-shadow: var(--pn-shadow-card);
+  color: var(--color-on-surface);
+  /* Başlık bandının köşeleri kartın köşesine uysun diye. */
+  overflow: hidden;
+}
+.pn-card--flat {
+  box-shadow: none;
+}
+.pn-card--sunken {
+  background: var(--color-surface-low);
+  box-shadow: none;
+}
+.pn-card--float {
+  box-shadow: var(--pn-shadow-float);
+}
+
+/* Kart başlık bandı. Kartın ne olduğunu renk söyler: nane = öğrenciler,
+   mavi = konular, şeftali = ödevler, mor = yönetim. Bandın alt konturu
+   kendi ailesinin çizgisidir, nötr saç konturu değil — aksi hâlde bant
+   kartın üstüne yapıştırılmış gibi durur. */
+.pn-band {
+  display: flex;
+  align-items: center;
+  gap: var(--pn-3);
+  padding: var(--pn-4) var(--pn-5);
+  background: var(--pn-band-fill, var(--pn-blue-tint));
+  border-bottom: 1px solid var(--pn-band-line, var(--pn-blue-line));
+  flex-shrink: 0;
+}
+.pn-band--mint {
+  --pn-band-fill: var(--pn-mint-tint);
+  --pn-band-line: var(--pn-mint-line);
+}
+.pn-band--peach {
+  --pn-band-fill: var(--pn-peach-tint);
+  --pn-band-line: var(--pn-peach-line);
+}
+.pn-band--pink {
+  --pn-band-fill: var(--pn-pink-tint);
+  --pn-band-line: var(--pn-pink-line);
+}
+.pn-band--blue {
+  --pn-band-fill: var(--pn-blue-tint);
+  --pn-band-line: var(--pn-blue-line);
+}
+.pn-band--violet {
+  --pn-band-fill: var(--pn-violet-tint);
+  --pn-band-line: var(--pn-violet-line);
+}
+
+/* Kart başlığı ve alt satırı — her kartta aynı iki satır, aynı ölçekte. */
+.pn-card-title {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: var(--pn-t-card);
+  letter-spacing: -0.02em;
+  line-height: 1.2;
   color: var(--color-on-surface);
 }
-.pn-card--flat { box-shadow: none; }
-.pn-card--sunken { background: var(--color-surface-dim); }
+.pn-card-sub {
+  font-size: var(--pn-t-caption);
+  line-height: 1.35;
+  color: var(--color-on-surface-variant);
+}
 
 /* =========================================================================
-   Dialogs, popovers and menus — the same cut paper, without editing the
-   generated shadcn components (so they stay upgradeable).
+   Çip / rozet / etiket
 
-   The overlay is the important one: it shipped as bg-black/10 plus
-   backdrop-blur, and a blurred scrim is the exact thing "Kâğıt Uzay" forbids.
-   A flat navy wash reads as a sheet of paper laid over the page instead.
+   .pn-chip  → sayı taşıyan hap (mono sayı + küçük etiket)
+   .pn-tag   → yalnızca metin taşıyan mono UPPERCASE rozet
+   İkisi de kendi ailesinin dolgu + mürekkep çiftini alır.
+   ========================================================================= */
+.pn-chip,
+.pn-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--pn-1);
+  white-space: nowrap;
+  flex-shrink: 0;
+  background: var(--pn-chip-fill, var(--pn-blue));
+  color: var(--pn-chip-ink, var(--pn-blue-ink));
+  border: 1px solid var(--pn-chip-line, transparent);
+}
+.pn-chip {
+  padding: 3px var(--pn-3);
+  border-radius: 999px;
+  font-family: var(--font-mono);
+  font-size: var(--pn-t-num);
+  font-weight: 600;
+  line-height: 1.4;
+  font-variant-numeric: tabular-nums;
+}
+.pn-tag {
+  padding: 3px var(--pn-2);
+  border-radius: 999px;
+  font-family: var(--font-mono);
+  font-size: var(--pn-t-label);
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  line-height: 1.4;
+  text-transform: uppercase;
+}
+.pn-chip--mint,
+.pn-tag--mint {
+  --pn-chip-fill: var(--pn-mint);
+  --pn-chip-ink: var(--pn-mint-ink);
+  --pn-chip-line: var(--pn-mint-line);
+}
+.pn-chip--peach,
+.pn-tag--peach {
+  --pn-chip-fill: var(--pn-peach);
+  --pn-chip-ink: var(--pn-peach-ink);
+  --pn-chip-line: var(--pn-peach-line);
+}
+.pn-chip--pink,
+.pn-tag--pink {
+  --pn-chip-fill: var(--pn-pink);
+  --pn-chip-ink: var(--pn-pink-ink-strong);
+  --pn-chip-line: var(--pn-pink-line);
+}
+.pn-chip--blue,
+.pn-tag--blue {
+  --pn-chip-fill: var(--pn-blue);
+  --pn-chip-ink: var(--pn-blue-ink-strong);
+  --pn-chip-line: var(--pn-blue-line);
+}
+.pn-chip--violet,
+.pn-tag--violet {
+  --pn-chip-fill: var(--pn-violet);
+  --pn-chip-ink: var(--pn-violet-ink-strong);
+  --pn-chip-line: var(--pn-violet-line);
+}
+.pn-chip--quiet,
+.pn-tag--quiet {
+  --pn-chip-fill: var(--color-surface-low);
+  --pn-chip-ink: var(--color-on-surface-variant);
+  --pn-chip-line: var(--pn-hair);
+}
+
+/* Bölüm etiketi: nokta + mono UPPERCASE + ince çizgi. Listede blokları
+   ayırır; başlık değil, bir sınır işareti. */
+.pn-divider {
+  display: flex;
+  align-items: center;
+  gap: var(--pn-2);
+  padding: var(--pn-1) var(--pn-2) var(--pn-1);
+  font-family: var(--font-mono);
+  font-size: var(--pn-t-label);
+  font-weight: 600;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--pn-divider-ink, var(--color-on-surface-variant));
+  white-space: nowrap;
+}
+.pn-divider::before {
+  content: "";
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+  flex-shrink: 0;
+}
+.pn-divider::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: currentColor;
+  opacity: 0.24;
+}
+
+/* =========================================================================
+   Liste satırı
+
+   Tek bir satır tipi, üç durumu var: boş, hover, seçili. Seçiliyi anlatan
+   şey SOL ŞERİT + zemin; bir kontur değil — kontur satırı listeden koparır
+   ve 20 satırlık bir listede 20 kutu görünür. Sol şerit her durumda YERİNDE
+   durur (seçili değilken saydam), böylece metin başlangıcı satırdan satıra
+   kaymaz.
+   ========================================================================= */
+.pn-row {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: var(--pn-2);
+  width: 100%;
+  box-sizing: border-box;
+  padding: var(--pn-2) var(--pn-2);
+  border: 0;
+  border-left: 3px solid var(--pn-row-stripe, transparent);
+  border-radius: var(--pn-r-control);
+  background: var(--pn-row-fill, transparent);
+  text-align: left;
+  cursor: pointer;
+  color: var(--color-on-surface);
+  transition: background-color var(--pn-dur-fast) var(--pn-ease);
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+@media (hover: hover) {
+  .pn-row:hover {
+    background: var(--pn-row-hover, var(--pn-blue-tint));
+  }
+}
+.pn-row:focus-visible {
+  outline: 2px solid var(--color-secondary);
+  outline-offset: -2px;
+}
+/* Dokunmatikte satır 44px'e çıkar — bir listede en çok dokunulan öğe. */
+.pn-row {
+  min-height: 44px;
+}
+@media (pointer: fine) {
+  .pn-row {
+    min-height: 0;
+  }
+}
+
+/* =========================================================================
+   Diyaloglar, popover'lar ve menüler — üretilen shadcn bileşenlerini
+   düzenlemeden aynı kâğıt (böylece yükseltilebilir kalırlar).
    ========================================================================= */
 .panel-theme :is([data-slot="dialog-overlay"], [data-slot="alert-dialog-overlay"]) {
-  background: rgba(20, 31, 60, 0.42);
+  background: rgba(20, 31, 60, 0.38);
   backdrop-filter: none;
   -webkit-backdrop-filter: none;
 }
-
 .panel-theme :is([data-slot="dialog-content"], [data-slot="alert-dialog-content"]) {
   background: var(--color-surface-container);
-  border: var(--pn-stroke) solid var(--pn-ink);
-  border-radius: var(--pn-radius-card);
-  /* Replaces the generated component's ring-1 hairline outright: this
-     box-shadow wins the property, so the ring never paints and the card can't
-     end up with two edges of different weights. */
-  box-shadow: 0 var(--pn-lift) 0 0 var(--pn-ink);
+  border: 1px solid var(--pn-hair-strong);
+  border-radius: var(--pn-r-card);
+  /* Üretilen bileşenin ring-1 saç konturunun yerine geçer: bu box-shadow
+     özelliği kazanır, ring hiç boyanmaz ve kart iki farklı ağırlıkta iki
+     kenarla kalmaz. */
+  box-shadow: var(--pn-shadow-drawer);
 }
-
 .panel-theme :is([data-slot="popover-content"], [data-slot="select-content"]) {
   background: var(--color-surface-container);
-  border: 2.5px solid var(--pn-ink);
-  border-radius: 14px;
-  box-shadow: 0 5px 0 0 var(--pn-ink);
+  border: 1px solid var(--pn-hair-strong);
+  border-radius: var(--pn-r-button);
+  box-shadow: var(--pn-shadow-float);
 }
-
-/* Dialog footers sit on a tinted strip; on cream that strip needs to be the
-   sunken paper step, not a translucent grey. */
 .panel-theme :is([data-slot="dialog-footer"], [data-slot="alert-dialog-footer"]) {
-  background: var(--color-surface-dim);
-  border-top: 2.5px solid var(--pn-ink);
+  background: var(--color-surface-low);
+  border-top: 1px solid var(--pn-hair);
 }
-
-/* Titles take the display face like every other heading in the panel. */
 .panel-theme :is([data-slot="dialog-title"], [data-slot="alert-dialog-title"]) {
   font-family: var(--font-display);
   font-weight: 600;
-  letter-spacing: -0.015em;
+  font-size: var(--pn-t-section);
+  letter-spacing: -0.02em;
 }
 
 /* =========================================================================
-   Playground — "Kâğıt Uzay", space side.
+   Hareket
 
-   The panels above are the paper side of the system; this is the other half.
-   Not an arbitrary choice: the marketing page already establishes that AI
-   tooling lives on a full-bleed navy band (see the "Dağınık 100+ araç" section
-   in landing.css), and a dark ground is also the right room to look at
-   generated images and video in. Same rules as the paper side, inverted —
-   flat fill, one outline weight, hard offset shadow, no blur, no gradient.
-   The outline goes DARKER than the fill here (#05080f), the way .nb-card--space
-   and .nb-btn--ghost-space do on the marketing page, because a navy stroke on
-   navy is invisible.
+   Panelde iki animasyon var ve ikisi de bilgi taşıyor:
+   · pn-pulse  → "şu an derste" — canlı bir durumun nabzı
+   · pn-rise   → yan panel / alttan çıkan kart girişi
+   Dekoratif üçüncü bir hareket yok.
+   ========================================================================= */
+@keyframes pn-pulse {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(15, 107, 65, 0.42);
+  }
+  50% {
+    box-shadow: 0 0 0 5px rgba(15, 107, 65, 0);
+  }
+}
+.pn-pulse {
+  animation: pn-pulse 2.4s ease-in-out infinite;
+}
+
+@keyframes pn-slide-in-right {
+  from {
+    transform: translateX(12px);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+@keyframes pn-slide-up {
+  from {
+    transform: translateY(100%);
+  }
+  to {
+    transform: translateY(0);
+  }
+}
+.pn-enter-right {
+  animation: pn-slide-in-right var(--pn-dur-panel) var(--pn-ease) both;
+}
+.pn-enter-up {
+  animation: pn-slide-up 0.28s var(--pn-ease) both;
+}
+
+/* Kullanıcı hareketi kapattıysa nabız ve girişler susar. Global reduce
+   kuralı süreleri 0.001ms'ye çeker; nabız sonsuz döngü olduğu için ayrıca
+   iptal edilmeli, yoksa 0.001ms'lik bir titremeye döner. */
+@media (prefers-reduced-motion: reduce) {
+  .pn-pulse,
+  .pn-enter-right,
+  .pn-enter-up {
+    animation: none !important;
+  }
+  .pn-btn:hover:not(:disabled) {
+    transform: none;
+  }
+}
+
+/* Panel içindeki kaydırılan her yüzey kendi kaydırmasını kapsar: bir liste
+   sonuna gelince sayfa arkadan kaymaya başlamaz (iOS'ta "scroll chaining"
+   bir alt paneli kapatabiliyordu). */
+.pn-scroll {
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* =========================================================================
+   Panel kabuğu — "birleşik L"
+
+   Navigasyon TEK PARÇA bir L'dir: tam yükseklikte 58px dikey şerit + tam
+   genişlikte 58px yatay bar, aynı silüeti paylaşır. Birleşme yerine barın
+   dolgusunda bir yama konur; böylece barın alt konturu ve sol alt yayı
+   şeridin üzerinde görünmez, ikisi tek şekil olarak okunur.
+
+   ÜÇÜ DE (şerit, bar, yama) tek düz lacivert taşır. Bu bilinçli: gradyan
+   OLMADIĞI için dikiş oluşamaz. Renk eşleştirilmiş üç gradyanla denendi ve
+   barın 4px altında sert bir basamak bıraktı — iki gradyan yalnızca BİR
+   kenarda eşitlenebilir.
+
+   İç köşeye kavis tile'ı konmaz: üzerine yatırılan bir kutuya border-radius
+   vermek yayı kutunun KARŞI köşesinde merkezler, yani yanlış tarafı keser ve
+   kavis yerine basamaklı bir çentik üretir. Tek dolguyla dik açılı birleşim
+   zaten tek parça okunur.
+
+   ---- Ölçüler ------------------------------------------------------------
+   Dört değişken her şeyi belirler ve içerik ofseti bunlardan TÜRETİLİR,
+   elle yazılmaz:
+
+     --shell-pad  çerçeve içi kenar payı        22px  (mobil 12px)
+     --shell-top  barın üstündeki pay           18px  (mobil 14px)
+     --shell-nav  bar yüksekliği = şerit eni    58px  (mobil 50px)
+     --shell-gap  nav ile içerik arası          13px  (mobil 12px)
+
+     içerik üst  = top + nav + gap = 18 + 58 + 13 = 89px
+     içerik sol  = pad + nav + gap = 22 + 58 + 13 = 93px
+
+   Bu iki türetme L nav'ın tüm anlamıdır: sola 22 verilirse içerik şeridin
+   ALTINA girer. Bir sayı elle yazıldığı anda ikisi ayrı düşer.
+
+   `top` neden `pad`'den 4px küçük: bar bir gölge taşır ve gölge yukarı
+   doğru da yayılır; optik olarak ortalanması için kutunun kendisi 4px
+   yukarı alınır. Alt kenarda gölge zaten aşağı düşer, orada düzeltme yok.
+   ========================================================================= */
+.pn-shell {
+  --shell-pad: 12px;
+  --shell-top: 14px;
+  --shell-nav: 50px;
+  --shell-gap: 12px;
+  --shell-inset-top: calc(var(--shell-top) + var(--shell-nav) + var(--shell-gap));
+  --shell-inset-left: var(--shell-pad);
+  position: relative;
+  min-height: 100dvh;
+}
+@media (min-width: 1024px) {
+  .pn-shell {
+    --shell-pad: 22px;
+    --shell-top: 18px;
+    --shell-nav: 58px;
+    --shell-gap: 13px;
+    --shell-inset-left: calc(var(--shell-pad) + var(--shell-nav) + var(--shell-gap));
+    /* Masaüstünde panel bir UYGULAMA: sayfa kaymaz, kolonlar kendi içinde
+       kayar. Öğretmen listeyi kaydırırken konular kartının yerinde kalması
+       için gereken şey bu. Mobilde tam tersi — orada iç içe kaydırma
+       parmakla yönetilemez, sayfa akar. */
+    height: 100dvh;
+    overflow: hidden;
+  }
+}
+
+/* Şerit (yalnızca masaüstü) ve bar sabit konumlu: içerik altlarından akar. */
+.pn-shell-rail {
+  position: fixed;
+  left: var(--shell-pad);
+  top: var(--shell-top);
+  bottom: var(--shell-pad);
+  width: var(--shell-nav);
+  z-index: 30;
+  border-radius: var(--pn-r-bar);
+  background: var(--pn-navy);
+  border: 1px solid var(--pn-navy-line);
+  box-shadow: var(--pn-shadow-float);
+  overflow: hidden;
+}
+.pn-shell-bar {
+  position: fixed;
+  left: var(--shell-pad);
+  right: var(--shell-pad);
+  top: var(--shell-top);
+  height: var(--shell-nav);
+  z-index: 31;
+  border-radius: var(--pn-r-bar);
+  background: var(--pn-navy);
+  border: 1px solid var(--pn-navy-line);
+  box-shadow: var(--pn-shadow-float);
+}
+/* Dikiş yaması: barın 1px konturunun altına, şeridin genişliği kadar.
+   left/width şeridin kontur içini kapsar (pad+1, nav-2), yükseklik barın
+   alt yarısından şeridin üstüne kadar uzanır. */
+.pn-shell-seam {
+  position: fixed;
+  left: calc(var(--shell-pad) + 1px);
+  top: calc(var(--shell-top) + var(--shell-nav) - 28px);
+  width: calc(var(--shell-nav) - 2px);
+  height: 32px;
+  z-index: 32;
+  background: var(--pn-navy);
+  pointer-events: none;
+}
+
+/* İçerik. Masaüstünde tam yükseklik ve iç kaydırma, mobilde normal akış. */
+.pn-shell-content {
+  padding: var(--shell-inset-top) var(--shell-pad) calc(var(--shell-pad) + env(safe-area-inset-bottom))
+    var(--shell-inset-left);
+}
+@media (min-width: 1024px) {
+  .pn-shell-content {
+    height: 100dvh;
+    padding-bottom: var(--shell-pad);
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+  }
+}
+
+/* Şerit ikonları. Koyu ve dekorlu bir zeminde saydam bir ikon okunmaz —
+   her ikon hafif dolgulu bir kutu taşır. Aktif olan pastel doluya geçer,
+   hover'da her öğe KENDİ ailesinin pasteline gider (Program nane, Bakiye
+   şeftali, Playground mor): renk, gidilecek yeri daha tıklamadan söyler.
+   Kalem kalınlığı 1.9 — koyu zemin krem zeminden daha kalın kalem ister. */
+.pn-rail-btn {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  flex-shrink: 0;
+  border-radius: 13px;
+  border: 1px solid var(--pn-on-navy-edge);
+  background: var(--pn-on-navy-fill);
+  color: var(--pn-on-navy);
+  cursor: pointer;
+  transition: background-color var(--pn-dur) var(--pn-ease), border-color var(--pn-dur) var(--pn-ease),
+    color var(--pn-dur) var(--pn-ease), transform var(--pn-dur) var(--pn-ease);
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+.pn-rail-btn[data-active="true"] {
+  background: var(--pn-blue);
+  color: #132750;
+  border-color: rgba(207, 225, 255, 0.55);
+  box-shadow: 0 2px 6px -1px rgba(8, 18, 44, 0.45);
+}
+@media (hover: hover) {
+  .pn-rail-btn:not([data-active="true"]):hover {
+    background: var(--pn-rail-hover, var(--pn-blue));
+    border-color: var(--pn-rail-hover-line, rgba(207, 225, 255, 0.7));
+    color: var(--pn-rail-hover-ink, #132750);
+  }
+}
+.pn-rail-btn:focus-visible {
+  outline: 2px solid var(--pn-on-navy);
+  outline-offset: 2px;
+}
+.pn-rail-btn--mint {
+  --pn-rail-hover: var(--pn-mint);
+  --pn-rail-hover-line: rgba(198, 241, 220, 0.7);
+  --pn-rail-hover-ink: var(--pn-mint-ink-strong);
+}
+.pn-rail-btn--peach {
+  --pn-rail-hover: var(--pn-peach);
+  --pn-rail-hover-line: rgba(255, 225, 196, 0.7);
+  --pn-rail-hover-ink: var(--pn-peach-ink-strong);
+}
+.pn-rail-btn--violet {
+  --pn-rail-hover: var(--pn-violet);
+  --pn-rail-hover-line: rgba(220, 210, 255, 0.7);
+  --pn-rail-hover-ink: var(--pn-violet-ink-strong);
+}
+.pn-rail-btn--pink {
+  --pn-rail-hover: var(--pn-pink);
+  --pn-rail-hover-line: rgba(255, 214, 222, 0.7);
+  --pn-rail-hover-ink: var(--pn-pink-ink-strong);
+}
+
+/* Mobil barda aynı düğme, 34px. Ayrı bir sınıf değil, aynı sınıfın küçük
+   boyu — iki farklı ikon düğmesi dili panelde yok. */
+.pn-rail-btn--bar {
+  width: 34px;
+  height: 34px;
+  border-radius: 11px;
+}
+
+/* Barın sağındaki açık mürekkepli çıkış düğmesi. Lacivert üstünde pembe
+   kontur + pembe ikon: ölçülen kontrast 8.53:1. */
+.pn-bar-ghost {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  flex-shrink: 0;
+  border-radius: 11px;
+  background: rgba(255, 214, 222, 0.1);
+  border: 1px solid rgba(255, 214, 222, 0.32);
+  color: var(--pn-pink);
+  cursor: pointer;
+  transition: background-color var(--pn-dur) var(--pn-ease), transform var(--pn-dur) var(--pn-ease);
+  touch-action: manipulation;
+}
+@media (hover: hover) {
+  .pn-bar-ghost:hover:not(:disabled) {
+    background: rgba(255, 214, 222, 0.22);
+    transform: translateY(-1px);
+  }
+}
+.pn-bar-ghost:focus-visible {
+  outline: 2px solid var(--pn-pink);
+  outline-offset: 2px;
+}
+.pn-bar-ghost:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+/* Bildirim rozeti. 2px konturu barın DOLGUSU rengindedir, saydam değil —
+   rozet ikonun üstüne bindiğinde arada temiz bir boşluk okunur. */
+.pn-badge {
+  position: absolute;
+  top: -3px;
+  right: -3px;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 3px;
+  box-sizing: border-box;
+  border-radius: 999px;
+  display: grid;
+  place-items: center;
+  background: var(--pn-pink-ink);
+  border: 2px solid var(--pn-navy);
+  font-family: var(--font-mono);
+  font-size: 9px;
+  font-weight: 600;
+  line-height: 1;
+  color: #fffbf2;
+}
+
+/* Mobilde liste katlanır: ilk dört satır görünür, gerisi "Tümünü gör"
+   düğmesinin ardındadır. Katlama CSS'te yapılır, JS'te değil — bir
+   matchMedia okuması sunucu render'ında yanlış cevap verir ve hidrasyonda
+   liste bir kez sıçrardı. Masaüstünde kural hiç uygulanmaz, liste kendi
+   içinde kayar. */
+@media (max-width: 1023.98px) {
+  .pn-rail-list:not([data-show-all="true"]) [data-extra="true"] {
+    display: none;
+  }
+}
+.pn-rail-more {
+  display: block;
+}
+@media (min-width: 1024px) {
+  .pn-rail-more {
+    display: none;
+  }
+}
+
+/* =========================================================================
+   Açılan arama alanı
+
+   Alanın KENDİSİ ikondur: kapalıyken 30px'lik bir kare, odaklanınca başlığın
+   üstünden geçerek başlık bandının tamamına yayılır. 195px'lik bir kolonda
+   başlık + sayaç + arama üç ayrı satır isterdi; bu üçünü tek satıra sığdırır.
+
+   State yok, JS yok. Genişleten şey `:focus`, açık TUTAN şey
+   `:not(:placeholder-shown)` — ikincisi olmadan sonuca tıklandığı anda alan
+   kapanır ve kullanıcı yazdığı sorguyu göremez hâle gelir (yalnızca :focus
+   ile kurulmuş açılan aramaların klasik hatası).
+   ========================================================================= */
+.pn-search {
+  position: absolute;
+  right: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 36px;
+  height: 36px;
+  box-sizing: border-box;
+  padding: 0 30px 0 0;
+  text-indent: -9999px;
+  cursor: pointer;
+  z-index: 2;
+  transition: width var(--pn-dur-panel) var(--pn-ease), padding var(--pn-dur-panel) var(--pn-ease),
+    border-color var(--pn-dur) var(--pn-ease), box-shadow var(--pn-dur) var(--pn-ease);
+}
+@media (pointer: fine) {
+  .pn-search {
+    width: 30px;
+    height: 30px;
+  }
+}
+.pn-search:focus,
+.pn-search:not(:placeholder-shown) {
+  width: 100%;
+  text-indent: 0;
+  padding: 0 32px 0 11px;
+  cursor: text;
+}
+/* İkon alanın üstünde durur ve tıklamayı alana geçirir — ikonun kendisi bir
+   düğme değil, alanın görsel karşılığı. */
+.pn-search-icon {
+  position: absolute;
+  right: 9px;
+  top: 50%;
+  transform: translateY(-50%);
+  pointer-events: none;
+  z-index: 3;
+}
+
+/* =========================================================================
+   Yan panel (drawer)
+
+   Masaüstünde overlay DEĞİL: ana kolonla aynı flex satırının ikinci
+   çocuğudur. Yükseklikleri bu yüzden YAPISAL olarak eşittir — ayrı ayrı
+   verilen değerler değil — ve panel yanındaki kartı gerçekten sıkıştırır.
+   Overlay yapılsaydı "yüksekliği onunla aynı olsun" şartı kaybolurdu.
+
+   Mobilde alttan çıkan bir karta döner: üçte iki yükseklik, kendi
+   kaydırması, arkasında perde.
+   ========================================================================= */
+.pn-drawer {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  background: var(--color-surface-container);
+  border: 1px solid var(--pn-drawer-line, var(--pn-hair-strong));
+  border-radius: var(--pn-r-card);
+  box-shadow: var(--pn-shadow-drawer);
+  overflow: hidden;
+}
+@media (min-width: 1024px) {
+  .pn-drawer {
+    width: 376px;
+    flex-shrink: 0;
+  }
+}
+/* Mobilde aynı bileşen alttan çıkan bir karta döner. Aynı DOM, farklı
+   konumlandırma — iki ayrı bileşen yazılsaydı içerikleri ayrı düşerdi.
+   Yükseklik üçte iki: liste görünürken altındaki bağlamın bir kısmı da
+   görünür kalır, tam ekran bir sayfa gibi davranmaz. */
+@media (max-width: 1023.98px) {
+  .pn-drawer {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 45;
+    height: min(66dvh, 620px);
+    border-radius: var(--pn-r-card) var(--pn-r-card) 0 0;
+    border-bottom: 0;
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+}
+.pn-drawer-scrim {
+  position: fixed;
+  inset: 0;
+  z-index: 44;
+  background: rgba(20, 31, 60, 0.38);
+  animation: pn-fade-in 0.2s var(--pn-ease) both;
+}
+@keyframes pn-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .pn-drawer-scrim {
+    animation: none;
+  }
+}
+
+/* =========================================================================
+   Playground — "Kâğıt Uzay", gökyüzü kâğıdı.
+
+   Playground used to be the space side of the system: a navy ground with a
+   star field. It is now paper like everything else, on a light blue sheet
+   with the same 26px dot grid the panels and the marketing sections use — a
+   room a ten-year-old wants to sit in, not a console. The system's rules are
+   unchanged: flat fill, one outline weight, hard offset shadow, no blur, no
+   gradient. What flipped is only which side of the paper we are on, so the
+   outline now goes DARKER than the fill (navy #152343, the same ink as
+   .panel-theme) instead of darker-than-navy.
+
+   The four accents are the landing page's own (landing-theme.ts): peach
+   #FF9F45, mint #2FD08A, sky blue #3D5FE0, coral pink #FF6B8A. They are
+   exposed as --pg-peach/-mint/-sky/-pink so a component can reach for a
+   specific colour without going through a semantic token that means
+   something else.
 
    Scoped to .pg-theme, applied by app/playground/layout.tsx. Playground reads
-   almost everything through --color-* utilities (one hardcoded hex in 1230
-   lines), so retinting the tokens moves the whole screen.
+   almost everything through --color-* utilities, so retinting the tokens
+   moves the whole screen.
    ========================================================================= */
 .pg-theme {
-  --color-surface: #141f3c;
-  --color-surface-dim: #0b1226;
-  --color-surface-lowest: #05080f;
-  --color-surface-low: #16223f;
-  --color-surface-container: #1e2e52;
-  --color-surface-high: #243761;
-  --color-surface-highest: #2b3f6e;
-  --color-surface-bright: #33497c;
+  /* ---- Sky-paper surfaces. Light blue is the ground; cards are white. ---- */
+  --color-surface: #dcebfb;
+  --color-surface-dim: #c8dcf5;
+  --color-surface-lowest: #a6c5ea;
+  --color-surface-low: #e7f1fd;
+  --color-surface-container: #ffffff;
+  --color-surface-high: #f1f7ff;
+  --color-surface-highest: #ffffff;
+  --color-surface-bright: #ffffff;
 
-  --color-on-surface: #f2ecdd;
-  --color-on-surface-variant: #a9b6d4;
-  --color-outline: #7c8bb0;
-  --color-outline-variant: rgba(183, 199, 235, 0.22);
+  /* Ink is navy, never black — the same ink the paper panels use. */
+  --color-on-surface: #152343;
+  --color-on-surface-variant: #4a5878;
+  --color-outline: #7d8db2;
+  --color-outline-variant: #b2c6e6;
 
-  /* Amber is the accent on a space band — the same call the marketing hero
-     makes with "kullansın" and every CTA that sits on navy. Navy text on
-     amber, never white: amber is too light to carry white type. */
-  --color-secondary: #ff9f45;
-  --color-secondary-bright: #ffc27a;
+  /* ---- The four landing accents, by name. ---- */
+  --pg-peach: #ff9f45;
+  --pg-peach-deep: #d2701a;
+  --pg-peach-ink: #a1530c;
+  --pg-mint: #2fd08a;
+  --pg-mint-deep: #17915b;
+  --pg-sky: #3d5fe0;
+  --pg-sky-deep: #2437a6;
+  --pg-pink: #ff6b8a;
+  --pg-pink-deep: #ce3b5f;
+
+  /* Peach is the accent every component already reaches for through
+     --color-secondary: the send button, the ore meter, the selected model.
+
+     One inversion to know about: on the old navy ground `-bright` meant
+     "lighter than the base so it reads on dark". On paper the readable step
+     is the DARKER one, so --color-secondary-bright is deep amber. Every
+     `text-secondary-bright` in the playground is a label on white — it has to
+     be ink, not a highlight. */
+  --color-secondary: var(--pg-peach);
+  --color-secondary-bright: var(--pg-peach-ink);
   --color-on-secondary: #152343;
-  --color-secondary-container: #d2701a;
-  --color-on-secondary-container: #ffe6c9;
+  --color-secondary-container: var(--pg-peach-deep);
+  --color-on-secondary-container: #5c2f00;
 
-  --color-primary: #7a93f5;
-  --color-primary-bright: #a8b9ff;
-  --color-on-primary: #0b1226;
-  --color-primary-container: #2437a6;
-  --color-on-primary-container: #dce3ff;
+  /* Sky blue: the student's own voice (their bubble) and the picker's
+     selected state. Same inversion — `-bright` is the darker, readable one. */
+  --color-primary: var(--pg-sky);
+  --color-primary-bright: var(--pg-sky-deep);
+  --color-on-primary: #ffffff;
+  --color-primary-container: #c9d9ff;
+  --color-on-primary-container: #16215c;
 
-  --color-tertiary: #2fd08a;
+  --color-tertiary: var(--pg-mint);
   --color-on-tertiary: #05231a;
 
-  --color-error: #ff8da5;
-  --color-success: #5be0aa;
+  --color-error: var(--pg-pink-deep);
+  --color-success: var(--pg-mint-deep);
 
   /* Cut-paper geometry. --pg-ink is the outline: darker than every fill. */
-  --pg-ink: #05080f;
+  --pg-ink: #152343;
   --pg-stroke: 3px;
   --pg-lift: 6px;
 
@@ -745,7 +1621,49 @@
   box-shadow: 0 var(--pg-lift) 0 0 var(--pg-ink);
 }
 .pg-card--flat { box-shadow: none; }
-.pg-card--sunken { background: var(--color-surface-dim); }
+.pg-card--sunken { background: var(--color-surface-low); }
+
+/* Rendered markdown inside an assistant bubble.
+   The bubble sets the type; this only handles the things markdown adds — the
+   spacing between blocks and the syntax colors. Highlight.js ships themes as
+   raw CSS files, but importing one would drop a palette from another product
+   into the middle of ours, so the token classes are mapped onto the app's own
+   colors instead. Anything highlight.js emits that isn't listed here simply
+   inherits the code block's text color, which is a safe default.
+
+   These are the -deep/-ink variants of the four accents, not the accents
+   themselves: a code block is white paper, and #FF9F45 on white is a
+   highlighter, not a keyword. */
+.pg-md > :first-child { margin-top: 0; }
+.pg-md > :last-child { margin-bottom: 0; }
+
+.pg-md .hljs { color: var(--color-on-surface); background: transparent; }
+.pg-md .hljs-comment,
+.pg-md .hljs-quote { color: var(--color-outline); font-style: italic; }
+.pg-md .hljs-keyword,
+.pg-md .hljs-selector-tag,
+.pg-md .hljs-operator { color: var(--pg-sky-deep); }
+.pg-md .hljs-string,
+.pg-md .hljs-regexp { color: var(--pg-mint-deep); }
+.pg-md .hljs-number,
+.pg-md .hljs-literal,
+.pg-md .hljs-built_in,
+.pg-md .hljs-type { color: var(--pg-peach-ink); }
+.pg-md .hljs-title,
+.pg-md .hljs-title.class_,
+.pg-md .hljs-title.function_,
+.pg-md .hljs-section { color: var(--pg-pink-deep); }
+.pg-md .hljs-attr,
+.pg-md .hljs-attribute,
+.pg-md .hljs-property,
+.pg-md .hljs-variable,
+.pg-md .hljs-params { color: var(--pg-sky); }
+.pg-md .hljs-tag,
+.pg-md .hljs-name { color: var(--pg-peach-deep); }
+.pg-md .hljs-meta,
+.pg-md .hljs-punctuation { color: var(--color-outline); }
+.pg-md .hljs-emphasis { font-style: italic; }
+.pg-md .hljs-strong { font-weight: 600; }
 
 /* Pills (model chips, the balance readout, tab groups). Same physics, smaller
    numbers so a row of them doesn't read as five stacked cards. */
@@ -756,25 +1674,39 @@
   box-shadow: 0 3px 0 0 var(--pg-ink);
 }
 
-/* Send / primary action. Amber slab, navy text, the marketing press. */
+/* Send / primary action. Peach slab, navy text, the marketing press.
+
+   Fill/shadow/text come from --pg-btn-fill/-shadow/-fg (the same trick
+   .pn-btn uses on the paper side) so a colour variant is three lines rather
+   than a copy of the whole shadow stack. Every variant keeps navy text: all
+   four accents are light enough that white type on them fails contrast. */
 .pg-btn {
-  background: var(--color-secondary);
-  color: var(--color-on-secondary);
+  --pg-btn-fill: var(--color-secondary);
+  --pg-btn-shadow: var(--color-secondary-container);
+  --pg-btn-fg: var(--color-on-secondary);
+  background: var(--pg-btn-fill);
+  color: var(--pg-btn-fg);
   border: 2.5px solid var(--pg-ink);
   border-radius: 14px;
-  box-shadow: 0 4px 0 0 var(--color-secondary-container), 0 4px 0 2.5px var(--pg-ink);
+  box-shadow: 0 4px 0 0 var(--pg-btn-shadow), 0 4px 0 2.5px var(--pg-ink);
   transition: transform 0.11s cubic-bezier(0.2, 0.8, 0.3, 1),
     box-shadow 0.11s cubic-bezier(0.2, 0.8, 0.3, 1);
 }
 .pg-btn:active:not(:disabled) {
   transform: translateY(4px);
-  box-shadow: 0 0 0 0 var(--color-secondary-container), 0 0 0 2.5px var(--pg-ink);
+  box-shadow: 0 0 0 0 var(--pg-btn-shadow), 0 0 0 2.5px var(--pg-ink);
 }
 .pg-btn:disabled { opacity: 0.5; }
 
+/* Stop is coral, not peach: pressing it interrupts something, and it replaces
+   the send button in place — same slot, same physics, different intent. */
+.pg-btn--pink { --pg-btn-fill: var(--pg-pink); --pg-btn-shadow: var(--pg-pink-deep); }
+.pg-btn--mint { --pg-btn-fill: var(--pg-mint); --pg-btn-shadow: var(--pg-mint-deep); }
+.pg-btn--sky { --pg-btn-fill: var(--pg-sky); --pg-btn-shadow: var(--pg-sky-deep); --pg-btn-fg: #ffffff; }
+
 /* Form fields, matching the paper side's rule but outlined in --pg-ink. */
 .pg-theme :is(input, textarea, select):not([type="checkbox"]):not([type="radio"]):not(.pg-bare) {
-  background: var(--color-surface-dim);
+  background: var(--color-surface-container);
   color: var(--color-on-surface);
   border: 2.5px solid var(--pg-ink);
   border-radius: 12px;
@@ -789,41 +1721,65 @@
 }
 
 /* Dialogs opened from the playground portal to <body>, which is outside
-   .pg-theme — so they need the tokens re-declared, not inherited. */
+   .pg-theme — so they need the tokens re-declared, not inherited. The four
+   accents come along too: the picker inside reaches for --pg-sky. */
 [data-slot="dialog-content"].pg-dialog,
 [data-slot="popover-content"].pg-dialog {
-  background: #1e2e52;
-  color: #f2ecdd;
-  border: 3px solid #05080f;
+  background: #ffffff;
+  color: #152343;
+  border: 3px solid #152343;
   border-radius: 20px;
-  box-shadow: 0 6px 0 0 #05080f;
+  box-shadow: 0 6px 0 0 #152343;
   backdrop-filter: none;
   -webkit-backdrop-filter: none;
+  --pg-peach: #ff9f45;
+  --pg-peach-deep: #d2701a;
+  --pg-peach-ink: #a1530c;
+  --pg-mint: #2fd08a;
+  --pg-mint-deep: #17915b;
+  --pg-sky: #3d5fe0;
+  --pg-sky-deep: #2437a6;
+  --pg-pink: #ff6b8a;
+  --pg-pink-deep: #ce3b5f;
 }
 
-/* Star field for the Playground ground. Copied deliberately from landing.css's
-   .nb-stars rather than shared: that file is only loaded by the marketing tree
-   and importing it here would pull the whole marketing system onto this route.
-   Keep the two in sync by hand — they are the same sky. */
-.pg-stars {
-  pointer-events: none;
+/* The Playground ground: the same 26px dot grid .panel-grid-bg paints on
+   cream, on light blue instead — so a student moving from the dashboard into
+   the playground stays on one continuous sheet of paper, just a bluer piece
+   of it. Replaces the star field this route used to sit on. */
+.pg-dots {
+  background-color: var(--color-surface);
+  background-image: radial-gradient(#9dbde6 1.5px, transparent 1.5px);
+  background-size: 26px 26px;
+}
+
+/* Transparency checkerboard, shown behind a cut-out sticker so a student can
+   see what "arka planı silindi" actually produced before downloading it.
+   Painted with two crossed conic gradients rather than an image so it costs
+   nothing and scales with the element. */
+.pg-checker {
+  background-color: #ffffff;
   background-image:
-    radial-gradient(1.6px 1.6px at 12% 18%, rgba(255, 255, 255, 0.95), transparent 100%),
-    radial-gradient(1.4px 1.4px at 68% 12%, rgba(214, 226, 255, 0.8), transparent 100%),
-    radial-gradient(1.2px 1.2px at 84% 62%, rgba(255, 255, 255, 0.75), transparent 100%),
-    radial-gradient(1.8px 1.8px at 32% 74%, rgba(255, 190, 130, 0.75), transparent 100%),
-    radial-gradient(1.1px 1.1px at 52% 38%, rgba(255, 255, 255, 0.6), transparent 100%),
-    radial-gradient(1.3px 1.3px at 92% 26%, rgba(255, 255, 255, 0.7), transparent 100%),
-    radial-gradient(1px 1px at 6% 56%, rgba(183, 199, 235, 0.7), transparent 100%),
-    radial-gradient(1.5px 1.5px at 44% 92%, rgba(255, 255, 255, 0.55), transparent 100%);
-  background-size: 380px 380px, 460px 460px, 320px 320px, 540px 540px, 300px 300px, 420px 420px, 360px 360px, 480px 480px;
+    conic-gradient(from 0deg at 50% 50%, #e6edf7 25%, transparent 0 50%, #e6edf7 0 75%, transparent 0);
+  background-size: 16px 16px;
 }
-.pg-stars--twinkle {
-  background-position: 190px 120px, 80px 60px, 240px 160px, 40px 260px, 210px 80px, 110px 190px, 300px 40px, 60px 320px;
+
+/* A sparse scatter of larger confetti dots in the four accents over the grid.
+   This is the one place the playground ground is allowed a texture — it is
+   what keeps a flat dot grid from reading as graph paper. Hard-edged (a
+   99%/100% stop, not a fade) so it obeys the no-gradient rule, tiled at
+   coprime-ish sizes so the repeat never lines up into a visible pattern. */
+.pg-confetti {
+  pointer-events: none;
   opacity: 0.55;
-  animation: pg-twinkle 5s ease-in-out infinite;
-}
-@keyframes pg-twinkle {
-  0%, 100% { opacity: 0.55; }
-  50% { opacity: 0.22; }
+  background-image:
+    radial-gradient(circle 3.5px at 12% 18%, var(--pg-mint) 99%, transparent 100%),
+    radial-gradient(circle 3px at 68% 11%, var(--pg-peach) 99%, transparent 100%),
+    radial-gradient(circle 3px at 86% 63%, var(--pg-pink) 99%, transparent 100%),
+    radial-gradient(circle 2.5px at 31% 74%, var(--pg-sky) 99%, transparent 100%),
+    radial-gradient(circle 3px at 52% 39%, var(--pg-peach) 99%, transparent 100%),
+    radial-gradient(circle 2.5px at 7% 55%, var(--pg-pink) 99%, transparent 100%),
+    radial-gradient(circle 3.5px at 93% 27%, var(--pg-mint) 99%, transparent 100%),
+    radial-gradient(circle 2.5px at 45% 91%, var(--pg-sky) 99%, transparent 100%);
+  background-size: 421px 421px, 383px 383px, 457px 457px, 337px 337px, 521px 521px, 401px 401px, 479px 479px, 359px 359px;
 }

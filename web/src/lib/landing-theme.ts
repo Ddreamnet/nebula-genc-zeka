@@ -51,6 +51,28 @@ export const landingVars = {
   "--violet": "#8B6BFF",
   "--violet-deep": "#5D3FD1",
 
+  /* ---- Pastel fills and section tints.
+     The accents above are saturated enough to carry a control but far too
+     loud to sit under body copy, so every large surface — a stat card's
+     fill, a section's ground — uses the pastel/tint step of the same hue
+     instead. Each pastel pairs with its own `-deep` tone as the hard shadow,
+     which is what keeps a peach card and a blue button reading as the same
+     material.
+
+     Adjacency rule from the design handoff: `--tint-peach` (#FBEFE1) and
+     `--paper` (#F7F0E1) differ by 4/1/0 per channel, so two warm bands in a
+     row read as one wall. A warm tint must be followed by a cool one. ---- */
+  "--pastel-mint": "#C6F1DC",
+  "--pastel-peach": "#FFE1C4",
+  "--pastel-pink": "#FFD6DE",
+  "--pastel-blue": "#CFE1FF",
+  "--pastel-violet": "#DCD2FF",
+
+  "--tint-mint": "#E8F4EC",
+  "--tint-peach": "#FBEFE1",
+  "--tint-pink": "#FBEAEE",
+  "--tint-blue": "#E9EFFC",
+
   /* WhatsApp CTA keeps its own green, matched to the panel's .pn-btn--green
      rather than WhatsApp's much brighter brand hex. */
   "--green": "#2c7a58",

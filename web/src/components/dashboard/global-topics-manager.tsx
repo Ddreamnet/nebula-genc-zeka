@@ -70,7 +70,7 @@ export function GlobalTopicsManager({ open, onOpenChange, isAdmin = false }: Glo
     const supabase = createClient();
     const { data, error } = await supabase
       .from("global_topics")
-      .select("*, global_topic_resources(*)")
+      .select("id, title, description, order_index, global_topic_resources(id, title, description, resource_type, resource_url, order_index)")
       .order("order_index", { ascending: true })
       .order("order_index", { foreignTable: "global_topic_resources", ascending: true });
 

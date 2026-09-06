@@ -1,0 +1,444 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Caladea:ital,wght@0,400;0,700;1,400;1,700&family=Carlito:ital,wght@0,400;0,700;1,400;1,700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#22262E}
+a{color:#CE6A2C;text-decoration:none}
+a:hover{color:#0D1E3A}
+</style>
+<script src="./image-slot.js"></script>
+</helmet>
+
+<x-import component-from-global-scope="deck-stage" from="./deck-stage.js" width="1920" height="1080" hint-size="100%,100%">
+
+<section data-label="Kapak" data-speaker-notes="Isınma. 'Bugün ders anlatmayacağım, sen üreteceksin.' Öğrenciyi rahatlatın, günün ürününü gösterin." style="background:#0D1E3A;color:#F4F1EA;display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,.85fr);font-family:Carlito,sans-serif;overflow:hidden">
+<div style="padding:84px 72px;display:flex;flex-direction:column;justify-content:space-between">
+<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:32px">
+<img src="./nebula-logo-white.png" alt="Nebula Genç Zeka" style="display:block;width:250px;height:auto">
+<div style="flex:0 0 auto;background:#CE6A2C;color:#FFF6EC;padding:10px 20px;font-family:IBM Plex Mono,monospace;font-size:26px;font-weight:600;letter-spacing:.04em">00–05 dk</div>
+</div>
+<div>
+<div style="font-family:IBM Plex Mono,monospace;font-size:28px;letter-spacing:.3em;color:#E8A46A;margin-bottom:22px">HAFTA 01 · DERS 1</div>
+<h1 style="margin:0;font-family:Caladea,serif;font-size:104px;line-height:1.02;font-weight:700;letter-spacing:-.02em;text-wrap:pretty">Yapay Zekânın<br>Beynine Yolculuk</h1>
+<div style="margin-top:34px;font-size:40px;line-height:1.35;color:rgba(244,241,234,.85);max-width:900px">Bugün sihri bozacağız — ve kendi <strong style="color:#E8A46A">avatarını</strong> üreteceksin.</div>
+</div>
+<div style="display:flex;gap:16px;align-items:center;font-family:IBM Plex Mono,monospace;font-size:24px;color:rgba(244,241,234,.6)">
+<span style="padding:8px 16px;border:1px solid rgba(244,241,234,.3)">40 dk teori</span>
+<span style="padding:8px 16px;border:1px solid rgba(244,241,234,.3)">10 dk ara</span>
+<span style="padding:8px 16px;border:1px solid rgba(232,164,106,.5);color:#E8A46A">40 dk stüdyo</span>
+</div>
+</div>
+<div style="position:relative;overflow:hidden;background:#0A1729">
+<image-slot id="h01-kapak" shape="rect" src="./assets/s01-kapak.png" placeholder="Kapak görseli — uzay / beyin / nöron ağı"></image-slot>
+</div>
+</section>
+
+<section data-label="Bugünün Planı" data-speaker-notes="Üç adımı gösterin: anlayacağız, tarif etmeyi öğreneceğiz, üreteceğiz. Öğrenci nereye gittiğini bilsin." style="background:#F4F1EA;color:#22262E;font-family:Carlito,sans-serif;padding:72px;display:flex;flex-direction:column;overflow:hidden">
+<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:32px;padding-bottom:26px;border-bottom:3px solid #0D1E3A">
+<div>
+<div style="font-family:IBM Plex Mono,monospace;font-size:22px;letter-spacing:.26em;color:#CE6A2C;font-weight:600;margin-bottom:10px">HAFTA 01</div>
+<h2 style="margin:0;font-family:Caladea,serif;font-size:72px;font-weight:700;color:#0D1E3A;line-height:1.05">Bugün ne yapacağız?</h2>
+</div>
+<div style="flex:0 0 auto;background:#0D1E3A;color:#E8A46A;padding:10px 20px;font-family:IBM Plex Mono,monospace;font-size:26px;font-weight:600">00–05 dk</div>
+</div>
+<div style="flex:1;min-height:0;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:30px;padding-top:44px">
+<div style="background:#FFFFFF;border:2px solid rgba(13,30,58,.18);padding:38px 34px;display:flex;flex-direction:column;gap:20px">
+<div style="width:74px;height:74px;background:#CE6A2C;color:#FFF6EC;font-family:Caladea,serif;font-size:44px;font-weight:700;display:flex;align-items:center;justify-content:center">1</div>
+<h3 style="margin:0;font-family:Caladea,serif;font-size:44px;line-height:1.12;color:#0D1E3A;font-weight:700">Sihri bozacağız</h3>
+<p style="margin:0;font-size:32px;line-height:1.4;color:rgba(34,38,46,.85)">Yapay zekâ düşünmüyor, hissetmiyor, bilmiyor. Peki ne yapıyor?</p>
+</div>
+<div style="background:#FFFFFF;border:2px solid rgba(13,30,58,.18);padding:38px 34px;display:flex;flex-direction:column;gap:20px">
+<div style="width:74px;height:74px;background:#CE6A2C;color:#FFF6EC;font-family:Caladea,serif;font-size:44px;font-weight:700;display:flex;align-items:center;justify-content:center">2</div>
+<h3 style="margin:0;font-family:Caladea,serif;font-size:44px;line-height:1.12;color:#0D1E3A;font-weight:700">Tarif etmeyi öğreneceğiz</h3>
+<p style="margin:0;font-size:32px;line-height:1.4;color:rgba(34,38,46,.85)">4 sihirli kelime grubu. Aynı fikir, çok daha iyi sonuç.</p>
+</div>
+<div style="background:#0D1E3A;border:2px solid #0D1E3A;padding:38px 34px;display:flex;flex-direction:column;gap:20px;color:#F4F1EA">
+<div style="width:74px;height:74px;background:#E8A46A;color:#0D1E3A;font-family:Caladea,serif;font-size:44px;font-weight:700;display:flex;align-items:center;justify-content:center">3</div>
+<h3 style="margin:0;font-family:Caladea,serif;font-size:44px;line-height:1.12;font-weight:700">Üreteceksin</h3>
+<p style="margin:0;font-size:32px;line-height:1.4;color:rgba(244,241,234,.85)">Kendi avatarın + 12'li WhatsApp sticker paketin. Bugün, bu derste.</p>
+</div>
+</div>
+<div style="margin-top:34px;padding:26px 32px;background:rgba(206,106,44,.12);border-left:8px solid #CE6A2C;font-size:34px;line-height:1.35">
+<strong style="color:#0D1E3A">Klavye senin.</strong> Fikirleri sen söyleyeceksin, kelimeleri sen yazacaksın.
+</div>
+</section>
+
+<section data-label="Tahmin Makinesi" data-speaker-notes="Sınıfça cümle tamamlama oyunu oynatın. Boşluğa ne gelir? Sonra 'model tam da bunu yapıyor' deyin." style="background:#F4F1EA;color:#22262E;font-family:Carlito,sans-serif;padding:72px;display:flex;flex-direction:column;overflow:hidden">
+<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:32px;padding-bottom:26px;border-bottom:3px solid #0D1E3A">
+<div>
+<div style="font-family:IBM Plex Mono,monospace;font-size:22px;letter-spacing:.26em;color:#CE6A2C;font-weight:600;margin-bottom:10px">ANA FİKİR · 1/2</div>
+<h2 style="margin:0;font-family:Caladea,serif;font-size:72px;font-weight:700;color:#0D1E3A;line-height:1.05">Yapay zekâ dev bir <span style="color:#CE6A2C">Tahmin Makinesi</span></h2>
+</div>
+<div style="flex:0 0 auto;background:#0D1E3A;color:#E8A46A;padding:10px 20px;font-family:IBM Plex Mono,monospace;font-size:26px;font-weight:600">05–15 dk</div>
+</div>
+<div style="flex:1;min-height:0;display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:40px;padding-top:40px;align-items:start">
+<div style="display:flex;flex-direction:column;gap:26px">
+<div style="background:#FFFFFF;border:2px dashed rgba(13,30,58,.35);padding:34px">
+<div style="font-family:IBM Plex Mono,monospace;font-size:22px;letter-spacing:.2em;color:#CE6A2C;font-weight:600;margin-bottom:18px">HEP BİRLİKTE TAMAMLA</div>
+<div style="font-family:Caladea,serif;font-size:52px;line-height:1.25;color:#0D1E3A;font-weight:700">"Bugün hava çok <span style="display:inline-block;min-width:280px;border-bottom:5px solid #CE6A2C">&nbsp;</span>"</div>
+<div style="margin-top:24px;display:flex;flex-wrap:wrap;gap:14px;font-size:30px">
+<span style="padding:10px 20px;background:rgba(206,106,44,.14);border:1px solid rgba(206,106,44,.4)">güzel</span>
+<span style="padding:10px 20px;background:rgba(206,106,44,.1);border:1px solid rgba(206,106,44,.3)">sıcak</span>
+<span style="padding:10px 20px;background:rgba(13,30,58,.06);border:1px solid rgba(13,30,58,.2)">yağmurlu</span>
+<span style="padding:10px 20px;border:1px dashed rgba(13,30,58,.25);color:rgba(34,38,46,.5)">mor?</span>
+</div>
+</div>
+<p style="margin:0;font-size:34px;line-height:1.45">Model milyonlarca kitabı, siteyi, konuşmayı "okudu" ve tek bir şeyde ustalaştı: <strong style="color:#0D1E3A">bir cümlenin devamında en olası kelime hangisi?</strong></p>
+<p style="margin:0;font-size:34px;line-height:1.45">Sonra o kelimeyi de hesaba katıp bir sonrakini tahmin eder. Kelime kelime, tahmin üstüne tahmin — koca bir paragraf çıkar.</p>
+</div>
+<div style="display:flex;flex-direction:column;gap:26px">
+<div style="height:400px;flex:0 0 auto;position:relative;overflow:hidden;border:2px solid rgba(13,30,58,.18)">
+<image-slot id="h01-tahmin" shape="rect" src="./assets/s01-tahmin.png" placeholder="Görsel: olasılık çubukları"></image-slot>
+</div>
+<div style="background:#0D1E3A;color:#F4F1EA;padding:32px 34px">
+<div style="font-family:IBM Plex Mono,monospace;font-size:22px;letter-spacing:.2em;color:#E8A46A;font-weight:600;margin-bottom:14px">AKILDA KALSIN</div>
+<p style="margin:0;font-family:Caladea,serif;font-size:40px;line-height:1.3;font-weight:700">Ona "düşünüyor" demeyeceğiz.<br>"Çok iyi tahmin ediyor" diyeceğiz.</p>
+</div>
+</div>
+</div>
+</section>
+
+<section data-label="Difüzyon" data-speaker-notes="Haftanın yıldız açıklaması. Heykeltıraş benzetmesini kullanın: gürültü taşı + kelimeler keski." style="background:#F4F1EA;color:#22262E;font-family:Carlito,sans-serif;padding:72px;display:flex;flex-direction:column;overflow:hidden">
+<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:32px;padding-bottom:26px;border-bottom:3px solid #0D1E3A">
+<div>
+<div style="font-family:IBM Plex Mono,monospace;font-size:22px;letter-spacing:.26em;color:#CE6A2C;font-weight:600;margin-bottom:10px">ANA FİKİR · 2/2 · BU NASIL ÜRETİLİYOR?</div>
+<h2 style="margin:0;font-family:Caladea,serif;font-size:72px;font-weight:700;color:#0D1E3A;line-height:1.05">Resim gürültüden çıkıyor: <span style="color:#CE6A2C">difüzyon</span></h2>
+</div>
+<div style="flex:0 0 auto;background:#0D1E3A;color:#E8A46A;padding:10px 20px;font-family:IBM Plex Mono,monospace;font-size:26px;font-weight:600">05–15 dk</div>
+</div>
+<div style="flex:1;min-height:0;padding-top:40px;display:flex;flex-direction:column;gap:34px">
+<div style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));grid-template-rows:minmax(0,1fr) auto auto;column-gap:24px;row-gap:16px;flex:1;min-height:0">
+<div style="grid-row:1;position:relative;overflow:hidden;border:2px solid rgba(13,30,58,.2);background:#E7E2D8"><image-slot id="h01-dif-1" shape="rect" src="./assets/s01-dif-1.png" placeholder="Adım 0 — tam gürültü"></image-slot></div>
+<div style="grid-row:1;position:relative;overflow:hidden;border:2px solid rgba(13,30,58,.2);background:#E7E2D8"><image-slot id="h01-dif-2" shape="rect" src="./assets/s01-dif-2.png" placeholder="Adım 10 — bulanık şekiller"></image-slot></div>
+<div style="grid-row:1;position:relative;overflow:hidden;border:2px solid rgba(13,30,58,.2);background:#E7E2D8"><image-slot id="h01-dif-3" shape="rect" src="./assets/s01-dif-3.png" placeholder="Adım 20 — netleşiyor"></image-slot></div>
+<div style="grid-row:1;position:relative;overflow:hidden;border:2px solid #CE6A2C;background:#E7E2D8"><image-slot id="h01-dif-4" shape="rect" src="./assets/s01-dif-4.png" placeholder="Adım 30 — bitmiş resim"></image-slot></div>
+<div style="grid-row:2;font-family:IBM Plex Mono,monospace;font-size:24px;color:#CE6A2C;font-weight:600">ADIM 0</div>
+<div style="grid-row:2;font-family:IBM Plex Mono,monospace;font-size:24px;color:#CE6A2C;font-weight:600">ADIM 10</div>
+<div style="grid-row:2;font-family:IBM Plex Mono,monospace;font-size:24px;color:#CE6A2C;font-weight:600">ADIM 20</div>
+<div style="grid-row:2;font-family:IBM Plex Mono,monospace;font-size:24px;color:#CE6A2C;font-weight:600">ADIM 30</div>
+<div style="grid-row:3;font-size:30px;line-height:1.3">Ekran baştan sona <strong>rastgele gürültü</strong>. Anlamsız kar tanesi bulutu.</div>
+<div style="grid-row:3;font-size:30px;line-height:1.3">Kelimelerine bakarak gürültüyü silmeye başlar. Şekiller belirir.</div>
+<div style="grid-row:3;font-size:30px;line-height:1.3">Her adımda biraz daha netleşir. Kedi mi? Kask mı? Ortaya çıkıyor.</div>
+<div style="grid-row:3;font-size:30px;line-height:1.3">Gürültünün içinden <strong>tarif ettiğin resim</strong> çıkar.</div>
+</div>
+<div style="display:grid;grid-template-columns:minmax(0,1fr) auto;gap:34px;align-items:center;background:#0D1E3A;color:#F4F1EA;padding:34px 40px">
+<p style="margin:0;font-family:Caladea,serif;font-size:42px;line-height:1.28;font-weight:700">Model bir heykeltıraş gibi: elinde koca bir <span style="color:#E8A46A">gürültü taşı</span> var. Senin kelimelerin keski — her vuruşta fazlalığı yontuyor.</p>
+<div style="font-family:IBM Plex Mono,monospace;font-size:24px;letter-spacing:.2em;color:#E8A46A;writing-mode:vertical-rl;text-orientation:mixed">SİHİR YOK</div>
+</div>
+</div>
+</section>
+
+<section data-label="Kelime Dağarcığı" data-speaker-notes="Beş terimi hızlı geçin, her birini tek cümleyle bağlayın. Bu tablo dönem boyunca tekrar edecek." style="background:#F4F1EA;color:#22262E;font-family:Carlito,sans-serif;padding:72px;display:flex;flex-direction:column;overflow:hidden">
+<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:32px;padding-bottom:26px;border-bottom:3px solid #0D1E3A">
+<div>
+<div style="font-family:IBM Plex Mono,monospace;font-size:22px;letter-spacing:.26em;color:#CE6A2C;font-weight:600;margin-bottom:10px">BU HAFTANIN KELİMELERİ</div>
+<h2 style="margin:0;font-family:Caladea,serif;font-size:72px;font-weight:700;color:#0D1E3A;line-height:1.05">Artık bu 5 kelimeyi biliyorsun</h2>
+</div>
+<div style="flex:0 0 auto;background:#0D1E3A;color:#E8A46A;padding:10px 20px;font-family:IBM Plex Mono,monospace;font-size:26px;font-weight:600">05–15 dk</div>
+</div>
+<div style="flex:1;min-height:0;display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:22px;padding-top:40px">
+<div style="background:#FFFFFF;border:2px solid rgba(13,30,58,.18);border-top:10px solid #CE6A2C;padding:32px 26px;display:flex;flex-direction:column;gap:18px">
+<h3 style="margin:0;font-family:Caladea,serif;font-size:46px;color:#0D1E3A;font-weight:700;line-height:1.05">model</h3>
+<p style="margin:0;font-size:31px;line-height:1.35">Tahmin yapan yapay zekâ programı.</p>
+<div style="margin-top:auto;padding-top:18px;border-top:1px solid rgba(13,30,58,.2);font-size:29px;line-height:1.32;color:#CE6A2C;font-style:italic">"Tahmin eden beyin" — farklı modeller, farklı yetenekli kardeşler.</div>
+</div>
+<div style="background:#FFFFFF;border:2px solid rgba(13,30,58,.18);border-top:10px solid #CE6A2C;padding:32px 26px;display:flex;flex-direction:column;gap:18px">
+<h3 style="margin:0;font-family:Caladea,serif;font-size:46px;color:#0D1E3A;font-weight:700;line-height:1.05">prompt</h3>
+<p style="margin:0;font-size:31px;line-height:1.35">Modele verdiğimiz tarif, talimat.</p>
+<div style="margin-top:auto;padding-top:18px;border-top:1px solid rgba(13,30,58,.2);font-size:29px;line-height:1.32;color:#CE6A2C;font-style:italic">"Sihirli tarif" — ne kadar iyi tarif edersen, o kadar iyi çıktı.</div>
+</div>
+<div style="background:#FFFFFF;border:2px solid rgba(13,30,58,.18);border-top:10px solid #CE6A2C;padding:32px 26px;display:flex;flex-direction:column;gap:18px">
+<h3 style="margin:0;font-family:Caladea,serif;font-size:46px;color:#0D1E3A;font-weight:700;line-height:1.05">üretim</h3>
+<p style="margin:0;font-size:31px;line-height:1.35">Modelin promptuna karşılık verdiği çıktı.</p>
+<div style="margin-top:auto;padding-top:18px;border-top:1px solid rgba(13,30,58,.2);font-size:29px;line-height:1.32;color:#CE6A2C;font-style:italic">"Makinenin cevabı" — resim, yazı, ses hepsi bir üretim.</div>
+</div>
+<div style="background:#FFFFFF;border:2px solid rgba(13,30,58,.18);border-top:10px solid #CE6A2C;padding:32px 26px;display:flex;flex-direction:column;gap:18px">
+<h3 style="margin:0;font-family:Caladea,serif;font-size:46px;color:#0D1E3A;font-weight:700;line-height:1.05">stil</h3>
+<p style="margin:0;font-size:31px;line-height:1.35">Çıktının görünüş dili: karikatür, piksel-art, 3D…</p>
+<div style="margin-top:auto;padding-top:18px;border-top:1px solid rgba(13,30,58,.2);font-size:29px;line-height:1.32;color:#CE6A2C;font-style:italic">"Kıyafet" — aynı kedi, farklı kıyafetlerle.</div>
+</div>
+<div style="background:#0D1E3A;border:2px solid #0D1E3A;border-top:10px solid #E8A46A;padding:32px 26px;display:flex;flex-direction:column;gap:18px;color:#F4F1EA">
+<h3 style="margin:0;font-family:Caladea,serif;font-size:46px;font-weight:700;line-height:1.05">difüzyon</h3>
+<p style="margin:0;font-size:31px;line-height:1.35">Görsel modelin gürültüden adım adım resme geçmesi.</p>
+<div style="margin-top:auto;padding-top:18px;border-top:1px solid rgba(232,164,106,.4);font-size:29px;line-height:1.32;color:#E8A46A;font-style:italic">"Gürültü taşını yontmak."</div>
+</div>
+</div>
+</section>
+
+<section data-label="Kötü → İyi" data-speaker-notes="Canlı gösterim: önce 'kedi' yazın, sonucu gösterin. Sonra öğrenciye sorun: hangi kelimeyi eklersek daha iyi olur?" style="background:#F4F1EA;color:#22262E;font-family:Carlito,sans-serif;padding:72px;display:flex;flex-direction:column;overflow:hidden">
+<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:32px;padding-bottom:26px;border-bottom:3px solid #0D1E3A">
+<div>
+<div style="font-family:IBM Plex Mono,monospace;font-size:22px;letter-spacing:.26em;color:#CE6A2C;font-weight:600;margin-bottom:10px">CANLI DENEME · EKRANDA BİRLİKTE</div>
+<h2 style="margin:0;font-family:Caladea,serif;font-size:72px;font-weight:700;color:#0D1E3A;line-height:1.05">Aynı fikir, iki tarif</h2>
+</div>
+<div style="flex:0 0 auto;background:#0D1E3A;color:#E8A46A;padding:10px 20px;font-family:IBM Plex Mono,monospace;font-size:26px;font-weight:600">15–25 dk</div>
+</div>
+<div style="flex:1;min-height:0;display:grid;grid-template-columns:minmax(0,.8fr) minmax(0,1.2fr);gap:34px;padding-top:38px">
+<div style="display:flex;flex-direction:column;gap:20px;min-height:0">
+<div style="border:2px solid rgba(13,30,58,.3);background:rgba(13,30,58,.05);padding:30px 32px">
+<div style="font-family:IBM Plex Mono,monospace;font-size:24px;letter-spacing:.16em;color:rgba(34,38,46,.55);font-weight:600;margin-bottom:18px">✗ ZAYIF TARİF</div>
+<div style="font-family:IBM Plex Mono,monospace;font-size:44px;color:rgba(34,38,46,.7)">kedi</div>
+</div>
+<div style="flex:1;min-height:0;position:relative;overflow:hidden;border:2px solid rgba(13,30,58,.2)"><image-slot id="h01-kotu" shape="rect" placeholder="DERSTE CANLI ÜRET — zayıf promptun çıktısı"></image-slot></div>
+<div style="font-size:30px;line-height:1.35;color:rgba(34,38,46,.8)">Modele hiçbir yön vermedik → <strong>en ortalama kedi</strong>.</div>
+</div>
+<div style="display:flex;flex-direction:column;gap:20px;min-height:0">
+<div style="border:3px solid #CE6A2C;background:rgba(206,106,44,.09);padding:30px 32px">
+<div style="font-family:IBM Plex Mono,monospace;font-size:24px;letter-spacing:.16em;color:#CE6A2C;font-weight:600;margin-bottom:18px">✓ GÜÇLÜ TARİF</div>
+<div style="font-family:IBM Plex Mono,monospace;font-size:33px;line-height:1.5;color:#22262E">Uzay kaskı takmış <span style="background:rgba(206,106,44,.28)">sevimli</span> bir kedi çıkartması; <span style="background:rgba(206,106,44,.28)">piksel-art</span> tarzı, <span style="background:rgba(206,106,44,.28)">neon ışık</span>, <span style="background:rgba(206,106,44,.28)">yakın plan</span>, <span style="background:rgba(206,106,44,.28)">neşeli</span>; kalın beyaz kenarlık, sade arka plan.</div>
+</div>
+<div style="flex:1;min-height:0;display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:20px">
+<div style="position:relative;overflow:hidden;border:2px solid #CE6A2C"><image-slot id="h01-iyi-1" shape="rect" placeholder="DERSTE CANLI ÜRET — güçlü prompt 1"></image-slot></div>
+<div style="position:relative;overflow:hidden;border:2px solid #CE6A2C"><image-slot id="h01-iyi-2" shape="rect" placeholder="DERSTE CANLI ÜRET — güçlü prompt 2"></image-slot></div>
+</div>
+<div style="font-size:30px;line-height:1.35"><strong style="color:#0D1E3A">Özne + stil + ışık + açı + duygu</strong> → tahmin daralır, sonuç <strong>senin fikrin</strong> olur.</div>
+</div>
+</div>
+</section>
+
+<section data-label="İki Soru" data-speaker-notes="Canlı denemeden sonra iki klasik soruyu cevaplayın: neden aynı prompt farklı sonuç veriyor, neden eller bozuk çıkıyor." style="background:#F4F1EA;color:#22262E;font-family:Carlito,sans-serif;padding:72px;display:flex;flex-direction:column;overflow:hidden">
+<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:32px;padding-bottom:26px;border-bottom:3px solid #0D1E3A">
+<div>
+<div style="font-family:IBM Plex Mono,monospace;font-size:22px;letter-spacing:.26em;color:#CE6A2C;font-weight:600;margin-bottom:10px">HERKESİN SORDUĞU İKİ SORU</div>
+<h2 style="margin:0;font-family:Caladea,serif;font-size:72px;font-weight:700;color:#0D1E3A;line-height:1.05">Peki neden böyle oluyor?</h2>
+</div>
+<div style="flex:0 0 auto;background:#0D1E3A;color:#E8A46A;padding:10px 20px;font-family:IBM Plex Mono,monospace;font-size:26px;font-weight:600">15–25 dk</div>
+</div>
+<div style="flex:1;min-height:0;display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:34px;padding-top:40px">
+<div style="background:#FFFFFF;border:2px solid rgba(13,30,58,.18);border-top:10px solid #CE6A2C;padding:40px 36px;display:flex;flex-direction:column;gap:22px">
+<h3 style="margin:0;font-family:Caladea,serif;font-size:46px;line-height:1.14;color:#0D1E3A;font-weight:700">Aynı promptu iki kez versem, aynı resmi mi verir?</h3>
+<p style="margin:0;font-size:34px;line-height:1.42">Hayır — çünkü <strong style="color:#CE6A2C">başlangıç gürültüsü her seferinde rastgele</strong>. Model kelimelerini de her seferinde birazcık farklı yorumlar.</p>
+<div style="margin-top:auto;padding:24px 26px;background:rgba(206,106,44,.1);font-size:32px;line-height:1.35">Aynı tarif → <strong>benzer ama aynı olmayan</strong> sonuçlar. Bu bir arıza değil, difüzyonun doğası.</div>
+</div>
+<div style="background:#FFFFFF;border:2px solid rgba(13,30,58,.18);border-top:10px solid #CE6A2C;padding:40px 36px;display:flex;flex-direction:column;gap:22px">
+<h3 style="margin:0;font-family:Caladea,serif;font-size:46px;line-height:1.14;color:#0D1E3A;font-weight:700">Neden eller ve yazılar bozuk çıkıyor?</h3>
+<p style="margin:0;font-size:34px;line-height:1.42">Model tek tek parmak saymaz; <strong style="color:#CE6A2C">"el genelde şöyle görünür"</strong> tahminini yapar. El, diş, küçük yazı gibi çok detaylı yerlerde tahmini zayıflar.</p>
+<div style="margin-top:auto;padding:24px 26px;background:rgba(206,106,44,.1);font-size:32px;line-height:1.35">Araç aptal değil — <strong>henüz bu köşede zayıf.</strong> Çözüm: doğru aracı seç, tarifte o bölgeyi sadeleştir.</div>
+</div>
+</div>
+<div style="margin-top:30px;display:grid;grid-template-columns:auto minmax(0,1fr);gap:28px;align-items:center;padding:26px 32px;border:2px dashed rgba(13,30,58,.3)">
+<div style="font-family:IBM Plex Mono,monospace;font-size:24px;letter-spacing:.2em;color:#CE6A2C;font-weight:600">PANEL =</div>
+<p style="margin:0;font-size:34px;line-height:1.35"><strong style="color:#0D1E3A">Orkestra şefi.</strong> Tek arayüzden farklı enstrümanları çağırıyoruz: metin modeli, görsel modeli. Ayrı ayrı sitelere girmiyoruz.</p>
+</div>
+</section>
+
+<section data-label="4 Sihirli Kelime" data-speaker-notes="4 grubu tek tek gösterin. Öğrenciden her gruba bir kelime söyletin, tahtaya yazın." style="background:#F4F1EA;color:#22262E;font-family:Carlito,sans-serif;padding:72px;display:flex;flex-direction:column;overflow:hidden">
+<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:32px;padding-bottom:26px;border-bottom:3px solid #0D1E3A">
+<div>
+<div style="font-family:IBM Plex Mono,monospace;font-size:22px;letter-spacing:.26em;color:#CE6A2C;font-weight:600;margin-bottom:10px">TARİF ETME SANATI</div>
+<h2 style="margin:0;font-family:Caladea,serif;font-size:72px;font-weight:700;color:#0D1E3A;line-height:1.05">4 sihirli kelime grubu</h2>
+</div>
+<div style="flex:0 0 auto;background:#0D1E3A;color:#E8A46A;padding:10px 20px;font-family:IBM Plex Mono,monospace;font-size:26px;font-weight:600">25–33 dk</div>
+</div>
+<div style="flex:1;min-height:0;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));grid-template-rows:minmax(0,1fr) minmax(0,1fr);gap:26px;padding-top:36px">
+<div style="background:#FFFFFF;border:2px solid rgba(13,30,58,.18);padding:32px 34px;display:flex;flex-direction:column;gap:14px">
+<div style="display:flex;align-items:center;gap:18px"><span style="width:56px;height:56px;background:#CE6A2C;color:#FFF6EC;font-family:Caladea,serif;font-size:34px;font-weight:700;display:flex;align-items:center;justify-content:center">S</span><h3 style="margin:0;font-family:Caladea,serif;font-size:48px;color:#0D1E3A;font-weight:700">STİL</h3></div>
+<div style="font-size:34px;line-height:1.4;color:rgba(34,38,46,.9)">piksel-art · anime · 3D render · karikatür · yağlı boya</div>
+<div style="margin-top:auto;font-size:28px;color:rgba(34,38,46,.65);font-style:italic">Aynı kedi, farklı kıyafetle.</div>
+</div>
+<div style="background:#FFFFFF;border:2px solid rgba(13,30,58,.18);padding:32px 34px;display:flex;flex-direction:column;gap:14px">
+<div style="display:flex;align-items:center;gap:18px"><span style="width:56px;height:56px;background:#CE6A2C;color:#FFF6EC;font-family:Caladea,serif;font-size:34px;font-weight:700;display:flex;align-items:center;justify-content:center">I</span><h3 style="margin:0;font-family:Caladea,serif;font-size:48px;color:#0D1E3A;font-weight:700">IŞIK / RENK</h3></div>
+<div style="font-size:34px;line-height:1.4;color:rgba(34,38,46,.9)">gün batımı · neon · yumuşak ışık · pastel</div>
+<div style="margin-top:auto;font-size:28px;color:rgba(34,38,46,.65);font-style:italic">Havayı bu belirler.</div>
+</div>
+<div style="background:#FFFFFF;border:2px solid rgba(13,30,58,.18);padding:32px 34px;display:flex;flex-direction:column;gap:14px">
+<div style="display:flex;align-items:center;gap:18px"><span style="width:56px;height:56px;background:#CE6A2C;color:#FFF6EC;font-family:Caladea,serif;font-size:34px;font-weight:700;display:flex;align-items:center;justify-content:center">A</span><h3 style="margin:0;font-family:Caladea,serif;font-size:48px;color:#0D1E3A;font-weight:700">AÇI</h3></div>
+<div style="font-size:34px;line-height:1.4;color:rgba(34,38,46,.9)">yakın plan · geniş açı · kuş bakışı</div>
+<div style="margin-top:auto;font-size:28px;color:rgba(34,38,46,.65);font-style:italic">Kamera nerede duruyor?</div>
+</div>
+<div style="background:#FFFFFF;border:2px solid rgba(13,30,58,.18);padding:32px 34px;display:flex;flex-direction:column;gap:14px">
+<div style="display:flex;align-items:center;gap:18px"><span style="width:56px;height:56px;background:#CE6A2C;color:#FFF6EC;font-family:Caladea,serif;font-size:34px;font-weight:700;display:flex;align-items:center;justify-content:center">D</span><h3 style="margin:0;font-family:Caladea,serif;font-size:48px;color:#0D1E3A;font-weight:700">DUYGU</h3></div>
+<div style="font-size:34px;line-height:1.4;color:rgba(34,38,46,.9)">neşeli · gizemli · sakin · enerjik</div>
+<div style="margin-top:auto;font-size:28px;color:rgba(34,38,46,.65);font-style:italic">Resme bakan ne hissetsin?</div>
+</div>
+</div>
+<div style="margin-top:28px;padding:26px 32px;background:#0D1E3A;color:#F4F1EA;font-size:34px;line-height:1.35">
+<strong style="color:#E8A46A">Sticker için ekstra kelimeler:</strong> abartılı çizgiler · büyük gözler · sticker tarzı · kalın beyaz kenarlık · sade arka plan
+</div>
+</section>
+
+<section data-label="Güvenlik Dakikası" data-speaker-notes="Dönemin en önemli kuralı. Ciddi ama korkutmadan. Fotoğraf yükleme yok — tarif et." style="background:#0D1E3A;color:#F4F1EA;font-family:Carlito,sans-serif;padding:72px;display:flex;flex-direction:column;overflow:hidden">
+<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:32px;padding-bottom:26px;border-bottom:3px solid #CE6A2C">
+<div>
+<div style="font-family:IBM Plex Mono,monospace;font-size:22px;letter-spacing:.26em;color:#E8A46A;font-weight:600;margin-bottom:10px">DÖNEMİN EN ÖNEMLİ KURALI</div>
+<h2 style="margin:0;font-family:Caladea,serif;font-size:72px;font-weight:700;line-height:1.05">Güvenlik Dakikası</h2>
+</div>
+<div style="flex:0 0 auto;background:#CE6A2C;color:#FFF6EC;padding:10px 20px;font-family:IBM Plex Mono,monospace;font-size:26px;font-weight:600">33–37 dk</div>
+</div>
+<div style="flex:1;min-height:0;display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,.9fr);gap:44px;padding-top:44px;align-items:center">
+<div style="display:flex;flex-direction:column;gap:30px">
+<div style="border:3px solid #E8A46A;padding:36px 38px">
+<div style="font-family:Caladea,serif;font-size:60px;font-weight:700;line-height:1.15;color:#E8A46A">Fotoğraf yükleme yok.<br>Tarif et.</div>
+</div>
+<p style="margin:0;font-size:36px;line-height:1.42;color:rgba(244,241,234,.9)">Yüklediğin bir fotoğrafın nereye gittiğini, nerede saklandığını ve kimin göreceğini bilemeyiz. Ama <strong style="color:#E8A46A">kelimelerle tarif ettiğinde</strong> aynı sonucu alırsın — riski sıfırlarsın.</p>
+<div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px;font-size:31px">
+<div style="padding:20px 24px;background:rgba(244,241,234,.08);border-left:6px solid #CE6A2C">Ad-soyad paylaşılmaz</div>
+<div style="padding:20px 24px;background:rgba(244,241,234,.08);border-left:6px solid #CE6A2C">Okul / sınıf yazılmaz</div>
+<div style="padding:20px 24px;background:rgba(244,241,234,.08);border-left:6px solid #CE6A2C">Adres yazılmaz</div>
+<div style="padding:20px 24px;background:rgba(244,241,234,.08);border-left:6px solid #CE6A2C">Telefon yazılmaz</div>
+</div>
+</div>
+<div style="position:relative;height:560px;overflow:hidden;border:2px solid rgba(244,241,234,.25)">
+<image-slot id="h01-guvenlik" shape="rect" src="./assets/s01-guvenlik.png" placeholder="Görsel: kalkan / kilit"></image-slot>
+</div>
+</div>
+</section>
+
+<section data-label="Stüdyo Görevi" data-speaker-notes="Lab brief'i. Dört adımı okuyun, sonra klavyeyi öğrenciye verin. Siz sadece 'hangi kelimeyi eklersek?' diye sorun." style="background:#F4F1EA;color:#22262E;font-family:Carlito,sans-serif;padding:72px;display:flex;flex-direction:column;overflow:hidden">
+<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:32px;padding-bottom:26px;border-bottom:3px solid #0D1E3A">
+<div>
+<div style="font-family:IBM Plex Mono,monospace;font-size:22px;letter-spacing:.26em;color:#CE6A2C;font-weight:600;margin-bottom:10px">AVATAR STÜDYOSU · GÖREVİN</div>
+<h2 style="margin:0;font-family:Caladea,serif;font-size:72px;font-weight:700;color:#0D1E3A;line-height:1.05">Şimdi sıra sende</h2>
+</div>
+<div style="flex:0 0 auto;background:#CE6A2C;color:#FFF6EC;padding:10px 20px;font-family:IBM Plex Mono,monospace;font-size:26px;font-weight:600">LAB · 40 dk</div>
+</div>
+<div style="flex:1;min-height:0;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:22px;padding-top:36px">
+<div style="background:#FFFFFF;border:2px solid rgba(13,30,58,.18);display:flex;flex-direction:column">
+<div style="background:#0D1E3A;color:#E8A46A;padding:14px 22px;font-family:IBM Plex Mono,monospace;font-size:24px;font-weight:600;display:flex;justify-content:space-between"><span>ADIM 1</span><span>00–05</span></div>
+<div style="padding:28px 26px;display:flex;flex-direction:column;gap:16px;flex:1">
+<h3 style="margin:0;font-family:Caladea,serif;font-size:40px;line-height:1.14;color:#0D1E3A;font-weight:700">Tarif kartı</h3>
+<p style="margin:0;font-size:30px;line-height:1.35">Kendini <strong>yazıyla</strong> tarif et: saç, gözlük, favori kıyafet ve renk, ifade. Fotoğraf yok.</p>
+</div>
+</div>
+<div style="background:#FFFFFF;border:2px solid rgba(13,30,58,.18);display:flex;flex-direction:column">
+<div style="background:#0D1E3A;color:#E8A46A;padding:14px 22px;font-family:IBM Plex Mono,monospace;font-size:24px;font-weight:600;display:flex;justify-content:space-between"><span>ADIM 2</span><span>05–15</span></div>
+<div style="padding:28px 26px;display:flex;flex-direction:column;gap:16px;flex:1">
+<h3 style="margin:0;font-family:Caladea,serif;font-size:40px;line-height:1.14;color:#0D1E3A;font-weight:700">İlk avatar turu</h3>
+<p style="margin:0;font-size:30px;line-height:1.35">Tarifini prompt'a çevir, <strong>2–3 çıktı</strong> üret. Beğenmediysen kelime ekle.</p>
+</div>
+</div>
+<div style="background:#FFFFFF;border:2px solid rgba(13,30,58,.18);display:flex;flex-direction:column">
+<div style="background:#0D1E3A;color:#E8A46A;padding:14px 22px;font-family:IBM Plex Mono,monospace;font-size:24px;font-weight:600;display:flex;justify-content:space-between"><span>ADIM 3</span><span>15–25</span></div>
+<div style="padding:28px 26px;display:flex;flex-direction:column;gap:16px;flex:1">
+<h3 style="margin:0;font-family:Caladea,serif;font-size:40px;line-height:1.14;color:#0D1E3A;font-weight:700">Stil turu</h3>
+<p style="margin:0;font-size:30px;line-height:1.35">Aynı tarifi <strong>3 stilde</strong> üret: karikatür, piksel-art, 3D. En sevdiğini seç.</p>
+</div>
+</div>
+<div style="background:#0D1E3A;border:2px solid #0D1E3A;display:flex;flex-direction:column;color:#F4F1EA">
+<div style="background:#CE6A2C;color:#FFF6EC;padding:14px 22px;font-family:IBM Plex Mono,monospace;font-size:24px;font-weight:600;display:flex;justify-content:space-between"><span>ADIM 4</span><span>25–40</span></div>
+<div style="padding:28px 26px;display:flex;flex-direction:column;gap:16px;flex:1">
+<h3 style="margin:0;font-family:Caladea,serif;font-size:40px;line-height:1.14;font-weight:700">Sticker paketi</h3>
+<p style="margin:0;font-size:30px;line-height:1.35">Seçtiğin avatardan <strong>farklı ifadeler</strong> üret, arka planı temizle, WhatsApp'a ekle!</p>
+</div>
+</div>
+</div>
+<div style="margin-top:28px;display:grid;grid-template-columns:minmax(0,1fr) auto;gap:30px;align-items:center;padding:26px 32px;background:rgba(206,106,44,.12);border-left:8px solid #CE6A2C">
+<p style="margin:0;font-size:34px;line-height:1.35"><strong style="color:#0D1E3A">Kural:</strong> 40. dakikada ürün "mükemmel" olmak zorunda değil — <strong>çalışır</strong> olmalı. Kalanı evde geliştirirsin.</p>
+<div style="font-family:Caladea,serif;font-size:36px;font-style:italic;color:#CE6A2C">Klavye senin!</div>
+</div>
+</section>
+
+<section data-label="Tarif Kartı" data-speaker-notes="Lab adım 1–2. Öğrenci boşlukları doldursun, sonra alttaki formülle prompt'a çevirsin. Fotoğraf yok, kelime var." style="background:#F4F1EA;color:#22262E;font-family:Carlito,sans-serif;padding:72px;display:flex;flex-direction:column;overflow:hidden">
+<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:32px;padding-bottom:26px;border-bottom:3px solid #0D1E3A">
+<div>
+<div style="font-family:IBM Plex Mono,monospace;font-size:22px;letter-spacing:.26em;color:#CE6A2C;font-weight:600;margin-bottom:10px">LAB ADIM 1 → 2</div>
+<h2 style="margin:0;font-family:Caladea,serif;font-size:72px;font-weight:700;color:#0D1E3A;line-height:1.05">Tarif kartını doldur</h2>
+</div>
+<div style="flex:0 0 auto;background:#CE6A2C;color:#FFF6EC;padding:10px 20px;font-family:IBM Plex Mono,monospace;font-size:26px;font-weight:600">LAB · 00–15 dk</div>
+</div>
+<div style="flex:1;min-height:0;display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:34px;padding-top:36px">
+<div style="background:#FFFFFF;border:2px solid rgba(13,30,58,.2);padding:34px 36px;display:grid;grid-template-columns:auto minmax(0,1fr);column-gap:22px;row-gap:26px;align-content:start;font-size:34px">
+<div style="font-family:IBM Plex Mono,monospace;font-size:26px;color:#CE6A2C;font-weight:600;padding-top:8px">SAÇ</div>
+<div style="border-bottom:3px solid rgba(13,30,58,.35);min-height:52px"></div>
+<div style="font-family:IBM Plex Mono,monospace;font-size:26px;color:#CE6A2C;font-weight:600;padding-top:8px">GÖZLÜK</div>
+<div style="border-bottom:3px solid rgba(13,30,58,.35);min-height:52px"></div>
+<div style="font-family:IBM Plex Mono,monospace;font-size:26px;color:#CE6A2C;font-weight:600;padding-top:8px">KIYAFET</div>
+<div style="border-bottom:3px solid rgba(13,30,58,.35);min-height:52px"></div>
+<div style="font-family:IBM Plex Mono,monospace;font-size:26px;color:#CE6A2C;font-weight:600;padding-top:8px">RENK</div>
+<div style="border-bottom:3px solid rgba(13,30,58,.35);min-height:52px"></div>
+<div style="font-family:IBM Plex Mono,monospace;font-size:26px;color:#CE6A2C;font-weight:600;padding-top:8px">İFADE</div>
+<div style="border-bottom:3px solid rgba(13,30,58,.35);min-height:52px"></div>
+<div style="font-family:IBM Plex Mono,monospace;font-size:26px;color:#CE6A2C;font-weight:600;padding-top:8px">STİL</div>
+<div style="border-bottom:3px solid rgba(13,30,58,.35);min-height:52px"></div>
+</div>
+<div style="display:flex;flex-direction:column;gap:24px;min-height:0">
+<div style="border:3px solid #CE6A2C;background:rgba(206,106,44,.08);padding:30px 32px">
+<div style="font-family:IBM Plex Mono,monospace;font-size:24px;letter-spacing:.16em;color:#CE6A2C;font-weight:600;margin-bottom:18px">ŞİMDİ PROMPT'A ÇEVİR</div>
+<div style="font-family:IBM Plex Mono,monospace;font-size:31px;line-height:1.55;color:#22262E">[saç], [gözlük], [kıyafet] olan [ifade] bir karakter; <strong>karikatür avatar</strong>, büyük gözler, kalın beyaz kenarlık, sade arka plan, sticker tarzı.</div>
+</div>
+<div style="background:#0D1E3A;color:#F4F1EA;padding:30px 34px;display:flex;flex-direction:column;gap:16px">
+<div style="font-family:IBM Plex Mono,monospace;font-size:24px;letter-spacing:.2em;color:#E8A46A;font-weight:600">TAKILIRSAN</div>
+<p style="margin:0;font-size:32px;line-height:1.4">Çıktı istediğin gibi olmadı mı? <strong style="color:#E8A46A">Araç kötü değil — tarif eksik.</strong> Tek bir kelime ekle ve tekrar dene: neon? yakın plan? neşeli?</p>
+</div>
+<div style="flex:1;min-height:0;position:relative;overflow:hidden;border:2px solid rgba(13,30,58,.2)"><image-slot id="h01-avatar-ornek" shape="rect" placeholder="DERSTE CANLI ÜRET — örnek avatar"></image-slot></div>
+</div>
+</div>
+</section>
+
+<section data-label="Sticker Paketi" data-speaker-notes="Lab adım 4. Altı ifadeyi gösterin, arka plan temizleme ve WhatsApp'a ekleme adımlarını hatırlatın." style="background:#F4F1EA;color:#22262E;font-family:Carlito,sans-serif;padding:72px;display:flex;flex-direction:column;overflow:hidden">
+<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:32px;padding-bottom:26px;border-bottom:3px solid #0D1E3A">
+<div>
+<div style="font-family:IBM Plex Mono,monospace;font-size:22px;letter-spacing:.26em;color:#CE6A2C;font-weight:600;margin-bottom:10px">LAB ADIM 4 · TESLİM</div>
+<h2 style="margin:0;font-family:Caladea,serif;font-size:72px;font-weight:700;color:#0D1E3A;line-height:1.05">Sticker paketini üret</h2>
+</div>
+<div style="flex:0 0 auto;background:#CE6A2C;color:#FFF6EC;padding:10px 20px;font-family:IBM Plex Mono,monospace;font-size:26px;font-weight:600">LAB · 25–40 dk</div>
+</div>
+<div style="flex:1;min-height:0;padding-top:36px;display:flex;flex-direction:column;gap:30px">
+<div style="display:grid;grid-template-columns:repeat(6,minmax(0,1fr));grid-template-rows:minmax(0,1fr) auto;column-gap:20px;row-gap:14px;flex:1;min-height:0">
+<div style="grid-row:1;position:relative;overflow:hidden;border:2px solid rgba(13,30,58,.2);background:#FFFFFF"><image-slot id="h01-st-1" shape="rect" placeholder="gülen"></image-slot></div>
+<div style="grid-row:1;position:relative;overflow:hidden;border:2px solid rgba(13,30,58,.2);background:#FFFFFF"><image-slot id="h01-st-2" shape="rect" placeholder="şaşkın"></image-slot></div>
+<div style="grid-row:1;position:relative;overflow:hidden;border:2px solid rgba(13,30,58,.2);background:#FFFFFF"><image-slot id="h01-st-3" shape="rect" placeholder="uykulu"></image-slot></div>
+<div style="grid-row:1;position:relative;overflow:hidden;border:2px solid rgba(13,30,58,.2);background:#FFFFFF"><image-slot id="h01-st-4" shape="rect" placeholder="kızgın"></image-slot></div>
+<div style="grid-row:1;position:relative;overflow:hidden;border:2px solid rgba(13,30,58,.2);background:#FFFFFF"><image-slot id="h01-st-5" shape="rect" placeholder="kalpli"></image-slot></div>
+<div style="grid-row:1;position:relative;overflow:hidden;border:2px solid rgba(13,30,58,.2);background:#FFFFFF"><image-slot id="h01-st-6" shape="rect" placeholder="baş parmak"></image-slot></div>
+<div style="grid-row:2;font-family:IBM Plex Mono,monospace;font-size:26px;color:#CE6A2C;font-weight:600;text-align:center">gülen</div>
+<div style="grid-row:2;font-family:IBM Plex Mono,monospace;font-size:26px;color:#CE6A2C;font-weight:600;text-align:center">şaşkın</div>
+<div style="grid-row:2;font-family:IBM Plex Mono,monospace;font-size:26px;color:#CE6A2C;font-weight:600;text-align:center">uykulu</div>
+<div style="grid-row:2;font-family:IBM Plex Mono,monospace;font-size:26px;color:#CE6A2C;font-weight:600;text-align:center">kızgın</div>
+<div style="grid-row:2;font-family:IBM Plex Mono,monospace;font-size:26px;color:#CE6A2C;font-weight:600;text-align:center">kalpli</div>
+<div style="grid-row:2;font-family:IBM Plex Mono,monospace;font-size:26px;color:#CE6A2C;font-weight:600;text-align:center">baş parmak</div>
+</div>
+<div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:24px">
+<div style="background:#FFFFFF;border:2px solid rgba(13,30,58,.18);padding:26px 28px;display:flex;gap:20px;align-items:flex-start">
+<span style="flex:0 0 auto;width:52px;height:52px;background:#CE6A2C;color:#FFF6EC;font-family:Caladea,serif;font-size:30px;font-weight:700;display:flex;align-items:center;justify-content:center">1</span>
+<p style="margin:0;font-size:31px;line-height:1.35">Aynı avatarı koru, sadece <strong>ifadeyi değiştir</strong> — paket bir aileye benzesin.</p>
+</div>
+<div style="background:#FFFFFF;border:2px solid rgba(13,30,58,.18);padding:26px 28px;display:flex;gap:20px;align-items:flex-start">
+<span style="flex:0 0 auto;width:52px;height:52px;background:#CE6A2C;color:#FFF6EC;font-family:Caladea,serif;font-size:30px;font-weight:700;display:flex;align-items:center;justify-content:center">2</span>
+<p style="margin:0;font-size:31px;line-height:1.35">Arka planı temizle. Aracın hazır <strong>"arka plan sil"</strong> düğmesini kullan.</p>
+</div>
+<div style="background:#0D1E3A;border:2px solid #0D1E3A;padding:26px 28px;display:flex;gap:20px;align-items:flex-start;color:#F4F1EA">
+<span style="flex:0 0 auto;width:52px;height:52px;background:#E8A46A;color:#0D1E3A;font-family:Caladea,serif;font-size:30px;font-weight:700;display:flex;align-items:center;justify-content:center">3</span>
+<p style="margin:0;font-size:31px;line-height:1.35">Paketi indir, <strong>WhatsApp'a ekle</strong> ve ilk sticker'ı ailene gönder.</p>
+</div>
+</div>
+</div>
+</section>
+
+<section data-label="Kapanış Sorusu" data-speaker-notes="Önce tahminlerini alın, sonra labı hatırlatın: aynı tarifle 2-3 farklı çıktı almıştınız. Doğru cevap panelde kredi kazandırır." style="background:#0D1E3A;color:#F4F1EA;font-family:Carlito,sans-serif;padding:72px;display:flex;flex-direction:column;justify-content:space-between;overflow:hidden">
+<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:32px">
+<img src="./nebula-logo-white.png" alt="Nebula Genç Zeka" style="display:block;width:210px;height:auto">
+<div style="flex:0 0 auto;background:#CE6A2C;color:#FFF6EC;padding:10px 20px;font-family:IBM Plex Mono,monospace;font-size:26px;font-weight:600">Kapanış · 37–40 dk</div>
+</div>
+<div style="max-width:1500px">
+<div style="font-family:IBM Plex Mono,monospace;font-size:26px;letter-spacing:.28em;color:#E8A46A;font-weight:600;margin-bottom:30px">HAFTANIN SORUSU · PANELDE KREDİ ÖDÜLLÜ</div>
+<h2 style="margin:0;font-family:Caladea,serif;font-size:82px;line-height:1.14;font-weight:700;text-wrap:pretty">Aynı promptu bir görsel modeline iki kez versek, tıpatıp aynı resmi mi verir? <span style="color:#E8A46A">Neden?</span></h2>
+<div style="margin-top:40px;display:flex;gap:20px;flex-wrap:wrap;font-family:IBM Plex Mono,monospace;font-size:30px">
+<span style="padding:16px 30px;border:2px solid rgba(244,241,234,.35)">Bence aynı olur</span>
+<span style="padding:16px 30px;border:2px solid rgba(244,241,234,.35)">Bence farklı olur</span>
+<span style="padding:16px 30px;border:2px dashed #E8A46A;color:#E8A46A">Çünkü…</span>
+</div>
+</div>
+<div style="display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:34px;align-items:end">
+<div style="padding:28px 32px;background:rgba(244,241,234,.08);border-left:8px solid #CE6A2C;font-size:32px;line-height:1.4">
+<strong style="color:#E8A46A">Ev görevi:</strong> Avatarını ve sticker paketini panele yükle. Bültenindeki "evde dene" oyununu da unutma.
+</div>
+<div style="text-align:right;font-family:Caladea,serif;font-size:44px;font-style:italic;color:rgba(244,241,234,.75)">Haftaya görüşürüz —<br>sıradaki konu: <span style="color:#E8A46A">model seçme sanatı</span></div>
+</div>
+</section>
+
+</x-import>
+</x-dc>
+</body>
+</html>

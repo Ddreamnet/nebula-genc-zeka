@@ -21,6 +21,7 @@ import { Loader2, Trash2, Archive, AlertTriangle, ChevronLeft, ChevronRight, Ali
 import { formatTime } from "@/lib/lesson/format";
 import { DAYS_OF_WEEK, type StudentLessonBase } from "@/lib/admin/types";
 import { useEditStudentDialog } from "@/lib/lesson/use-edit-student-dialog";
+import { useAsyncAction } from "@/lib/use-async-action";
 
 interface EditStudentDialogProps {
   open: boolean;
@@ -71,6 +72,12 @@ export function EditStudentDialog(props: EditStudentDialogProps) {
     handleShiftBackward,
   } = useEditStudentDialog(props);
 
+  // AlertDialogAction closes on click, but a real double-click fires both
+  // handlers before the close lands. Both of these run schedule-rewriting
+  // RPCs, so the second run is not harmless.
+  const [runDateUpdate, updatingDates] = useAsyncAction(confirmDateUpdate);
+  const [runResetAll, resettingAll] = useAsyncAction(handleResetAllLessons);
+
   return (
     <Dialog open={props.open} onOpenChange={props.onOpenChange}>
       <DialogContent className="w-[calc(100%-1rem)] sm:max-w-2xl max-h-[90vh] overflow-y-auto">
@@ -103,7 +110,10 @@ export function EditStudentDialog(props: EditStudentDialogProps) {
           <div className="space-y-3">
             <Label className="text-base font-medium">Ders Programı</Label>
             {lessons.map((lesson, index) => (
-              <div key={index} className="grid grid-cols-1 sm:grid-cols-4 gap-2 sm:gap-3 p-3 border rounded-lg">
+              // Four fields wrapped to two rows instead of one four-column
+              // strip: at sm the link field needs real width, and a five-column
+              // row would have squeezed every one of them.
+              <div key={index} className="grid grid-cols-1 gap-2 rounded-lg border p-3 sm:grid-cols-3 sm:gap-3">
                 <div className="space-y-2">
                   <Label>Gün</Label>
                   <Select value={lesson.dayOfWeek.toString()} onValueChange={(value) => updateLesson(index, "dayOfWeek", Number(value))}>
@@ -127,9 +137,23 @@ export function EditStudentDialog(props: EditStudentDialogProps) {
                   <Label>Bitiş</Label>
                   <Input type="time" value={lesson.endTime} onChange={(e) => updateLesson(index, "endTime", e.target.value)} required />
                 </div>
-                <div className="space-y-2">
+                <div className="space-y-2 sm:col-span-1">
                   <Label>Not</Label>
                   <Input type="text" value={lesson.note ?? ""} onChange={(e) => updateLesson(index, "note", e.target.value)} placeholder="Opsiyonel" />
+                </div>
+                <div className="space-y-2 sm:col-span-2">
+                  <Label htmlFor={`meeting-url-${index}`}>Ders Linki</Label>
+                  <Input
+                    id={`meeting-url-${index}`}
+                    type="url"
+                    inputMode="url"
+                    autoComplete="off"
+                    spellCheck={false}
+                    value={lesson.meetingUrl ?? ""}
+                    onChange={(e) => updateLesson(index, "meetingUrl", e.target.value)}
+                    placeholder="https://zoom.us/j/..."
+                  />
+                  <p className="text-xs text-muted-foreground">Öğrenci panelinde &quot;Derse katıl&quot; butonu olarak görünür.</p>
                 </div>
               </div>
             ))}
@@ -216,7 +240,7 @@ export function EditStudentDialog(props: EditStudentDialogProps) {
               {sortedLessonsForDisplay.map((lesson) => (
                 <div
                   key={`${lesson.lessonNumber}-${lesson.instanceId ?? lesson.displayIndex}`}
-                  className={`flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 p-3 border rounded-lg ${lesson.isOverridden ? "border-amber-500" : ""}`}
+                  className={`flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 p-3 border rounded-lg ${lesson.isOverridden ? "border-tertiary" : ""}`}
                 >
                   <div className="flex items-center gap-2 flex-1 min-w-0">
                     <div className={`h-4 w-4 rounded-full shrink-0 ${lesson.isCompleted ? "bg-primary" : "bg-muted"}`} />
@@ -230,14 +254,14 @@ export function EditStudentDialog(props: EditStudentDialogProps) {
                     )}
                   </div>
                   <div className="flex items-center gap-2 shrink-0">
-                    <Label className={`text-sm ${lesson.isOverridden ? "text-amber-600 font-medium" : "text-muted-foreground"}`}>
+                    <Label className={`text-sm ${lesson.isOverridden ? "text-tertiary font-medium" : "text-muted-foreground"}`}>
                       {lesson.isOverridden ? "Yeni:" : "Tarih:"}
                     </Label>
                     <Input
                       type="date"
                       value={lessonDates[lesson.lessonNumber.toString()] || lesson.effectiveDate || ""}
                       onChange={(e) => updateLessonDate(lesson.lessonNumber, e.target.value)}
-                      className={`w-full sm:w-40 ${lesson.isOverridden ? "border-amber-500" : ""}`}
+                      className={`w-full sm:w-40 ${lesson.isOverridden ? "border-tertiary" : ""}`}
                     />
                   </div>
                 </div>
@@ -334,8 +358,10 @@ export function EditStudentDialog(props: EditStudentDialogProps) {
               </label>
             </div>
             <AlertDialogFooter>
-              <AlertDialogCancel>İptal</AlertDialogCancel>
-              <AlertDialogAction onClick={confirmDateUpdate}>Onayla</AlertDialogAction>
+              <AlertDialogCancel disabled={updatingDates}>İptal</AlertDialogCancel>
+              <AlertDialogAction onClick={runDateUpdate} disabled={updatingDates}>
+                {updatingDates ? "Güncelleniyor..." : "Onayla"}
+              </AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
@@ -349,8 +375,10 @@ export function EditStudentDialog(props: EditStudentDialogProps) {
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
-              <AlertDialogCancel>İptal</AlertDialogCancel>
-              <AlertDialogAction onClick={handleResetAllLessons}>Sıfırla</AlertDialogAction>
+              <AlertDialogCancel disabled={resettingAll}>İptal</AlertDialogCancel>
+              <AlertDialogAction onClick={runResetAll} disabled={resettingAll}>
+                {resettingAll ? "Sıfırlanıyor..." : "Sıfırla"}
+              </AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>

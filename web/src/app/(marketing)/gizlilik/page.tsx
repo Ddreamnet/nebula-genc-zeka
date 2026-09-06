@@ -2,10 +2,13 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { LegalPage } from "@/components/landing/legal-page";
 import { siteConfig } from "@/lib/site";
+import { canonical } from "@/lib/seo";
 
 export const metadata: Metadata = {
   title: "Gizlilik ve Çerez Politikası",
-  description: "Nebula Genç Zeka gizlilik ve çerez politikası.",
+  description:
+    "Nebula Genç Zeka gizlilik ve çerez politikası: hangi bilgileri topluyoruz, nasıl kullanıyoruz, hangi çerezleri kullanıyoruz ve verilerinizi nasıl silebilirsiniz.",
+  alternates: canonical("/gizlilik"),
 };
 
 export default function GizlilikPage() {

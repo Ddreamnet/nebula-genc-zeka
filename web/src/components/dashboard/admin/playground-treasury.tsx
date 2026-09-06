@@ -2,8 +2,19 @@
 
 import { useEffect, useState } from "react";
 import { Gem, TriangleAlert, RefreshCw } from "lucide-react";
-import { Card, CardContent } from "@/components/panel-ui/card";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/panel-ui/dialog";
 import { cn } from "@/lib/cn";
+
+/**
+ * The Playground treasury, behind a button.
+ *
+ * It used to render as a full-width card pinned above the whole admin panel —
+ * five statistics permanently occupying the first screen of a page whose
+ * actual job is teachers and students, and one OpenRouter round-trip on every
+ * admin page load to fill numbers nobody had asked for. It's a thing you check
+ * occasionally, so it's now a header button that opens a dialog, and the fetch
+ * only happens when the dialog is open (Radix doesn't mount closed content).
+ */
 
 interface Treasury {
   balance: { totalCredits: number; used: number; remainingUsd: number };
@@ -29,14 +40,14 @@ function coverageTone(coverage: number | null): string {
 function Stat({ label, value, hint, tone }: { label: string; value: string; hint?: string; tone?: string }) {
   return (
     <div className="flex flex-col gap-0.5">
-      <span className="font-mono text-[10px] uppercase tracking-wider text-on-surface-variant/70">{label}</span>
+      <span className="font-mono text-micro uppercase tracking-wider text-on-surface-variant/70">{label}</span>
       <span className={cn("font-display text-xl font-semibold tabular-nums", tone ?? "text-on-surface")}>{value}</span>
-      {hint && <span className="text-[11px] text-on-surface-variant/70">{hint}</span>}
+      {hint && <span className="text-micro text-on-surface-variant/70">{hint}</span>}
     </div>
   );
 }
 
-export function PlaygroundTreasury() {
+function TreasuryBody() {
   const [data, setData] = useState<Treasury | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -76,21 +87,25 @@ export function PlaygroundTreasury() {
   }
 
   if (loading && !data) {
-    return (
-      <Card className="mx-auto w-full max-w-6xl">
-        <CardContent className="py-4 text-sm text-on-surface-variant">Playground kasası yükleniyor...</CardContent>
-      </Card>
-    );
+    return <p className="py-2 text-sm text-on-surface-variant">Playground kasası yükleniyor...</p>;
   }
 
   if (error || !data) {
     return (
-      <Card className="mx-auto w-full max-w-6xl">
-        <CardContent className="flex items-center gap-2 py-4 text-sm text-error">
+      <div className="flex flex-col gap-3 py-2">
+        <p className="flex items-center gap-2 text-sm text-error">
           <TriangleAlert className="size-4 shrink-0" />
           {error ?? "Kasa okunamadı"}
-        </CardContent>
-      </Card>
+        </p>
+        <button
+          onClick={refresh}
+          disabled={loading}
+          className="inline-flex w-fit items-center gap-1.5 rounded-full border border-outline-variant px-2.5 py-1 font-mono text-micro text-on-surface-variant transition hover:text-on-surface disabled:opacity-50"
+        >
+          <RefreshCw className={cn("size-3", loading && "animate-spin")} />
+          Tekrar dene
+        </button>
+      </div>
     );
   }
 
@@ -100,70 +115,95 @@ export function PlaygroundTreasury() {
   const blindGenerations = data.reads.generations === 0;
 
   return (
-    <Card className="mx-auto w-full max-w-6xl">
-      <CardContent className="flex flex-col gap-4 py-4">
-        <div className="flex items-center justify-between gap-2">
-          <div className="flex items-center gap-2">
+    <div className="flex flex-col gap-4">
+      <div className="grid grid-cols-2 gap-x-4 gap-y-4 sm:grid-cols-3">
+        <Stat
+          label="Kasada"
+          value={usd(data.balance.remainingUsd)}
+          hint={`${usd(data.balance.totalCredits)} yüklendi · ${usd(data.balance.used)} harcandı`}
+        />
+        <Stat
+          label="Karşılığı"
+          value={`${ore(data.remainingOre)} cevher`}
+          hint={`${data.rate.usdPerOre.toFixed(4)} $/cevher${data.rate.isRealized ? ` · son ${data.rate.sampleSize} üretim` : " · varsayılan"}`}
+        />
+        <Stat
+          label="Dağıtılmış"
+          value={`${ore(data.granted.ore)} cevher`}
+          hint={`${data.granted.wallets} öğrenci cüzdanı`}
+        />
+        <Stat
+          label="Karşılama"
+          value={data.coverage === null ? "—" : `${data.coverage.toFixed(2)}×`}
+          hint={data.coverage === null ? "dağıtılmış cevher yok" : data.coverage < 1 ? "kasa yetmiyor" : "kasa yetiyor"}
+          tone={coverageTone(data.coverage)}
+        />
+        <Stat
+          label="Harcama"
+          value={usd(data.spend.daily)}
+          hint={`bu ay ${usd(data.spend.monthly)} · bu hafta ${usd(data.spend.weekly)}`}
+        />
+      </div>
+
+      {/* Said out loud because it's the whole point of the admin having no
+          wallet: the "Karşılığı" figure above is also the balance the admin
+          sees inside the Playground. */}
+      <p className="text-micro leading-relaxed text-on-surface-variant/70">
+        Senin Playground bakiyen bu kasanın kendisi: <strong className="font-medium text-on-surface">{ore(data.remainingOre)} cevher</strong>.
+        Öğrencilerin cüzdanı ayrı, seninki değil.
+      </p>
+
+      {(blindWallets || blindGenerations) && (
+        <p className="flex items-start gap-2 rounded-lg border border-tertiary/30 bg-tertiary/8 px-3 py-2 text-micro leading-relaxed text-on-surface-variant">
+          <TriangleAlert className="mt-0.5 size-3.5 shrink-0 text-tertiary" />
+          <span>
+            {blindWallets && blindGenerations
+              ? "Ne cüzdan ne üretim kaydı okunabildi"
+              : blindWallets
+                ? "Hiç öğrenci cüzdanı okunamadı"
+                : "Hiç üretim kaydı okunamadı"}
+            . Gerçekten veri yoksa normal; ama veri olduğunu biliyorsan admin rolünün{" "}
+            <code className="font-mono">playground_credits</code> / <code className="font-mono">ai_generations</code> üzerinde
+            SELECT politikası eksik demektir — bu durumda yukarıdaki toplamlar olduğundan düşük görünür.
+            {data.reads.error && <> Hata: {data.reads.error}</>}
+          </span>
+        </p>
+      )}
+
+      <button
+        onClick={refresh}
+        disabled={loading}
+        className="inline-flex w-fit items-center gap-1.5 rounded-full border border-outline-variant px-2.5 py-1 font-mono text-micro text-on-surface-variant transition hover:text-on-surface disabled:opacity-50"
+      >
+        <RefreshCw className={cn("size-3", loading && "animate-spin")} />
+        Yenile
+      </button>
+    </div>
+  );
+}
+
+export function PlaygroundTreasuryButton() {
+  const [open, setOpen] = useState(false);
+
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      {/* asChild so the panel's own button styling is kept and Radix still
+          restores focus here when the dialog closes. */}
+      <DialogTrigger asChild>
+        <button type="button" className="pn-btn pn-btn--sm pn-btn--purple">
+          <Gem className="h-4 w-4" />
+          <span className="hidden sm:inline">Kasa</span>
+        </button>
+      </DialogTrigger>
+      <DialogContent className="w-[calc(100%-1rem)] max-h-[90vh] overflow-y-auto sm:max-w-2xl">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
             <Gem className="size-4 text-secondary" />
-            <h2 className="font-display text-sm font-semibold">Playground kasası</h2>
-          </div>
-          <button
-            onClick={refresh}
-            disabled={loading}
-            aria-label="Yenile"
-            className="inline-flex items-center gap-1.5 rounded-full border border-outline-variant px-2.5 py-1 font-mono text-[10px] text-on-surface-variant transition hover:text-on-surface disabled:opacity-50"
-          >
-            <RefreshCw className={cn("size-3", loading && "animate-spin")} />
-            Yenile
-          </button>
-        </div>
-
-        <div className="grid grid-cols-2 gap-x-4 gap-y-4 sm:grid-cols-3 lg:grid-cols-5">
-          <Stat
-            label="Kasada"
-            value={usd(data.balance.remainingUsd)}
-            hint={`${usd(data.balance.totalCredits)} yüklendi · ${usd(data.balance.used)} harcandı`}
-          />
-          <Stat
-            label="Karşılığı"
-            value={`${ore(data.remainingOre)} cevher`}
-            hint={`${data.rate.usdPerOre.toFixed(4)} $/cevher${data.rate.isRealized ? ` · son ${data.rate.sampleSize} üretim` : " · varsayılan"}`}
-          />
-          <Stat
-            label="Dağıtılmış"
-            value={`${ore(data.granted.ore)} cevher`}
-            hint={`${data.granted.wallets} öğrenci cüzdanı`}
-          />
-          <Stat
-            label="Karşılama"
-            value={data.coverage === null ? "—" : `${data.coverage.toFixed(2)}×`}
-            hint={data.coverage === null ? "dağıtılmış cevher yok" : data.coverage < 1 ? "kasa yetmiyor" : "kasa yetiyor"}
-            tone={coverageTone(data.coverage)}
-          />
-          <Stat
-            label="Harcama"
-            value={usd(data.spend.daily)}
-            hint={`bu ay ${usd(data.spend.monthly)} · bu hafta ${usd(data.spend.weekly)}`}
-          />
-        </div>
-
-        {(blindWallets || blindGenerations) && (
-          <p className="flex items-start gap-2 rounded-lg border border-tertiary/30 bg-tertiary/8 px-3 py-2 text-[11px] leading-relaxed text-on-surface-variant">
-            <TriangleAlert className="mt-0.5 size-3.5 shrink-0 text-tertiary" />
-            <span>
-              {blindWallets && blindGenerations
-                ? "Ne cüzdan ne üretim kaydı okunabildi"
-                : blindWallets
-                  ? "Hiç öğrenci cüzdanı okunamadı"
-                  : "Hiç üretim kaydı okunamadı"}
-              . Gerçekten veri yoksa normal; ama veri olduğunu biliyorsan admin rolünün{" "}
-              <code className="font-mono">playground_credits</code> / <code className="font-mono">ai_generations</code> üzerinde
-              SELECT politikası eksik demektir — bu durumda yukarıdaki toplamlar olduğundan düşük görünür.
-              {data.reads.error && <> Hata: {data.reads.error}</>}
-            </span>
-          </p>
-        )}
-      </CardContent>
-    </Card>
+            Playground kasası
+          </DialogTitle>
+        </DialogHeader>
+        <TreasuryBody />
+      </DialogContent>
+    </Dialog>
   );
 }

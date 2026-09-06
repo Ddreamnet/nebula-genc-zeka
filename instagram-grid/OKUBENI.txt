@@ -1,0 +1,46 @@
+NEBULA GENÇ ZEKA — Instagram 3x3 grid (hero tasarımı)
+=====================================================
+
+Kaynak: ana sayfa hero'su (web/src/components/landing/hero.tsx), canlı
+sitenin kendisinden 4:5 dikey çerçevede render edildi. Altındaki hiçbir
+section karede yok — sadece hero'nun krem (#FFFBF2) alanı.
+
+DOSYALAR
+--------
+hero-grid-3240x4050.png   Tam boy grid (PNG, kayıpsız)  ← asıl dosya
+hero-grid-3240x4050.jpg   Aynısı JPEG (q95) — daha küçük dosya
+hero-grid-1080x1350.png   Küçültülmüş tek parça (önizleme / tek post için)
+karolar/                  9 adet hazır kare, her biri 1080x1350
+
+YÜKLEME SIRASI (önemli)
+-----------------------
+Instagram en yeni gönderiyi sol üste koyar, yani grid'i TERS sırada
+yüklemek gerekir. Dosya adlarındaki "yukleme-01 ... yukleme-09" tam olarak
+bu sıra:
+
+  yukleme-01_kare-9-sag-alt      ← ÖNCE bu
+  yukleme-02_kare-8-orta-alt
+  yukleme-03_kare-7-sol-alt
+  yukleme-04_kare-6-sag-orta
+  yukleme-05_kare-5-orta
+  yukleme-06_kare-4-sol-orta
+  yukleme-07_kare-3-sag-ust
+  yukleme-08_kare-2-orta-ust
+  yukleme-09_kare-1-sol-ust     ← EN SON bu
+
+Dokuzu bittiğinde profil ızgarasında tek bir hero görünecek.
+
+Not: Instagram karelerin tamamını göstermek için 4:5'i korur; her karo
+zaten 1080x1350 olduğu için kırpma olmaz.
+
+KOMPOZİSYON NOTU
+----------------
+Karo dikişleri gözetilerek ayarlandı:
+  1. kare  → NEBULA GENÇ ZEKA logosu (tam, ortadan bölünmüyor)
+  4. kare  → mekik (tamamı tek karenin içinde)
+  7. kare  → açıklama metni (tamamı tek karenin içinde)
+  sağ sütun → gezegen alanı, sağ kenardan taşarak tam kanama
+
+Web'e özgü olan iki şey çıkarıldı: üstteki menü çubuğu ve "Aşağı kaydır"
+oku. Logo ve metin, 1080px'lik karede okunur kalsın diye bir miktar
+büyütüldü (logo 358px, paragraf 21px).

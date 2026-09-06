@@ -20,7 +20,7 @@ import { EditStudentDialog } from "./admin/edit-student-dialog";
 import { EditTeacherDialog } from "./admin/edit-teacher-dialog";
 import { ManageGroupsDialog } from "./admin/manage-groups-dialog";
 import { BalanceManager } from "./admin/balance-manager";
-import { PlaygroundTreasury } from "./admin/playground-treasury";
+import { PlaygroundTreasuryButton } from "./admin/playground-treasury";
 import { WeeklyScheduleGrid } from "./weekly-schedule-grid";
 import { Card, CardContent } from "@/components/panel-ui/card";
 import { AddTopicDialog } from "./admin/add-topic-dialog";
@@ -77,9 +77,9 @@ export function AdminDashboard() {
     const supabase = createClient();
     try {
       const [studentTopicsRes, globalTopics, completionRes] = await Promise.all([
-        supabase.from("topics").select("*, resources (*)").eq("student_id", studentUserId).order("order_index"),
+        supabase.from("topics").select("id, title, description, is_completed, completed_at, order_index, group_link_id, resources (id, title, description, resource_type, resource_url, order_index, group_link_id)").eq("student_id", studentUserId).order("order_index"),
         fetchGlobalTopics(),
-        supabase.from("student_resource_completion").select("*").eq("student_id", studentUserId),
+        supabase.from("student_resource_completion").select("resource_id, is_completed").eq("student_id", studentUserId),
       ]);
       if (studentTopicsRes.error) throw studentTopicsRes.error;
       if (completionRes.error) throw completionRes.error;
@@ -179,7 +179,7 @@ export function AdminDashboard() {
           .in("teacher_id", teacherIds),
         supabase
           .from("student_lessons")
-          .select("id, student_id, teacher_id, day_of_week, start_time, end_time, note")
+          .select("id, student_id, teacher_id, day_of_week, start_time, end_time, note, meeting_url")
           .in("teacher_id", teacherIds),
         supabase.from("groups").select("id, teacher_id, name").in("teacher_id", teacherIds),
       ]);
@@ -227,6 +227,7 @@ export function AdminDashboard() {
               startTime: l.start_time,
               endTime: l.end_time,
               note: l.note,
+              meetingUrl: l.meeting_url,
             })),
         })),
       }));
@@ -289,19 +290,20 @@ export function AdminDashboard() {
           <Logo light disableLink large />
           <WelcomeBanner name="Admin" variant="header" />
           <div className="flex items-center justify-end gap-2">
-            <button type="button" className="pn-btn pn-btn--sm pn-btn--green" onClick={() => setShowGlobalTopics(true)}>
+            <button type="button" aria-label="Konular" className="pn-btn pn-btn--sm pn-btn--green" onClick={() => setShowGlobalTopics(true)}>
               <BookOpen className="h-4 w-4" />
               <span className="hidden sm:inline">Konular</span>
             </button>
-            <button type="button" className="pn-btn pn-btn--sm pn-btn--green" onClick={() => setShowBlogManager(true)}>
+            <button type="button" aria-label="Blog yönetimi" className="pn-btn pn-btn--sm pn-btn--green" onClick={() => setShowBlogManager(true)}>
               Blog
             </button>
             <NotificationBell />
-            <Link href="/playground" className="pn-btn pn-btn--sm pn-btn--orange">
+            <PlaygroundTreasuryButton />
+            <Link href="/playground" aria-label="Playground" className="pn-btn pn-btn--sm pn-btn--orange">
               <Sparkles className="h-4 w-4" />
               <span className="hidden sm:inline">Playground</span>
             </Link>
-            <button type="button" className="pn-btn pn-btn--sm pn-btn--red" disabled={signingOut} onClick={handleSignOut}>
+            <button type="button" aria-label="Çıkış yap" className="pn-btn pn-btn--sm pn-btn--red" disabled={signingOut} onClick={handleSignOut}>
               <LogOut className="h-4 w-4" />
               <span className="hidden sm:inline">{signingOut ? "Çıkış..." : "Çıkış"}</span>
             </button>
@@ -310,10 +312,6 @@ export function AdminDashboard() {
       </header>
 
       <WelcomeBanner name="Admin" variant="banner" />
-
-      <div className="px-4 pt-4">
-        <PlaygroundTreasury />
-      </div>
 
       <div className="mx-auto grid w-full max-w-6xl grid-cols-1 gap-6 px-4 pt-4 pb-6 lg:grid-cols-[320px_1fr]">
         <TeacherList
@@ -330,12 +328,15 @@ export function AdminDashboard() {
         <div>
           {selectedTeacher ? (
             <>
-              <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-                <div className="flex items-center gap-1 rounded-full border border-outline-variant bg-surface-container/60 p-1 font-mono text-xs">
+              <div className="mb-3 flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
+                {/* Scrolls rather than wraps on a phone: three pills plus two
+                    action buttons used to break onto a second line and the tab
+                    group stopped reading as one control. */}
+                <div className="-mx-1 flex items-center gap-1 overflow-x-auto rounded-full border border-outline-variant bg-surface-container/60 p-1 font-mono text-xs sm:mx-0">
                   <button
                     onClick={() => setActiveTab("students")}
                     className={cn(
-                      "rounded-full px-3 py-1.5 transition",
+                      "min-h-9 shrink-0 rounded-full px-3 transition",
                       activeTab === "students" ? "bg-secondary text-on-secondary" : "text-on-surface-variant",
                     )}
                   >
@@ -344,7 +345,7 @@ export function AdminDashboard() {
                   <button
                     onClick={() => setActiveTab("schedule")}
                     className={cn(
-                      "rounded-full px-3 py-1.5 transition",
+                      "min-h-9 shrink-0 rounded-full px-3 transition",
                       activeTab === "schedule" ? "bg-secondary text-on-secondary" : "text-on-surface-variant",
                     )}
                   >
@@ -353,7 +354,7 @@ export function AdminDashboard() {
                   <button
                     onClick={() => setActiveTab("balance")}
                     className={cn(
-                      "rounded-full px-3 py-1.5 transition",
+                      "min-h-9 shrink-0 rounded-full px-3 transition",
                       activeTab === "balance" ? "bg-secondary text-on-secondary" : "text-on-surface-variant",
                     )}
                   >

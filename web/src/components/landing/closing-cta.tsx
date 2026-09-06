@@ -8,6 +8,12 @@ import { Star, Planet, NovaSays } from "@/components/cast/props";
  *  the site — no navbar item, no mobile-menu item, no footer link — so nothing
  *  written in the admin panel was reachable by a visitor. */
 const footerLinks = [
+  // "Öğrenci işleri" is here as well as in the homepage bento: this component
+  // renders at the bottom of every public page, so it is the one place that
+  // links /eserler from /blog, from a post, and from the legal pages. A page
+  // Google only ever reaches through a homepage fragment link gets crawled
+  // like an afterthought; one linked site-wide does not.
+  { label: "Öğrenci işleri", href: "/eserler" },
   { label: "Blog", href: "/blog" },
   { label: "KVKK", href: "/kvkk" },
   { label: "Gizlilik ve Çerezler", href: "/gizlilik" },
@@ -32,7 +38,7 @@ export function ClosingCta() {
         <div className="nb-split" style={{ marginBottom: "clamp(48px,6vw,76px)" }}>
           <div>
             <div className="nb-eyebrow" style={{ marginBottom: 20 }}>
-              05 — İLETİŞİM
+              06 — İLETİŞİM
             </div>
             <h2 className="nb-h2" style={{ marginBottom: 20 }}>
               Merak ettiğinizi

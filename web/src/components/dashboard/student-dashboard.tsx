@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { LogOut, BookOpen, CheckCircle, Clock, ExternalLink, ChevronDown, ChevronRight, Upload, ClipboardList, Sparkles } from "lucide-react";
+import { LogOut, BookOpen, CheckCircle, Clock, ExternalLink, ChevronDown, ChevronRight, Upload, ClipboardList, Sparkles, Video } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { useAuth } from "@/contexts/auth-context";
 import { Button } from "@/components/panel-ui/button";
@@ -18,15 +18,20 @@ import { StudentLessonTracker } from "./student-lesson-tracker";
 import { UploadHomeworkDialog } from "./upload-homework-dialog";
 import { HomeworkListDialog } from "./homework-list-dialog";
 import type { Topic } from "@/lib/admin/types";
+import { getDayName, formatTime } from "@/lib/lesson/format";
 
 export function StudentDashboard({ userId }: { userId: string }) {
   const { profile, signOut } = useAuth();
   const [expandedTopics, setExpandedTopics] = useState<Set<string>>(new Set());
   const [uploadDialogOpen, setUploadDialogOpen] = useState(false);
   const [listDialogOpen, setListDialogOpen] = useState(false);
-  const [teacherId, setTeacherId] = useState("");
+  // `null` until the row lands, NOT "" — an empty string is a value the
+  // upload dialog would happily insert as a uuid and get a 22P02 back. The
+  // two homework buttons stay disabled while it is null.
+  const [teacherId, setTeacherId] = useState<string | null>(null);
   const [weekNumber, setWeekNumber] = useState<number | null>(null);
   const [signingOut, setSigningOut] = useState(false);
+  const [todayLessons, setTodayLessons] = useState<{ id: string; startTime: string; endTime: string; meetingUrl: string | null }[]>([]);
 
   const { allTopics: topics, loading, refetch: refetchTopics } = useStudentTopics(userId);
 
@@ -34,6 +39,21 @@ export function StudentDashboard({ userId }: { userId: string }) {
     refetchTopics();
 
     const supabase = createClient();
+
+    // Today's slots, for the "join your lesson" band. day_of_week is stored
+    // 0=Sunday like JS's getDay(), so no conversion is needed here.
+    supabase
+      .from("student_lessons")
+      .select("id, day_of_week, start_time, end_time, meeting_url")
+      .eq("student_id", userId)
+      .eq("day_of_week", new Date().getDay())
+      .order("start_time")
+      .then(({ data }) => {
+        setTodayLessons(
+          (data ?? []).map((l) => ({ id: l.id, startTime: l.start_time, endTime: l.end_time, meetingUrl: l.meeting_url })),
+        );
+      });
+
     supabase
       .from("students")
       .select("teacher_id, created_at")
@@ -88,13 +108,13 @@ export function StudentDashboard({ userId }: { userId: string }) {
           <Logo light disableLink large />
           <WelcomeBanner name={profile?.full_name ?? ""} variant="header" />
           <div className="flex items-center justify-end gap-2">
-            <HomeworkNotificationBell userId={userId} isStudent onNotificationClick={() => setListDialogOpen(true)} />
-            <Link href="/playground" className="pn-btn pn-btn--sm pn-btn--orange">
+            <HomeworkNotificationBell userId={userId} isStudent onNotificationClick={() => teacherId && setListDialogOpen(true)} />
+            <Link href="/playground" aria-label="Playground" className="pn-btn pn-btn--sm pn-btn--orange">
               <Sparkles className="h-4 w-4" />
               <span className="hidden sm:inline">Playground</span>
             </Link>
             <ContactDialog />
-            <button type="button" className="pn-btn pn-btn--sm pn-btn--red" disabled={signingOut} onClick={handleSignOut}>
+            <button type="button" aria-label="Çıkış yap" className="pn-btn pn-btn--sm pn-btn--red" disabled={signingOut} onClick={handleSignOut}>
               <LogOut className="h-4 w-4" />
               <span className="hidden sm:inline">{signingOut ? "Çıkış..." : "Çıkış"}</span>
             </button>
@@ -104,6 +124,42 @@ export function StudentDashboard({ userId }: { userId: string }) {
 
       <WelcomeBanner name={profile?.full_name ?? ""} variant="banner" />
       <div className="mx-auto w-full max-w-6xl px-4 pt-4 pb-6">
+        {/* Today's lesson, above everything else. "Az karmaşa, çok iş": the
+            one thing a student opens this page to do on a lesson day is join
+            the lesson, and until now there was no link anywhere in the
+            product to join it with. Rendered only on days that have a slot. */}
+        {todayLessons.length > 0 && (
+          <div className="mb-6 space-y-2">
+            {todayLessons.map((lesson) => (
+              <div
+                key={lesson.id}
+                className="pn-card flex flex-col items-start gap-3 p-4 sm:flex-row sm:items-center sm:justify-between"
+                style={{ ["--pn-tone" as string]: "var(--color-secondary)" }}
+              >
+                <div className="min-w-0">
+                  <p className="text-xs font-semibold uppercase tracking-widest text-secondary">Bugün dersin var</p>
+                  <p className="font-display text-lg font-semibold tabular-nums text-on-surface">
+                    {getDayName(new Date().getDay())} {formatTime(lesson.startTime)}–{formatTime(lesson.endTime)}
+                  </p>
+                </div>
+                {lesson.meetingUrl ? (
+                  <a
+                    href={lesson.meetingUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="pn-btn pn-btn--mint w-full sm:w-auto"
+                  >
+                    <Video className="h-4 w-4" />
+                    Derse katıl
+                  </a>
+                ) : (
+                  <p className="text-sm text-on-surface-variant">Ders linki henüz eklenmemiş.</p>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+
         <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-6">
           <Card>
             <CardContent className="flex h-full flex-col items-center justify-center gap-1 p-4 text-center">
@@ -117,11 +173,24 @@ export function StudentDashboard({ userId }: { userId: string }) {
           <Card className="col-span-2 md:col-span-1">
             <CardContent className="flex h-full items-center justify-center p-4">
               <div className="grid w-full grid-cols-2 gap-3">
-                <Button variant="outline" className="h-full flex flex-col items-center justify-center gap-2 min-h-[80px]" onClick={() => setUploadDialogOpen(true)}>
+                {/* Disabled until teacherId resolves: tapping these in the
+                    first moments after load used to fire an insert with an
+                    empty-string uuid. */}
+                <Button
+                  variant="outline"
+                  className="flex h-full min-h-20 flex-col items-center justify-center gap-2"
+                  disabled={!teacherId}
+                  onClick={() => setUploadDialogOpen(true)}
+                >
                   <Upload className="h-6 w-6 text-primary" />
                   <span className="text-sm font-medium">Yükle</span>
                 </Button>
-                <Button variant="outline" className="h-full flex flex-col items-center justify-center gap-2 min-h-[80px]" onClick={() => setListDialogOpen(true)}>
+                <Button
+                  variant="outline"
+                  className="flex h-full min-h-20 flex-col items-center justify-center gap-2"
+                  disabled={!teacherId}
+                  onClick={() => setListDialogOpen(true)}
+                >
                   <ClipboardList className="h-6 w-6 text-primary" />
                   <span className="text-sm font-medium">Ödevler</span>
                 </Button>
@@ -168,19 +237,26 @@ export function StudentDashboard({ userId }: { userId: string }) {
                               ) : (
                                 <div className="space-y-2">
                                   {visibleResources.map((resource) => (
-                                    <div key={resource.id} className="flex items-center gap-3 p-2 bg-accent/30 rounded-md">
-                                      {resource.is_completed ? <CheckCircle className="h-4 w-4 text-green-600" /> : <Clock className="h-4 w-4 text-muted-foreground" />}
+                                    // One anchor for the whole row instead of a
+                                    // <button> firing window.open plus a second
+                                    // button doing the same thing: middle-click,
+                                    // "open in new tab" and screen readers all
+                                    // work on an anchor and on none of that.
+                                    <a
+                                      key={resource.id}
+                                      href={resource.resource_url}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className="group/res flex min-h-11 items-center gap-3 rounded-md bg-accent/30 p-2 no-underline transition-colors hover:bg-accent/60"
+                                    >
+                                      {resource.is_completed ? <CheckCircle className="h-4 w-4 shrink-0 text-success" /> : <Clock className="h-4 w-4 shrink-0 text-muted-foreground" />}
                                       {getResourceIcon(resource.resource_type)}
-                                      <div className="flex-1">
-                                        <button className="font-medium text-sm text-left hover:underline cursor-pointer" onClick={() => window.open(resource.resource_url, "_blank", "noopener,noreferrer")}>
-                                          {resource.title}
-                                        </button>
+                                      <div className="min-w-0 flex-1">
+                                        <p className="text-sm font-medium group-hover/res:underline">{resource.title}</p>
                                         {resource.description && <p className="text-xs text-muted-foreground">{resource.description}</p>}
                                       </div>
-                                      <Button size="sm" variant="ghost" onClick={() => window.open(resource.resource_url, "_blank", "noopener,noreferrer")}>
-                                        <ExternalLink className="h-3 w-3" />
-                                      </Button>
-                                    </div>
+                                      <ExternalLink className="h-3 w-3 shrink-0 text-muted-foreground" />
+                                    </a>
                                   ))}
                                 </div>
                               )}
@@ -204,9 +280,9 @@ export function StudentDashboard({ userId }: { userId: string }) {
           )}
         </div>
 
-        <UploadHomeworkDialog open={uploadDialogOpen} onOpenChange={setUploadDialogOpen} studentId={userId} teacherId={teacherId} uploadedByUserId={userId} />
+        <UploadHomeworkDialog open={uploadDialogOpen} onOpenChange={setUploadDialogOpen} studentId={userId} teacherId={teacherId ?? ""} uploadedByUserId={userId} />
 
-        <HomeworkListDialog open={listDialogOpen} onOpenChange={setListDialogOpen} studentId={userId} teacherId={teacherId} currentUserId={userId} />
+        <HomeworkListDialog open={listDialogOpen} onOpenChange={setListDialogOpen} studentId={userId} teacherId={teacherId ?? ""} currentUserId={userId} />
       </div>
     </div>
   );

@@ -37,7 +37,12 @@ export function LandingNavbar() {
   // current URL with nothing to scroll to, so the logo would look dead.
   const logoHref = pathname === "/" ? "#top" : "/";
   const navRef = useRef<HTMLElement>(null);
-  const [theme, setTheme] = useState<"dark" | "light">("dark");
+  // Light is the correct first paint everywhere now: the hero is a cream
+  // paper field, and every other route in the group (blog, legal, eserler,
+  // 404) is paper too. It also covers the case the observer below never
+  // handles — /blog has no [data-navtheme] section at all, so the effect
+  // bails out and whatever is set here is what the page keeps.
+  const [theme, setTheme] = useState<"dark" | "light">("light");
   const [condensed, setCondensed] = useState(false);
   const [open, setOpen] = useState(false);
 
@@ -125,11 +130,18 @@ export function LandingNavbar() {
         data-condensed={condensed}
         className="nb-header"
       >
+        {/* On the homepage the hero prints the wordmark at full size a few
+            dozen pixels below this bar, so the header's copy is held hidden
+            until the page scrolls off the hero. `visibility` rather than
+            `display`, because the bar is a flex row and pulling the logo out
+            of it would slide the nav left every time the page returns to the
+            top. */}
         <Link
           href={logoHref}
           aria-label="Nebula Genç Zeka ana sayfa"
           className="nb-nav-logo"
           data-condensed={condensed}
+          data-hidden={pathname === "/" && !condensed}
         >
           <Image
             src={t.logo}

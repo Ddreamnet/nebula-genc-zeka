@@ -32,7 +32,7 @@ let inflight: Promise<GlobalTopicRow[]> | null = null;
 
 async function loadGlobalTopics(): Promise<GlobalTopicRow[]> {
   const supabase = createClient();
-  const { data, error } = await supabase.from("global_topics").select("*, global_topic_resources(*)").order("order_index");
+  const { data, error } = await supabase.from("global_topics").select("id, title, description, order_index, global_topic_resources(id, title, description, resource_type, resource_url, order_index)").order("order_index");
   if (error) throw error;
   const rows = (data ?? []) as unknown as GlobalTopicRow[];
   cached = { data: rows, ts: Date.now() };
