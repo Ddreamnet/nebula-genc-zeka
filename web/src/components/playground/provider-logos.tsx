@@ -6,8 +6,9 @@
  * package removed — never added as a project dependency).
  *
  * A few brands have no mark in simple-icons yet (xAI, Z.ai/GLM, Recraft,
- * Meshy, Blockade Labs, Krea, Microsoft, Amazon — all checked directly, no
- * `siMicrosoft`/`siAmazon` entry exists in the package) — for those, reproducing a logo
+ * Meshy, Blockade Labs, Krea, Microsoft, Amazon, Cohere, Tencent, Baidu,
+ * Sourceful — all checked directly, no `siMicrosoft`/`siAmazon` entry exists
+ * in the package) — for those, reproducing a logo
  * shape from memory isn't safe (see the OpenAI note below), so they get a
  * plain colored monogram instead of a guessed shape. Swap in a real asset
  * for any of these if one with proper usage rights becomes available.
@@ -145,6 +146,10 @@ const RunwayMonogram = monogram("Rw", "#0D9488");
 const KreaMonogram = monogram("Kr", "#FF3366");
 const MicrosoftMonogram = monogram("Ms", "#00A4EF");
 const AmazonMonogram = monogram("az", "#FF9900");
+const CohereMonogram = monogram("Co", "#39594D");
+const TencentMonogram = monogram("Tc", "#0052D9");
+const BaiduMonogram = monogram("Bd", "#2932E1");
+const SourcefulMonogram = monogram("Rv", "#0EA5E9");
 
 const MARKS: Record<ProviderId, { Mark: Mark; name: string }> = {
   anthropic: { Mark: AnthropicMark, name: "Anthropic" },
@@ -180,6 +185,10 @@ const MARKS: Record<ProviderId, { Mark: Mark; name: string }> = {
   microsoft: { Mark: MicrosoftMonogram, name: "Microsoft" },
   amazon: { Mark: AmazonMonogram, name: "Amazon" },
   mistral: { Mark: MistralMark, name: "Mistral AI" },
+  cohere: { Mark: CohereMonogram, name: "Cohere" },
+  tencent: { Mark: TencentMonogram, name: "Tencent" },
+  baidu: { Mark: BaiduMonogram, name: "Baidu" },
+  sourceful: { Mark: SourcefulMonogram, name: "Sourceful (Riverflow)" },
 };
 
 export function ProviderBadge({

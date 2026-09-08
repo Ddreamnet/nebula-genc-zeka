@@ -58,6 +58,7 @@ export type Database = {
           openrouter_job_id: string | null
           ore_charged: number
           output_path: string | null
+          params: Json | null
           prompt: string
           provider_model: string
           real_cost_usd: number | null
@@ -72,6 +73,7 @@ export type Database = {
           openrouter_job_id?: string | null
           ore_charged: number
           output_path?: string | null
+          params?: Json | null
           prompt: string
           provider_model: string
           real_cost_usd?: number | null
@@ -86,6 +88,7 @@ export type Database = {
           openrouter_job_id?: string | null
           ore_charged?: number
           output_path?: string | null
+          params?: Json | null
           prompt?: string
           provider_model?: string
           real_cost_usd?: number | null
@@ -1444,6 +1447,7 @@ export type Database = {
         Args: {
           p_modality: string
           p_ore_cost: number
+          p_params?: Json
           p_prompt: string
           p_provider_model: string
           p_tool_id: string

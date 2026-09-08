@@ -28,13 +28,29 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
 
   const { data: rows, error } = await supabase
     .from("playground_chat_messages")
-    .select("role, content, kind, output_path, tool_id, seq")
+    .select("role, content, kind, output_path, tool_id, seq, generation_id")
     .eq("chat_id", id)
     .order("seq", { ascending: true });
 
   if (error) {
     console.error("[playground] transcript failed", error.message);
     return NextResponse.json({ error: "load_failed" }, { status: 500 });
+  }
+
+  // The studio settings each reply was made with. Read from the generation
+  // rows rather than duplicated into the transcript: the link already exists
+  // (`generation_id`), and this is what lets a reopened chat show "2K · tohum
+  // 4213" under a picture from last week. RLS keeps it to the caller's own.
+  const generationIds = (rows ?? []).map((r) => r.generation_id).filter((g): g is string => !!g);
+  const paramsById = new Map<string, Record<string, unknown>>();
+  if (generationIds.length) {
+    const { data: gens } = await supabase.from("ai_generations").select("id, params").in("id", generationIds);
+    for (const g of gens ?? []) {
+      // jsonb can hold an array or a scalar too; only an object is a settings map.
+      if (g.params && typeof g.params === "object" && !Array.isArray(g.params) && Object.keys(g.params).length > 0) {
+        paramsById.set(g.id, g.params as Record<string, unknown>);
+      }
+    }
   }
 
   const paths = (rows ?? []).map((r) => r.output_path).filter((p): p is string => !!p);
@@ -56,6 +72,7 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
       imageUrl: r.kind === "image" ? url : undefined,
       videoUrl: r.kind === "video" ? url : undefined,
       audioUrl: r.kind === "audio" ? url : undefined,
+      params: r.generation_id ? paramsById.get(r.generation_id) : undefined,
     };
   });
 

@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
-import { findTool, generationOreCost } from "@/lib/playground/tools";
+import { findTool } from "@/lib/playground/tools";
 import { readAdminOreBalance } from "@/lib/playground/treasury";
 import {
   streamText,
@@ -10,13 +10,12 @@ import {
   type ChatMessage,
   type ContentPart,
 } from "@/lib/ai/openrouter";
-import { isAspectRatio, DEFAULT_ASPECT_RATIO } from "@/lib/playground/aspect";
-
-const SYSTEM_PROMPT =
-  "Sen Nebula Genç Zeka'nın çocuklara yönelik yaratıcı yapay zeka asistanısın. 10-18 yaş arası öğrencilerle Türkçe, sıcak, meraklandırıcı ve güvenli bir dille konuş. Kısa ve anlaşılır cevaplar ver.";
-
-const WEB_SYSTEM_PROMPT =
-  "Sen bir web geliştirme ve oyun kodlama AI'sısın. Kullanıcının tarif ettiği web sitesini, tarayıcı oyununu ya da arayüzü TEK BİR HTML dosyası olarak üret: tüm CSS'i <style> içine, tüm JavaScript'i <script> içine göm — harici dosya, harici link veya CDN kullanma. Kod kaliteli, çalışan ve görsel olarak hoş olsun (kids 10-18 yaş için). SADECE ```html ile başlayıp ``` ile biten TEK bir kod bloğu döndür; kod bloğunun dışına hiçbir açıklama, giriş veya kapanış cümlesi yazma. ÖNEMLİ: Sayfa güvenli bir sandbox içinde önizleniyor — localStorage, sessionStorage ve çerezler ERİŞİLEMEZ ve kullanılırsa sayfa hata verip çalışmaz. Skor, ilerleme, kayıt gibi her şeyi sadece JavaScript değişkenlerinde tut.";
+import { resolveAspectRatio } from "@/lib/playground/aspect";
+import { exceedsCap, generationCost, imageBudget, nonDefaultParams, sanitizeParams, type Role } from "@/lib/playground/params";
+// The request bodies are built by the same module the composer's `</>` panel
+// builds its preview with, so what a student reads there is what this route
+// actually sends — not a paraphrase that drifts.
+import { buildAudioBody, buildImageBody, buildTextBody, buildVideoBody, systemPromptFor } from "@/lib/playground/request";
 
 // Session memory for text chat only — caps how much prior conversation gets
 // resent as input tokens on every turn. Enforced server-side too (not just
@@ -182,11 +181,6 @@ export async function POST(request: Request) {
   // The composer's memory switch. Absent means on — an older client (or a
   // reconnect from a cached bundle) keeps the behaviour it was built against.
   const memory: boolean = body?.memory !== false;
-  // Anything that isn't one of the offered ratios falls back to the default
-  // rather than 400-ing: the value is cosmetic, and a student shouldn't lose a
-  // typed prompt because a stale tab sent a ratio we no longer list.
-  const aspectRatio = isAspectRatio(body?.aspectRatio) ? body.aspectRatio : DEFAULT_ASPECT_RATIO;
-
   if (!toolId || typeof prompt !== "string" || !prompt.trim()) {
     return NextResponse.json({ error: "invalid_request" }, { status: 400 });
   }
@@ -197,18 +191,11 @@ export async function POST(request: Request) {
   }
   const { tool, category } = found;
   const isWebTool = category?.id === "web";
-
-  // Attachments are capped by the model's own ceiling, not by whatever the
-  // client felt like sending — the composer hides its attach button for
-  // text-only models, but that's cosmetic and can't be the enforcement point.
-  const imageBudget = tool.maxImageInputs ?? 0;
-  const attachments = sanitizeImages(body?.attachments).slice(0, imageBudget);
-
-  // Memory off means the transcript is not resent at all: the model answers
-  // this one message and nothing else. Enforced here rather than trusted to
-  // the client, which is also what stops a crafted payload from re-adding
-  // history the student switched off.
-  const history = tool.modality === "text" && memory ? sanitizeHistory(body?.history) : [];
+  // Only a ratio this model's catalog entry lists is ever sent; anything else
+  // (a stale tab, a hand-crafted payload) falls back to the tool's default
+  // rather than 400-ing — the value is cosmetic, and a student shouldn't lose
+  // a typed prompt over it. Null for text and audio, which have no shape.
+  const aspectRatio = resolveAspectRatio(tool, body?.aspectRatio);
 
   const supabase = await createClient();
   const {
@@ -222,6 +209,55 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "not_authenticated" }, { status: 401 });
   }
 
+  /**
+   * Staff don't spend a wallet (see rpc_start_generation), so the balance sent
+   * back to them isn't one — and the two kinds of staff get different answers.
+   *
+   * An admin spends the OpenRouter balance itself, so they get the treasury in
+   * cevher: the same number /api/playground/balance and the admin panel's kasa
+   * card report. Read AFTER the generation, so the figure they see already
+   * reflects what they just spent (as far as OpenRouter's own usage endpoint
+   * has caught up).
+   *
+   * A teacher has no allowance at all, so there is no number to report — the
+   * response carries `unlimited` instead and the composer stops gating.
+   *
+   * The role is read here rather than further down because it now decides more
+   * than who pays: it decides which studio dials this caller is allowed to
+   * have moved at all.
+   */
+  const [{ data: isAdmin }, { data: isTeacher }] = await Promise.all([
+    supabase.rpc("has_role", { _user_id: user.id, _role: "admin" }),
+    supabase.rpc("has_role", { _user_id: user.id, _role: "teacher" }),
+  ]);
+  const unlimited = !!isTeacher && !isAdmin;
+  const role: Role = isAdmin ? "admin" : isTeacher ? "teacher" : "student";
+  const remainingOre = async (walletRemaining: number) =>
+    isAdmin ? ((await readAdminOreBalance(supabase)) ?? walletRemaining) : walletRemaining;
+
+  /**
+   * The studio dials, filtered against what THIS model has and what THIS role
+   * may set. The panel hides what a student can't touch, but that is cosmetic
+   * — this is the enforcement point, exactly as `maxImageInputs` already is.
+   * A crafted payload asking a student's request for 4K gets 1K back, not a
+   * 400: the value is a slider position, and losing a typed prompt over one
+   * would be the worse failure.
+   */
+  const params = sanitizeParams(tool, role, body?.params);
+
+  // Attachments are capped by the model's own ceiling, not by whatever the
+  // client felt like sending — the composer hides its attach button for
+  // text-only models, but that's cosmetic and can't be the enforcement point.
+  // A video model whose end-frame dial is on takes two: first frame and last.
+  const budget = imageBudget(tool, params);
+  const attachments = sanitizeImages(body?.attachments).slice(0, budget);
+
+  // Memory off means the transcript is not resent at all: the model answers
+  // this one message and nothing else. Enforced here rather than trusted to
+  // the client, which is also what stops a crafted payload from re-adding
+  // history the student switched off.
+  const history = tool.modality === "text" && memory ? sanitizeHistory(body?.history) : [];
+
   // Images ride along from the most recent user turn, and only that one.
   // Resending every past image would multiply cost without bound — 20 turns
   // of history at ~1600 prompt tokens per image is 32k tokens on every single
@@ -229,7 +265,7 @@ export async function POST(request: Request) {
   // rengi ne?" right after "bu görselde ne var?") work, for at most a few
   // extra images per request.
   const carryIndex = lastUserTurnIndex(history);
-  const carryRoom = Math.max(0, imageBudget - attachments.length);
+  const carryRoom = Math.max(0, budget - attachments.length);
   const carriedInline = carryIndex >= 0 ? history[carryIndex].images.slice(0, carryRoom) : [];
 
   // A reopened chat has no data URLs left to carry — the browser only ever
@@ -250,36 +286,30 @@ export async function POST(request: Request) {
   // deliberate instruction than one we remembered for them, and the budget is
   // small enough that filling it with both would push theirs out.
   const remembered =
-    memory && chatId && (tool.modality === "image" || tool.modality === "video") && attachments.length === 0 && imageBudget > 0
+    memory && chatId && (tool.modality === "image" || tool.modality === "video") && attachments.length === 0 && budget > 0
       ? await loadLastOutputImage(supabase, chatId)
       : [];
 
-  // Charge for every image that actually reaches the model, freshly attached
-  // or carried forward, so the ore price never understates the real bill.
-  // (IMAGE_INPUT_ORE.video is 0 — providers fold the frame image into the
-  // clip's price — so a remembered first frame costs a student nothing.)
-  const oreCost = generationOreCost(tool, attachments.length + carried.length + remembered.length);
+  // What this generation costs, priced from the dials the caller actually
+  // gets (duration, resolution, sound, web search) plus every image that
+  // reaches the model, freshly attached or carried forward — so the ore price
+  // never understates the real bill. The composer calls the same function
+  // with the same params, which is why the number it showed is the number
+  // taken. (Video input images price at 0: providers fold the frame image
+  // into the clip's rate, so a remembered first frame costs nothing.)
+  const oreCost = generationCost(tool, {
+    imageCount: attachments.length + carried.length + remembered.length,
+    params,
+  });
 
-  /**
-   * Staff don't spend a wallet (see rpc_start_generation), so the balance sent
-   * back to them isn't one — and the two kinds of staff get different answers.
-   *
-   * An admin spends the OpenRouter balance itself, so they get the treasury in
-   * cevher: the same number /api/playground/balance and the admin panel's kasa
-   * card report. Read AFTER the generation, so the figure they see already
-   * reflects what they just spent (as far as OpenRouter's own usage endpoint
-   * has caught up).
-   *
-   * A teacher has no allowance at all, so there is no number to report — the
-   * response carries `unlimited` instead and the composer stops gating.
-   */
-  const [{ data: isAdmin }, { data: isTeacher }] = await Promise.all([
-    supabase.rpc("has_role", { _user_id: user.id, _role: "admin" }),
-    supabase.rpc("has_role", { _user_id: user.id, _role: "teacher" }),
-  ]);
-  const unlimited = !!isTeacher && !isAdmin;
-  const remainingOre = async (walletRemaining: number) =>
-    isAdmin ? ((await readAdminOreBalance(supabase)) ?? walletRemaining) : walletRemaining;
+  // The per-generation ceiling, enforced before anything is charged. The
+  // composer already refuses this combination, so reaching here means a stale
+  // tab or a crafted payload — either way nothing is debited and no model is
+  // called. It is a refusal rather than a capped price on purpose: charging 60
+  // for an 80-cevher clip would quietly hand the difference to the treasury.
+  if (exceedsCap(tool, { imageCount: attachments.length + carried.length + remembered.length, params })) {
+    return NextResponse.json({ gated: true, reason: "over_generation_cap", remaining: 0 });
+  }
 
   const { data: startRows, error: startError } = await supabase.rpc("rpc_start_generation", {
     p_tool_id: tool.id,
@@ -287,6 +317,10 @@ export async function POST(request: Request) {
     p_provider_model: tool.providerModel,
     p_ore_cost: oreCost,
     p_prompt: prompt.trim(),
+    // Only the dials that were moved — a plain generation stores {}, not a
+    // copy of the schema. This is what the settings chip under a finished
+    // result and "aynı tohumla tekrar üret" read back.
+    p_params: nonDefaultParams(tool, role, params),
   });
 
   if (startError) {
@@ -358,11 +392,14 @@ export async function POST(request: Request) {
       toChatMessage(m.role, m.content, i === carryIndex ? carried : []),
     );
     const messages: ChatMessage[] = [
-      { role: "system", content: isWebTool ? WEB_SYSTEM_PROMPT : SYSTEM_PROMPT },
+      // Nebula's own prompt, then the persona the student picked, then a
+      // teacher's extra instruction — appended in that order, never replaced.
+      { role: "system", content: systemPromptFor(tool, category?.id, params) },
       ...priorTurns,
       toChatMessage("user", prompt.trim(), attachments),
     ];
     const kind = isWebTool ? "code" : "text";
+    const requestBody = buildTextBody({ tool, params, messages });
 
     // Cancels the upstream call when the student presses stop or the browser
     // hangs up. `request.signal` covers the disconnect; `stop` covers the
@@ -396,10 +433,7 @@ export async function POST(request: Request) {
         let costUsd: number | null = null;
 
         try {
-          for await (const event of streamText(messages, tool.providerModel, {
-            reasoning: tool.reasoning,
-            signal: upstream.signal,
-          })) {
+          for await (const event of streamText(requestBody, { signal: upstream.signal })) {
             if (event.type === "usage") {
               costUsd = event.costUsd;
             } else if (event.type === "reasoning") {
@@ -477,10 +511,13 @@ export async function POST(request: Request) {
   try {
     if (tool.modality === "image") {
       const { b64, mediaType, costUsd } = await generateImage(
-        prompt.trim(),
-        tool.providerModel,
-        [...attachments, ...remembered],
-        aspectRatio,
+        buildImageBody({
+          tool,
+          params,
+          prompt: prompt.trim(),
+          aspectRatio,
+          references: [...attachments, ...remembered],
+        }),
       );
       // Extension follows what the model actually returned — Grok Imagine
       // hands back JPEG, so the old hardcoded `.png` produced files that
@@ -513,7 +550,9 @@ export async function POST(request: Request) {
     }
 
     if (tool.modality === "audio") {
-      const { audioBuffer, mimeType, costUsd } = await generateAudio([{ role: "user", content: prompt.trim() }], tool.providerModel);
+      const { audioBuffer, mimeType, costUsd } = await generateAudio(
+        buildAudioBody({ tool, params, messages: [{ role: "user", content: prompt.trim() }] }),
+      );
       const ext = mimeType === "audio/wav" ? "wav" : "mp3";
       const path = `${user.id}/${generationId}.${ext}`;
       const { error: uploadError } = await supabase.storage
@@ -553,11 +592,17 @@ export async function POST(request: Request) {
     // here yet. A rejected reference fails the job, which refunds — it cannot
     // silently produce an unrelated clip.
     const { jobId } = await startVideo(
-      prompt.trim(),
-      tool.providerModel,
-      tool.videoDuration ?? 4,
-      tool.videoResolution ?? "720p",
-      attachments[0] ?? remembered[0],
+      buildVideoBody({
+        tool,
+        params,
+        prompt: prompt.trim(),
+        aspectRatio,
+        firstFrame: attachments[0] ?? remembered[0] ?? null,
+        // The second attachment, and only when the end-frame dial is on and
+        // the model's catalog entry lists `last_frame` — the body builder
+        // checks that too, so a crafted payload cannot invent one.
+        lastFrame: params.lastFrame === true ? (attachments[1] ?? null) : null,
+      }),
     );
     await supabase.rpc("rpc_attach_video_job", { p_generation_id: generationId, p_job_id: jobId });
     // No settle() here: the row stays empty until the poller reports the file,

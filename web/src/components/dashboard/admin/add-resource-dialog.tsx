@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { toast } from "sonner";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/panel-ui/dialog";
+import { Sheet, SheetBody, SheetContent, SheetFooter, SheetHeader } from "@/components/panel-ui/sheet";
 import { Button } from "@/components/panel-ui/button";
 import { Input } from "@/components/panel-ui/input";
 import { Label } from "@/components/panel-ui/label";
@@ -117,16 +117,11 @@ export function AddResourceDialog({ open, onOpenChange, topicId, topicTitle, onA
   }
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="w-[calc(100%-1rem)] sm:max-w-lg max-h-[90dvh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle>Öğrenme Kaynağı Ekle</DialogTitle>
-          <DialogDescription>
-            {topicTitle ? `"${topicTitle}" konusuna yeni bir öğrenme kaynağı ekleyin.` : "Bu konuya yeni bir öğrenme kaynağı ekleyin."}{" "}
-            Bu bir PDF, video, bağlantı veya diğer herhangi bir materyal olabilir.
-          </DialogDescription>
-        </DialogHeader>
-        <form onSubmit={handleSubmit} className="space-y-4 w-full max-w-full overflow-hidden">
+    <Sheet open={open} onOpenChange={onOpenChange}>
+      <SheetContent onDismiss={() => onOpenChange(false)}>
+        <SheetHeader tone="blue" title="Kaynak Ekle" subtitle={topicTitle ? `"${topicTitle}" konusuna — PDF, video, bağlantı ya da dosya` : "PDF, video, bağlantı ya da dosya"} />
+        <form onSubmit={handleSubmit} className="flex min-h-0 min-w-0 flex-1 flex-col">
+          <SheetBody className="w-full max-w-full space-y-4 overflow-x-hidden">
           <div className="space-y-2">
             <Label htmlFor="resource-title">Kaynak Başlığı</Label>
             <Input id="resource-title" placeholder="örn., Sebzeler Kelime Listesi" value={title} onChange={(e) => setTitle(e.target.value)} required />
@@ -217,20 +212,22 @@ export function AddResourceDialog({ open, onOpenChange, topicId, topicTitle, onA
             />
           </div>
 
-          <div className="flex justify-end gap-2">
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={isLoading}>
+          </SheetBody>
+          <SheetFooter>
+            <button type="button" className="pn-btn pn-btn--paper" onClick={() => onOpenChange(false)} disabled={isLoading}>
               İptal
-            </Button>
-            <Button
+            </button>
+            <button
               type="submit"
+              className="pn-btn pn-btn--blue"
               disabled={isLoading || !title.trim() || !resourceType || (!selectedFile && !(resourceType === "link" && webUrl.trim()))}
             >
-              {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              {isLoading && <Loader2 className="size-4 animate-spin" />}
               {resourceType === "link" && !selectedFile ? "Bağlantı Ekle" : "Kaynak Yükle"}
-            </Button>
-          </div>
+            </button>
+          </SheetFooter>
         </form>
-      </DialogContent>
-    </Dialog>
+      </SheetContent>
+    </Sheet>
   );
 }

@@ -52,10 +52,11 @@ export function HomeworkNotificationBell({
           aria-label={unreadCount > 0 ? `Bildirimler — ${unreadCount} okunmamış` : "Bildirimler"}
           title="Bildirimler"
           className={cn(
-            "relative grid shrink-0 place-items-center rounded-[11px] border transition-transform duration-[.18s] hover:-translate-y-px",
-            variant === "bar"
-              ? "size-[34px] border-[color:rgba(255,214,222,.5)] bg-[color:var(--pn-pink)] text-[color:var(--pn-pink-ink-strong)]"
-              : "pn-btn pn-btn--icon pn-btn--pink",
+            "relative",
+            // Barda: barın diğer kontrolleriyle AYNI kutu. Eskiden pembe
+            // dolgulu bir kareydi ve yanındaki üç kontrolün hiçbirine
+            // benzemiyordu. Krem bir yüzeyde ise normal ikon butonu.
+            variant === "bar" ? "pn-bar-btn" : "pn-btn pn-btn--icon pn-btn--pink",
           )}
         >
           <Bell className="size-4" strokeWidth={1.9} aria-hidden />
@@ -68,7 +69,7 @@ export function HomeworkNotificationBell({
       </PopoverTrigger>
 
       <PopoverContent align="end" sideOffset={8} className="w-[min(22rem,calc(100vw-2rem))] gap-0 p-0">
-        <div className="pn-band pn-band--pink justify-between py-3">
+        <div className="pn-band pn-band--pink justify-between">
           <h3 className="pn-card-title">Bildirimler</h3>
           <span className="pn-chip pn-chip--pink">{unreadCount}</span>
         </div>

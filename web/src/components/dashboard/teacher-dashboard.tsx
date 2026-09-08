@@ -173,13 +173,11 @@ export function TeacherDashboard({ userId }: { userId: string }) {
       .filter((row) => !needle || row.name.toLocaleLowerCase("tr-TR").includes(needle));
   }, [rows, now, query, unreadByStudent]);
 
+  // Seçili satır kaybolursa (arşivlendi, gruptan çıktı) `find` zaten null
+  // döner ve panel boş yuvaya iner — anahtarı ayrıca temizleyen bir effect
+  // gereksizdi: görünür hiçbir şeyi değiştirmiyor, sadece fazladan bir
+  // render turu açıyordu.
   const selected = rows.find((row) => row.key === selectedKey) ?? null;
-
-  // Seçili satır kaybolursa (arşivlendi, gruptan çıktı) seçim düşer, yoksa
-  // detay kolonu var olmayan bir öğrenciyi göstermeye çalışır.
-  useEffect(() => {
-    if (selectedKey && !rows.some((row) => row.key === selectedKey)) setSelectedKey(null);
-  }, [rows, selectedKey]);
 
   const nav: PanelNavItem[] = [
     { key: "students", label: "Öğrenciler", icon: Users, tone: "blue", active: drawer === null, onClick: () => setDrawer(null) },
@@ -230,9 +228,9 @@ export function TeacherDashboard({ userId }: { userId: string }) {
       signingOut={signingOut}
       chip={
         balanceMinutes !== null ? (
-          <span className="pn-chip pn-chip--mint" title="İşlenen toplam ders süresi">
+          <span className="pn-bar-btn pn-bar-btn--num" title="İşlenen toplam ders süresi">
             {balanceMinutes}
-            <span className="font-sans text-[9.5px] tracking-wide text-[color:var(--pn-mint-ink-strong)]">DK</span>
+            <span className="text-[10px] font-normal tracking-wide text-[color:var(--pn-on-navy-dim)]">DK</span>
           </span>
         ) : null
       }
@@ -251,7 +249,7 @@ export function TeacherDashboard({ userId }: { userId: string }) {
         />
       }
     >
-      <div className="grid min-h-0 flex-1 grid-cols-1 gap-3 lg:grid-cols-[195px_1fr] lg:gap-4">
+      <div className="grid min-h-0 flex-1 grid-cols-1 items-start gap-3 md:grid-cols-[210px_1fr] lg:items-stretch lg:gap-4">
         <StudentRail
           rows={railRows}
           total={rows.length}
@@ -298,7 +296,7 @@ export function TeacherDashboard({ userId }: { userId: string }) {
               ) : (
                 // Dolu bir kart değil, bilinçli olarak BOŞ bir yuva: kesikli
                 // çerçeve "seçim bekliyor" der, "yüklenemedi" demez.
-                <div className="flex min-h-[220px] flex-1 flex-col items-center justify-center gap-1.5 rounded-[16px] border-[1.5px] border-dashed border-[color:rgba(36,55,166,.32)] px-6 text-center">
+                <div className="flex min-h-[112px] flex-1 flex-col items-center justify-center gap-1.5 rounded-[16px] border-[1.5px] border-dashed border-[color:rgba(36,55,166,.32)] px-6 py-5 text-center lg:min-h-[220px]">
                   <p className="font-display text-[15px] font-semibold text-[color:var(--pn-blue-ink)]">Bir öğrenci seç</p>
                   <p className="max-w-[240px] text-[12px] text-on-surface-variant">Dersleri ve konuları burada görünür.</p>
                 </div>
@@ -326,7 +324,12 @@ export function TeacherDashboard({ userId }: { userId: string }) {
                 title="Haftalık program"
                 subtitle="Dersleri buradan işaretleyebilirsin"
               >
-                <WeeklyScheduleGrid teacherId={userId} />
+                {/* Izgara kendi kutusunda yatay kayar. Sayfanın gövdesi
+                    asla yatay kaymaz — mobilde bu, dokunmanın hangi ekseni
+                    sürüklediğini belirsiz bırakan tek hatadır. */}
+                <div className="min-w-0 overflow-x-auto">
+                  <WeeklyScheduleGrid teacherId={userId} />
+                </div>
               </SideDrawer>
             )}
           </div>

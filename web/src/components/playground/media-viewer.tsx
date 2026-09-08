@@ -1,21 +1,16 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { Check, Copy, Download, X } from "lucide-react";
+import { useState } from "react";
+import { Check, Copy, Download } from "lucide-react";
 import { cn } from "@/lib/cn";
-import { Dialog, DialogClose, DialogContent, DialogTitle } from "@/components/panel-ui/dialog";
+import { Sheet, SheetBody, SheetContent, SheetHeader } from "@/components/panel-ui/sheet";
 
 /**
  * Full-screen look at one thing a student made.
  *
- * The transcript deliberately keeps media small (a 96-tall card) so a
- * conversation still reads as a conversation — but a generated picture, a clip
- * or a website is the *product*, and judging it in a thumbnail is impossible.
- * Tapping it opens it here at full size with one obvious way to save it.
- *
- * Same cut-paper shell as everything else on this route (`.pg-dialog` in
- * globals.css: white fill, navy outline, hard offset shadow), so it reads as
- * the page opening up rather than as a browser lightbox dropped on top.
+ * The stage already shows a picture large, but "large" and "the whole screen"
+ * are different questions, and a website or a clip deserves the latter.
+ * Opens in the same cream card language as every dialog on the panel side.
  */
 export type ViewerItem =
   | { kind: "image"; url: string; title: string; /** Cut-out PNG, when one exists. */ blobUrl?: string }
@@ -35,7 +30,7 @@ export type ViewerItem =
  * storage response): a new tab is worse than a download but much better than a
  * button that appears to do nothing.
  */
-async function saveFile(url: string, filename: string) {
+export async function saveFile(url: string, filename: string) {
   try {
     const res = await fetch(url);
     if (!res.ok) throw new Error(String(res.status));
@@ -54,7 +49,7 @@ async function saveFile(url: string, filename: string) {
 }
 
 /** Extension for the saved file, from what the URL actually points at. */
-function guessExtension(url: string, fallback: string): string {
+export function guessExtension(url: string, fallback: string): string {
   const path = url.split("?")[0];
   const dot = path.lastIndexOf(".");
   const ext = dot === -1 ? "" : path.slice(dot + 1).toLowerCase();
@@ -62,20 +57,17 @@ function guessExtension(url: string, fallback: string): string {
 }
 
 export function MediaViewer({ item, onClose }: { item: ViewerItem | null; onClose: () => void }) {
+  if (!item) return null;
+  // Keyed on the thing being shown, so "saving…" and "copied" reset by
+  // remount when a different output opens — no effect needed.
+  return <Viewer key={item.kind === "web" ? `web:${item.title}` : item.url} item={item} onClose={onClose} />;
+}
+
+function Viewer({ item, onClose }: { item: ViewerItem; onClose: () => void }) {
   const [saving, setSaving] = useState(false);
   const [copied, setCopied] = useState(false);
 
-  useEffect(() => {
-    if (!item) {
-      setSaving(false);
-      setCopied(false);
-    }
-  }, [item]);
-
-  if (!item) return null;
-
   async function download() {
-    if (!item) return;
     setSaving(true);
     try {
       if (item.kind === "web") {
@@ -102,18 +94,13 @@ export function MediaViewer({ item, onClose }: { item: ViewerItem | null; onClos
   }
 
   return (
-    <Dialog open onOpenChange={(next) => !next && onClose()}>
-      <DialogContent
-        showCloseButton={false}
-        // max-w-none because the shared DialogContent caps at sm; a picture is
-        // the one thing on this route that deserves the whole viewport.
-        className="pg-dialog flex max-h-[92vh] w-[min(1100px,94vw)] max-w-none flex-col gap-0 overflow-hidden p-0"
-      >
-        <div className="flex shrink-0 items-center gap-2 border-b-[3px] border-outline-variant px-3 py-2">
-          <DialogTitle className="min-w-0 flex-1 truncate font-display text-sm font-semibold text-on-surface">
-            {item.title}
-          </DialogTitle>
-
+    <Sheet open onOpenChange={(next) => !next && onClose()}>
+      <SheetContent size="full" onDismiss={onClose}>
+        <SheetHeader
+          tone="blue"
+          title={item.title}
+          subtitle={item.kind === "image" ? "Görsel" : item.kind === "video" ? "Video" : item.kind === "audio" ? "Ses" : "Web sayfası"}
+        >
           {item.kind === "web" && (
             <button
               type="button"
@@ -122,57 +109,35 @@ export function MediaViewer({ item, onClose }: { item: ViewerItem | null; onClos
                 setCopied(true);
                 setTimeout(() => setCopied(false), 1500);
               }}
-              className="inline-flex shrink-0 items-center gap-1.5 rounded-full border-2 border-outline-variant px-2.5 py-1 font-mono text-micro text-on-surface-variant transition hover:border-outline hover:text-on-surface"
+              className="pn-btn pn-btn--sm pn-btn--paper"
             >
               {copied ? <Check className="size-3.5 text-success" /> : <Copy className="size-3.5" />}
-              {copied ? "kopyalandı" : "kodu kopyala"}
+              <span className="hidden sm:inline">{copied ? "Kopyalandı" : "Kodu kopyala"}</span>
             </button>
           )}
 
-          <button
-            type="button"
-            onClick={download}
-            disabled={saving}
-            className="pg-btn inline-flex shrink-0 items-center gap-1.5 px-3 py-1.5 text-mini font-semibold disabled:opacity-60"
-          >
+          <button type="button" onClick={download} disabled={saving} className="pn-btn pn-btn--sm pn-btn--peach">
             <Download className="size-3.5" />
-            {saving ? "kaydediliyor…" : "İndir"}
+            <span className="hidden sm:inline">{saving ? "Kaydediliyor…" : "İndir"}</span>
           </button>
+        </SheetHeader>
 
-          <DialogClose asChild>
-            <button
-              type="button"
-              aria-label="Kapat"
-              className="inline-flex size-8 shrink-0 items-center justify-center rounded-full border-2 border-outline-variant text-on-surface-variant transition hover:border-outline hover:text-on-surface"
-            >
-              <X className="size-4" />
-            </button>
-          </DialogClose>
-        </div>
-
-        <div
+        <SheetBody
           className={cn(
-            "min-h-0 flex-1 overflow-auto",
-            // Media sits on the sunken paper step so a white-background picture
-            // still has an edge; the web preview paints its own page and gets
-            // no padding at all.
-            item.kind === "web" ? "bg-surface-container" : "flex items-center justify-center bg-surface-low p-3",
+            "flex flex-col p-0",
+            // Media sits on the sunken step so a white-background picture
+            // still has an edge; the web preview paints its own page.
+            item.kind === "web" ? "bg-surface-container" : "items-center justify-center bg-surface-low p-3",
           )}
         >
           {item.kind === "image" ? (
-            // A signed one-hour URL, or a blob: held only by this tab. next/image
-            // proxies through the optimizer, which has neither the session nor the
-            // blob, so it would 404 on both.
+            // A signed one-hour URL, or a blob held only by this tab. next/image
+            // proxies through the optimizer, which has neither the session nor
+            // the blob, so it would 404 on both.
             // eslint-disable-next-line @next/next/no-img-element
-            <img
-              src={item.blobUrl ?? item.url}
-              alt=""
-              // The checkerboard is only correct when there is transparency to
-              // show — a stored original is opaque and would look damaged on it.
-              className={cn("max-h-[76vh] w-auto rounded-lg object-contain", item.blobUrl && "pg-checker")}
-            />
+            <img src={item.blobUrl ?? item.url} alt="" className={cn("max-h-full w-auto max-w-full rounded-[12px] object-contain", item.blobUrl && "pg-checker")} />
           ) : item.kind === "video" ? (
-            <video src={item.url} controls autoPlay className="max-h-[76vh] w-auto rounded-lg" />
+            <video src={item.url} controls autoPlay playsInline className="max-h-full w-auto max-w-full rounded-[12px]" />
           ) : item.kind === "audio" ? (
             <audio src={item.url} controls autoPlay className="w-full max-w-lg" />
           ) : (
@@ -182,11 +147,11 @@ export function MediaViewer({ item, onClose }: { item: ViewerItem | null; onClos
               // session. Same rule as the inline preview it opened from.
               sandbox="allow-scripts"
               title={item.title}
-              className="h-[80vh] w-full bg-white"
+              className="min-h-0 w-full flex-1 bg-white"
             />
           )}
-        </div>
-      </DialogContent>
-    </Dialog>
+        </SheetBody>
+      </SheetContent>
+    </Sheet>
   );
 }

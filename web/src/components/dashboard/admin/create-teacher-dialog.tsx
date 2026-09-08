@@ -1,8 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/panel-ui/dialog";
-import { Button } from "@/components/panel-ui/button";
+import { Sheet, SheetBody, SheetContent, SheetFooter, SheetHeader } from "@/components/panel-ui/sheet";
 import { Input } from "@/components/panel-ui/input";
 import { Label } from "@/components/panel-ui/label";
 import { createClient } from "@/lib/supabase/client";
@@ -67,13 +66,11 @@ export function CreateTeacherDialog({ open, onOpenChange, onSuccess }: CreateTea
   }
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="w-[calc(100%-1rem)] sm:max-w-lg">
-        <DialogHeader>
-          <DialogTitle>Yeni Öğretmen Oluştur</DialogTitle>
-        </DialogHeader>
-        <form onSubmit={handleSubmit}>
-          <div className="space-y-4 py-4">
+    <Sheet open={open} onOpenChange={onOpenChange}>
+      <SheetContent onDismiss={() => onOpenChange(false)}>
+        <SheetHeader tone="violet" title="Yeni Öğretmen" subtitle="Hesap bilgileri" />
+        <form onSubmit={handleSubmit} className="flex min-h-0 flex-1 flex-col">
+          <SheetBody className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="fullName">Öğretmen Adı</Label>
               <Input
@@ -106,17 +103,17 @@ export function CreateTeacherDialog({ open, onOpenChange, onSuccess }: CreateTea
                 disabled={loading}
               />
             </div>
-          </div>
-          <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={loading}>
+          </SheetBody>
+          <SheetFooter>
+            <button type="button" className="pn-btn pn-btn--paper" onClick={() => onOpenChange(false)} disabled={loading}>
               İptal
-            </Button>
-            <Button type="submit" disabled={loading}>
+            </button>
+            <button type="submit" className="pn-btn pn-btn--violet" disabled={loading}>
               {loading ? "Oluşturuluyor..." : "Oluştur"}
-            </Button>
-          </DialogFooter>
+            </button>
+          </SheetFooter>
         </form>
-      </DialogContent>
-    </Dialog>
+      </SheetContent>
+    </Sheet>
   );
 }

@@ -1,47 +1,73 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import Link from "next/link";
-import { LogOut, BookOpen, CheckCircle, Clock, ExternalLink, ChevronDown, ChevronRight, Upload, ClipboardList, Sparkles, Video } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { BookOpen, FileText, Gamepad2, Phone, Upload, Video } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { useAuth } from "@/contexts/auth-context";
-import { Button } from "@/components/panel-ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/panel-ui/card";
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/panel-ui/collapsible";
-import { Logo } from "@/components/site/logo";
-import { WelcomeBanner } from "./welcome-banner";
-import { getResourceIcon } from "@/lib/admin/resource-icon";
+import { PanelShell, type PanelNavItem } from "@/components/panel-shell/panel-shell";
+import { SideDrawer } from "@/components/panel-shell/side-drawer";
 import { useStudentTopics } from "@/lib/lesson/use-student-topics";
+import { useHomeworkNotifications } from "@/lib/homework/use-notifications";
+import { useHomeworkBatches } from "@/lib/homework/use-homework-batches";
+import { getDayName, formatTime } from "@/lib/lesson/format";
+import { activeSlot, longDateLabel } from "@/lib/lesson/next-lesson";
 import { HomeworkNotificationBell } from "./homework-notification-bell";
 import { ContactDialog } from "./contact-dialog";
-import { StudentLessonTracker } from "./student-lesson-tracker";
 import { UploadHomeworkDialog } from "./upload-homework-dialog";
-import { HomeworkListDialog } from "./homework-list-dialog";
-import type { Topic } from "@/lib/admin/types";
-import { getDayName, formatTime } from "@/lib/lesson/format";
+import { HomeworkBatchList, FilePreviewOverlay } from "./homework/homework-batches";
+import { ProgressRail } from "./student/progress-rail";
+import { StudentTopicsCard } from "./student/topics-card";
+
+interface TodayLesson {
+  id: string;
+  dayOfWeek: number;
+  startTime: string;
+  endTime: string;
+  meetingUrl: string | null;
+}
+
+function initialsOf(name: string): string {
+  return (
+    name
+      .split(/\s+/)
+      .filter(Boolean)
+      .slice(0, 2)
+      .map((part) => part[0]?.toLocaleUpperCase("tr-TR") ?? "")
+      .join("") || "NG"
+  );
+}
 
 export function StudentDashboard({ userId }: { userId: string }) {
   const { profile, signOut } = useAuth();
-  const [expandedTopics, setExpandedTopics] = useState<Set<string>>(new Set());
-  const [uploadDialogOpen, setUploadDialogOpen] = useState(false);
-  const [listDialogOpen, setListDialogOpen] = useState(false);
-  // `null` until the row lands, NOT "" — an empty string is a value the
-  // upload dialog would happily insert as a uuid and get a 22P02 back. The
-  // two homework buttons stay disabled while it is null.
+
+  // `null` sürüm satırı gelene kadar, "" DEĞİL — boş bir dize yükleme
+  // diyaloğunun uuid olarak seve seve insert edip 22P02 aldığı bir değerdir.
+  // Ödev düğmeleri null olduğu sürece kapalı kalır.
   const [teacherId, setTeacherId] = useState<string | null>(null);
   const [weekNumber, setWeekNumber] = useState<number | null>(null);
+  const [todayLessons, setTodayLessons] = useState<TodayLesson[]>([]);
   const [signingOut, setSigningOut] = useState(false);
-  const [todayLessons, setTodayLessons] = useState<{ id: string; startTime: string; endTime: string; meetingUrl: string | null }[]>([]);
+  const [drawer, setDrawer] = useState<"homework" | null>(null);
+  const [uploadOpen, setUploadOpen] = useState(false);
+  const [contactOpen, setContactOpen] = useState(false);
+
+  const [now, setNow] = useState(() => new Date());
+  useEffect(() => {
+    const timer = setInterval(() => setNow(new Date()), 30_000);
+    return () => clearInterval(timer);
+  }, []);
 
   const { allTopics: topics, loading, refetch: refetchTopics } = useStudentTopics(userId);
+  const { notifications, unreadCount, markAllAsRead } = useHomeworkNotifications(userId, true);
+  const homework = useHomeworkBatches(userId, teacherId ?? "", drawer === "homework" && !!teacherId);
 
   useEffect(() => {
     refetchTopics();
 
     const supabase = createClient();
 
-    // Today's slots, for the "join your lesson" band. day_of_week is stored
-    // 0=Sunday like JS's getDay(), so no conversion is needed here.
+    // Bugünün slotları. `day_of_week` JS'in getDay()'i gibi 0=Pazar olarak
+    // saklanır, dönüşüm gerekmez.
     supabase
       .from("student_lessons")
       .select("id, day_of_week, start_time, end_time, meeting_url")
@@ -50,7 +76,13 @@ export function StudentDashboard({ userId }: { userId: string }) {
       .order("start_time")
       .then(({ data }) => {
         setTodayLessons(
-          (data ?? []).map((l) => ({ id: l.id, startTime: l.start_time, endTime: l.end_time, meetingUrl: l.meeting_url })),
+          (data ?? []).map((l) => ({
+            id: l.id,
+            dayOfWeek: l.day_of_week,
+            startTime: l.start_time,
+            endTime: l.end_time,
+            meetingUrl: l.meeting_url,
+          })),
         );
       });
 
@@ -62,36 +94,40 @@ export function StudentDashboard({ userId }: { userId: string }) {
       .then(({ data }) => {
         if (!data) return;
         setTeacherId(data.teacher_id);
-        // Weeks since the student's `students` row was created — a fixed
-        // anchor untouched by "Tüm Dersleri Sıfırla" (rpc_reset_package only
-        // touches student_lesson_tracking/lesson_instances), so this keeps
-        // counting up across package resets instead of jumping back with
-        // the new cycle.
-        setWeekNumber(Math.floor((Date.now() - new Date(data.created_at).getTime()) / (7 * 24 * 60 * 60 * 1000)) + 1);
+        // `students` satırının oluşturulmasından bu yana geçen hafta —
+        // "Tüm Dersleri Sıfırla" bu çapaya dokunmaz (rpc_reset_package
+        // yalnızca student_lesson_tracking/lesson_instances'ı değiştirir),
+        // yani sayaç paket sıfırlamalarında geriye zıplamak yerine artmaya
+        // devam eder.
+        const weeks = Math.floor((Date.now() - new Date(data.created_at).getTime()) / (7 * 24 * 60 * 60 * 1000)) + 1;
+        setWeekNumber(Number.isFinite(weeks) ? weeks : null);
       });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userId]);
 
-  function toggleTopic(topicId: string) {
-    const next = new Set(expandedTopics);
-    if (next.has(topicId)) next.delete(topicId);
-    else next.add(topicId);
-    setExpandedTopics(next);
-  }
+  const visibleTopics = useMemo(
+    () =>
+      [...topics.filter((t) => t.is_completed), ...topics.filter((t) => !t.is_completed && t.resources.some((r) => r.is_completed))].sort(
+        (a, b) => a.order_index - b.order_index,
+      ),
+    [topics],
+  );
 
-  function getVisibleResources(topic: Topic) {
-    if (topic.is_completed) return topic.resources;
-    return topic.resources.filter((r) => r.is_completed);
-  }
+  const live = activeSlot(todayLessons, now);
 
-  async function handleSignOut() {
-    setSigningOut(true);
-    await signOut();
-  }
-
-  const completedTopics = topics.filter((t) => t.is_completed);
-  const pendingTopics = topics.filter((t) => !t.is_completed && t.resources.some((r) => r.is_completed));
-  const allActiveTopics = [...completedTopics, ...pendingTopics].sort((a, b) => a.order_index - b.order_index);
+  const nav: PanelNavItem[] = [
+    { key: "topics", label: "Konularım", icon: BookOpen, tone: "blue", active: drawer === null, onClick: () => setDrawer(null) },
+    {
+      key: "homework",
+      label: "Ödevlerim",
+      icon: FileText,
+      tone: "peach",
+      active: drawer === "homework",
+      onClick: () => setDrawer(drawer === "homework" ? null : "homework"),
+    },
+    { key: "contact", label: "İletişim", icon: Phone, tone: "pink", onClick: () => setContactOpen(true) },
+    { key: "playground", label: "Playground", icon: Gamepad2, tone: "violet", href: "/playground" },
+  ];
 
   if (loading) {
     return (
@@ -101,189 +137,134 @@ export function StudentDashboard({ userId }: { userId: string }) {
     );
   }
 
-  return (
-    <div className="min-h-dvh">
-      <header className="sticky top-0 z-20">
-        <div className="mx-auto flex h-16 w-full max-w-6xl items-center justify-between gap-3 pl-4 pr-2 sm:grid sm:h-20 sm:grid-cols-[1fr_auto_1fr] sm:pr-4">
-          <Logo light disableLink large />
-          <WelcomeBanner name={profile?.full_name ?? ""} variant="header" />
-          <div className="flex items-center justify-end gap-2">
-            <HomeworkNotificationBell userId={userId} isStudent onNotificationClick={() => teacherId && setListDialogOpen(true)} />
-            <Link href="/playground" aria-label="Playground" className="pn-btn pn-btn--sm pn-btn--orange">
-              <Sparkles className="h-4 w-4" />
-              <span className="hidden sm:inline">Playground</span>
-            </Link>
-            <ContactDialog />
-            <button type="button" aria-label="Çıkış yap" className="pn-btn pn-btn--sm pn-btn--red" disabled={signingOut} onClick={handleSignOut}>
-              <LogOut className="h-4 w-4" />
-              <span className="hidden sm:inline">{signingOut ? "Çıkış..." : "Çıkış"}</span>
-            </button>
-          </div>
-        </div>
-      </header>
+  const studentName = profile?.full_name ?? "";
 
-      <WelcomeBanner name={profile?.full_name ?? ""} variant="banner" />
-      <div className="mx-auto w-full max-w-6xl px-4 pt-4 pb-6">
-        {/* Today's lesson, above everything else. "Az karmaşa, çok iş": the
-            one thing a student opens this page to do on a lesson day is join
-            the lesson, and until now there was no link anywhere in the
-            product to join it with. Rendered only on days that have a slot. */}
-        {todayLessons.length > 0 && (
-          <div className="mb-6 space-y-2">
-            {todayLessons.map((lesson) => (
-              <div
-                key={lesson.id}
-                className="pn-card flex flex-col items-start gap-3 p-4 sm:flex-row sm:items-center sm:justify-between"
-                style={{ ["--pn-tone" as string]: "var(--color-secondary)" }}
-              >
-                <div className="min-w-0">
-                  <p className="text-xs font-semibold uppercase tracking-widest text-secondary">Bugün dersin var</p>
-                  <p className="font-display text-lg font-semibold tabular-nums text-on-surface">
-                    {getDayName(new Date().getDay())} {formatTime(lesson.startTime)}–{formatTime(lesson.endTime)}
-                  </p>
+  return (
+    <PanelShell
+      greeting={`Merhaba${studentName ? `, ${studentName.split(" ")[0]}` : ""}`}
+      subline={`${longDateLabel(now)}${todayLessons.length > 0 ? ` · BUGÜN ${todayLessons.length} DERS` : ""}`}
+      nav={nav}
+      initials={initialsOf(studentName)}
+      unreadCount={unreadCount}
+      onSignOut={() => {
+        setSigningOut(true);
+        signOut();
+      }}
+      signingOut={signingOut}
+      // Barda hafta sayacı YOK. "3 HAFTA" ile "3. hafta" farklı iki şeydir ve
+      // mono bir çip içinde birincisi okunuyordu. Sayı zaten İlerlemem
+      // kartının bandında, ait olduğu bağlamın içinde duruyor.
+      bell={
+        <HomeworkNotificationBell
+          notifications={notifications}
+          unreadCount={unreadCount}
+          onMarkAllRead={markAllAsRead}
+          isStudent
+          variant="bar"
+          onNotificationClick={() => teacherId && setDrawer("homework")}
+        />
+      }
+    >
+      <div className="grid min-h-0 flex-1 grid-cols-1 items-start gap-3 md:grid-cols-[210px_1fr] lg:items-stretch lg:gap-4">
+        <ProgressRail studentId={userId} weekNumber={weekNumber} />
+
+        <div className="flex min-h-0 min-w-0 flex-col gap-3">
+          {/* Ders gününde bu sayfayı açmanın TEK sebebi derse girmek — o
+              yüzden en üstte ve tek bir düğme. Slotu olmayan günlerde şerit
+              hiç çizilmez; boş bir "bugün ders yok" kutusu yer kaplamaktan
+              başka bir şey yapmazdı. */}
+          {todayLessons.length > 0 && (
+            <section
+              className="flex flex-wrap items-center gap-2.5 rounded-[16px] border border-[color:var(--pn-blue-line)] bg-[color:var(--pn-blue)] p-[13px]"
+              style={{ boxShadow: "0 1px 2px rgba(36,55,166,.06), 0 8px 20px -12px rgba(36,55,166,.24)" }}
+            >
+              <div className="flex min-w-[180px] flex-1 flex-col gap-1">
+                <div className="flex flex-wrap items-center gap-2">
+                  <h2 className="font-display text-[18px] font-semibold leading-tight text-on-surface">Bugün dersin var</h2>
+                  {live && (
+                    <span className="pn-tag pn-tag--mint">
+                      <span aria-hidden className="pn-pulse size-1.5 rounded-full bg-[color:var(--pn-mint-ink)]" />
+                      Derste · {live.minutesLeft} dk
+                    </span>
+                  )}
                 </div>
-                {lesson.meetingUrl ? (
-                  <a
-                    href={lesson.meetingUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="pn-btn pn-btn--mint w-full sm:w-auto"
-                  >
-                    <Video className="h-4 w-4" />
+                {/* Günün bütün saatleri TEK satırda. Arka arkaya iki 40 dakikalık
+                    ders (40+40) iki ayrı "Bugün dersin var" kartı üretiyordu —
+                    aynı başlık iki kez, iki kat yer. Canlı olan saat koyu
+                    yazılır; ayrı bir kart değil. */}
+                <p className="flex flex-wrap gap-x-3 gap-y-0.5 font-mono text-[11px] font-semibold tabular-nums text-[color:var(--pn-blue-ink-strong)]">
+                  <span>{getDayName(todayLessons[0].dayOfWeek)}</span>
+                  {todayLessons.map((lesson) => (
+                    <span key={lesson.id} className={live?.slot.id === lesson.id ? "text-[color:var(--pn-mint-ink)]" : undefined}>
+                      {formatTime(lesson.startTime)} – {formatTime(lesson.endTime)}
+                    </span>
+                  ))}
+                </p>
+              </div>
+              {(() => {
+                // Bir düğme: canlı dersin bağlantısı, yoksa günün ilk bağlantısı.
+                const url = (live && todayLessons.find((l) => l.id === live.slot.id)?.meetingUrl) ?? todayLessons.find((l) => l.meetingUrl)?.meetingUrl ?? null;
+                return url ? (
+                  <a href={url} target="_blank" rel="noopener noreferrer" className="pn-btn pn-btn--mint w-full sm:w-auto">
+                    <Video className="size-4" strokeWidth={1.9} aria-hidden />
                     Derse katıl
                   </a>
                 ) : (
-                  <p className="text-sm text-on-surface-variant">Ders linki henüz eklenmemiş.</p>
-                )}
-              </div>
-            ))}
-          </div>
-        )}
-
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-6">
-          <Card>
-            <CardContent className="flex h-full flex-col items-center justify-center gap-1 p-4 text-center">
-              <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">Programdaki</p>
-              <p className="text-3xl font-bold text-secondary">{weekNumber ?? "—"}. haftan</p>
-            </CardContent>
-          </Card>
-
-          <StudentLessonTracker studentId={userId} />
-
-          <Card className="col-span-2 md:col-span-1">
-            <CardContent className="flex h-full items-center justify-center p-4">
-              <div className="grid w-full grid-cols-2 gap-3">
-                {/* Disabled until teacherId resolves: tapping these in the
-                    first moments after load used to fire an insert with an
-                    empty-string uuid. */}
-                <Button
-                  variant="outline"
-                  className="flex h-full min-h-20 flex-col items-center justify-center gap-2"
-                  disabled={!teacherId}
-                  onClick={() => setUploadDialogOpen(true)}
-                >
-                  <Upload className="h-6 w-6 text-primary" />
-                  <span className="text-sm font-medium">Yükle</span>
-                </Button>
-                <Button
-                  variant="outline"
-                  className="flex h-full min-h-20 flex-col items-center justify-center gap-2"
-                  disabled={!teacherId}
-                  onClick={() => setListDialogOpen(true)}
-                >
-                  <ClipboardList className="h-6 w-6 text-primary" />
-                  <span className="text-sm font-medium">Ödevler</span>
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-
-        <div className="space-y-6">
-          {allActiveTopics.length > 0 ? (
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <BookOpen className="h-5 w-5 text-primary" />
-                  Öğrendiklerimiz
-                </CardTitle>
-                <CardDescription>Öğrenme materyallerin</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                {allActiveTopics.map((topic) => {
-                  const visibleResources = getVisibleResources(topic);
-                  const isExpanded = expandedTopics.has(topic.id);
-
-                  return (
-                    <Card key={topic.id} className="border-l-4 border-l-primary">
-                      <CardContent className="p-4">
-                        <Collapsible>
-                          <CollapsibleTrigger className="flex items-start gap-2 w-full text-left" onClick={() => toggleTopic(topic.id)}>
-                            {isExpanded ? <ChevronDown className="h-4 w-4 mt-0.5 shrink-0" /> : <ChevronRight className="h-4 w-4 mt-0.5 shrink-0" />}
-                            <div className="flex-1 min-w-0">
-                              <div className="flex items-start justify-between gap-2">
-                                <h4 className="font-medium">{topic.title}</h4>
-                                <span className="text-xs text-muted-foreground shrink-0 mt-0.5">{visibleResources.length}</span>
-                              </div>
-                              {topic.description && <p className={`text-sm text-muted-foreground mt-0.5 ${!isExpanded ? "line-clamp-2" : ""}`}>{topic.description}</p>}
-                            </div>
-                          </CollapsibleTrigger>
-
-                          <CollapsibleContent className="mt-4">
-                            <div className="pl-6 space-y-2">
-                              <h5 className="font-medium text-sm">Kaynaklar</h5>
-                              {visibleResources.length === 0 ? (
-                                <p className="text-sm text-muted-foreground">Bu konu için henüz gösterilecek kaynak bulunmuyor.</p>
-                              ) : (
-                                <div className="space-y-2">
-                                  {visibleResources.map((resource) => (
-                                    // One anchor for the whole row instead of a
-                                    // <button> firing window.open plus a second
-                                    // button doing the same thing: middle-click,
-                                    // "open in new tab" and screen readers all
-                                    // work on an anchor and on none of that.
-                                    <a
-                                      key={resource.id}
-                                      href={resource.resource_url}
-                                      target="_blank"
-                                      rel="noopener noreferrer"
-                                      className="group/res flex min-h-11 items-center gap-3 rounded-md bg-accent/30 p-2 no-underline transition-colors hover:bg-accent/60"
-                                    >
-                                      {resource.is_completed ? <CheckCircle className="h-4 w-4 shrink-0 text-success" /> : <Clock className="h-4 w-4 shrink-0 text-muted-foreground" />}
-                                      {getResourceIcon(resource.resource_type)}
-                                      <div className="min-w-0 flex-1">
-                                        <p className="text-sm font-medium group-hover/res:underline">{resource.title}</p>
-                                        {resource.description && <p className="text-xs text-muted-foreground">{resource.description}</p>}
-                                      </div>
-                                      <ExternalLink className="h-3 w-3 shrink-0 text-muted-foreground" />
-                                    </a>
-                                  ))}
-                                </div>
-                              )}
-                            </div>
-                          </CollapsibleContent>
-                        </Collapsible>
-                      </CardContent>
-                    </Card>
-                  );
-                })}
-              </CardContent>
-            </Card>
-          ) : (
-            <Card className="text-center py-12">
-              <CardContent>
-                <BookOpen className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-                <h3 className="text-lg font-medium mb-2">Henüz Öğrenme Aktivitesi Yok</h3>
-                <p className="text-muted-foreground">Öğretmeniniz size keşfetmeniz için konular ve kaynaklar atayacak.</p>
-              </CardContent>
-            </Card>
+                  <p className="text-[12px] text-[color:var(--pn-blue-ink-strong)]">Ders linki henüz eklenmedi.</p>
+                );
+              })()}
+            </section>
           )}
+
+          <div className="flex min-h-0 flex-1 items-stretch gap-3">
+            <StudentTopicsCard topics={visibleTopics} loading={loading} />
+
+            <SideDrawer
+              open={drawer === "homework"}
+              onClose={() => setDrawer(null)}
+              tone="peach"
+              title="Ödevlerim"
+              subtitle={`${homework.batches.length} ödev`}
+              footer={
+                <button
+                  type="button"
+                  className="pn-btn pn-btn--peach w-full"
+                  disabled={!teacherId}
+                  onClick={() => setUploadOpen(true)}
+                >
+                  <Upload className="size-4" strokeWidth={1.9} aria-hidden />
+                  Ödev yükle
+                </button>
+              }
+            >
+              <HomeworkBatchList
+                batches={homework.batches}
+                loading={homework.loading}
+                currentUserId={userId}
+                onPreview={homework.openPreview}
+                onDownload={homework.download}
+                onDelete={homework.remove}
+                emptyText="Henüz ödev yok."
+              />
+            </SideDrawer>
+          </div>
         </div>
-
-        <UploadHomeworkDialog open={uploadDialogOpen} onOpenChange={setUploadDialogOpen} studentId={userId} teacherId={teacherId ?? ""} uploadedByUserId={userId} />
-
-        <HomeworkListDialog open={listDialogOpen} onOpenChange={setListDialogOpen} studentId={userId} teacherId={teacherId ?? ""} currentUserId={userId} />
       </div>
-    </div>
+
+      <FilePreviewOverlay preview={homework.preview} onClose={homework.closePreview} />
+
+      <UploadHomeworkDialog
+        open={uploadOpen}
+        onOpenChange={(value) => {
+          setUploadOpen(value);
+          if (!value) homework.refetch();
+        }}
+        studentId={userId}
+        teacherId={teacherId ?? ""}
+        uploadedByUserId={userId}
+      />
+
+      <ContactDialog open={contactOpen} onOpenChange={setContactOpen} />
+    </PanelShell>
   );
 }

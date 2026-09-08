@@ -5,10 +5,10 @@
 @custom-variant dark (&:is(.dark *));
 
 /* Touch-first sizing. `sm:` is a WIDTH query, so it makes controls smaller on
-   a phone and larger on a desktop — exactly backwards for hit targets, and
-   it is what left the lesson-tracker squares at 32px under a finger and 36px
-   under a mouse. This variant asks about the INPUT DEVICE instead: the base
-   size is the touch size (>=44px, Apple HIG / WCAG 2.5.8), and
+   a phone and larger on a desktop — exactly backwards for hit targets, and it
+   is what once left the panel's most-tapped squares at 32px under a finger
+   and 36px under a mouse. This variant asks about the INPUT DEVICE instead:
+   the base size is the touch size (>=44px, Apple HIG / WCAG 2.5.8), and
    `pointer-fine:` trims it back down only where there is a real cursor. */
 @custom-variant pointer-fine (@media (pointer: fine));
 
@@ -506,9 +506,17 @@
   /* Tek hareket dili. Süreler kısa: panel bir uygulama, bir gösteri değil.
      .16s satır zemini · .18s buton/kart · .26s panel girişi. */
   --pn-ease: cubic-bezier(0.2, 0.7, 0.3, 1);
+  /* Giriş eğrisi: hızlı çıkar, yavaşça yerine oturur (ease-out-expo). Bir
+     kart ekrana bu eğriyle girdiğinde "kayıp geldi" değil "yerine kondu"
+     okunur. Çıkışta daha kısa ve daha düz bir eğri: giden şeyin yolculuğunu
+     izletmek gerekmez. */
+  --pn-ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --pn-ease-in: cubic-bezier(0.55, 0, 1, 0.45);
   --pn-dur-fast: 0.16s;
   --pn-dur: 0.18s;
   --pn-dur-panel: 0.26s;
+  --pn-dur-sheet: 0.42s;
+  --pn-dur-sheet-out: 0.24s;
 
   /* ---- Boşluk merdiveni ----------------------------------------------
      ≈√2 oranlı bir merdiven, 5px'e demirli ve piksel ızgarasına
@@ -620,9 +628,14 @@
    .pn-bare ekleyin.
    ========================================================================= */
 .panel-theme :is(input, textarea, select):not([type="checkbox"]):not([type="radio"]):not(.pn-bare) {
-  border: 1px solid var(--pn-hair-strong);
+  /* Dolgu ve kontur DEĞİŞKENLE okunur. Sebep: bu kural katmansız ve
+     özgüllüğü (0,4,1); `components` katmanındaki `.pn-search` onu ne
+     özgüllükle ne de sırayla yenebilir. Değişken ise çakışmıyor —
+     `.pn-search` yalnızca kendi elemanında bu iki değeri tanımlar ve boya
+     kuralı onu okur. (Aynı desen `.pn-btn--mint` ailesinde de kullanılıyor.) */
+  border: 1px solid var(--pn-field-line, var(--pn-hair-strong));
   border-radius: var(--pn-r-control);
-  background-color: var(--color-surface-container);
+  background-color: var(--pn-field-fill, var(--color-surface-container));
   color: var(--color-on-surface);
   /* iOS Safari, 16px'ten küçük yazı taşıyan bir alana odaklanınca sayfayı
      ZORLA yakınlaştırır ve geri çıkmaz — düzeni bozan, kullanıcının geri
@@ -649,6 +662,22 @@
   border-color: var(--color-secondary);
   box-shadow: 0 0 0 3px rgba(36, 55, 166, 0.14);
 }
+
+
+/* Bileşen sınıfları `components` katmanındadır, katmansız değil.
+
+   Sebep somut: katmansız bir kural, Tailwind'in `utilities` katmanındaki HER
+   yardımcı sınıfı yener — özgüllükten bağımsız olarak, çünkü katman sırası
+   özgüllüğün önünde gelir. `.pn-drawer { width: 376px }` katmansız yazıldığında
+   çağrı yerindeki `lg:flex-1` hiçbir işe yaramıyordu; `.pn-row`'un `padding`'i
+   de üstündeki `p-2`'yi eziyordu.
+
+   Burada ters sıra doğru olan: bileşen sınıfı VARSAYILANI verir, yardımcı sınıf
+   o varsayılanı tek bir çağrı yerinde ayarlar. Dialog/popover override'ları
+   ise bilerek katmansız bırakıldı — onların işi zaten üretilen shadcn
+   bileşeninin kendi yardımcı sınıflarını (ring-1, rounded-lg, bg-popover)
+   ezmek. */
+@layer components {
 
 /* =========================================================================
    Butonlar
@@ -841,11 +870,16 @@
    mavi = konular, şeftali = ödevler, mor = yönetim. Bandın alt konturu
    kendi ailesinin çizgisidir, nötr saç konturu değil — aksi hâlde bant
    kartın üstüne yapıştırılmış gibi durur. */
+/* Dolgu tek yerde: 9px dikey, 13px yatay. Çağrı yerlerinde `py-3`, `py-2.5`,
+   `px-3` gibi noktasal düzeltmeler VARDI ve her kartın bandını birkaç piksel
+   farklı yükseklikte bırakıyordu — üç kart yan yana durduğunda göz o farkı
+   hizasızlık olarak okur. Bir bandın boyu artık yalnızca İÇERİĞİNE bağlı:
+   tek satırlık başlık 48px, iki satırlık 52px. */
 .pn-band {
   display: flex;
   align-items: center;
   gap: var(--pn-3);
-  padding: var(--pn-4) var(--pn-5);
+  padding: var(--pn-3) var(--pn-4);
   background: var(--pn-band-fill, var(--pn-blue-tint));
   border-bottom: 1px solid var(--pn-band-line, var(--pn-blue-line));
   flex-shrink: 0;
@@ -1037,6 +1071,7 @@
     min-height: 0;
   }
 }
+}
 
 /* =========================================================================
    Diyaloglar, popover'lar ve menüler — üretilen shadcn bileşenlerini
@@ -1072,6 +1107,8 @@
   font-size: var(--pn-t-section);
   letter-spacing: -0.02em;
 }
+
+@layer components {
 
 /* =========================================================================
    Hareket
@@ -1117,6 +1154,14 @@
 }
 .pn-enter-up {
   animation: pn-slide-up 0.28s var(--pn-ease) both;
+}
+/* Alttan çıkan karta dönen yan panel (bkz. .pn-drawer) sağdan değil ALTTAN
+   girer. Aynı DOM, aynı sınıf; yalnızca dar ekranda animasyonun yönü
+   değişir — bir kart ekranın altından geliyorsa altından girmeli. */
+@media (max-width: 1023.98px) {
+  .pn-drawer.pn-enter-right {
+    animation: pn-slide-up var(--pn-dur-sheet) var(--pn-ease-out) both;
+  }
 }
 
 /* Kullanıcı hareketi kapattıysa nabız ve girişler susar. Global reduce
@@ -1184,8 +1229,16 @@
   --shell-top: 14px;
   --shell-nav: 50px;
   --shell-gap: 12px;
-  --shell-inset-top: calc(var(--shell-top) + var(--shell-nav) + var(--shell-gap));
-  --shell-inset-left: var(--shell-pad);
+  /* Güvenli alanlar. Safari'de adres çubuğu çentiği zaten hesaba katar, ama
+     panel bir manifest taşıyor (app/manifest.ts) — ana ekrana eklenip tam
+     ekran açıldığında bar çentiğin ALTINDA kalırdı. Yatay olanlar da gerekli:
+     yan yatmış bir iPhone'da sol kenar çentiğin altına girer. */
+  --safe-t: env(safe-area-inset-top, 0px);
+  --safe-r: env(safe-area-inset-right, 0px);
+  --safe-b: env(safe-area-inset-bottom, 0px);
+  --safe-l: env(safe-area-inset-left, 0px);
+  --shell-inset-top: calc(var(--shell-top) + var(--safe-t) + var(--shell-nav) + var(--shell-gap));
+  --shell-inset-left: calc(var(--shell-pad) + var(--safe-l));
   position: relative;
   min-height: 100dvh;
 }
@@ -1195,7 +1248,11 @@
     --shell-top: 18px;
     --shell-nav: 58px;
     --shell-gap: 13px;
-    --shell-inset-left: calc(var(--shell-pad) + var(--shell-nav) + var(--shell-gap));
+    --shell-inset-left: calc(var(--shell-pad) + var(--safe-l) + var(--shell-nav) + var(--shell-gap));
+    /* L'nin İÇ köşesinin kavis yarıçapı. Dış köşe 17px (--pn-r-bar); iç
+       köşe ondan bir tık küçük, çünkü içbükey bir kavis aynı yarıçapta dış
+       bükey olandan daha geniş okunur. 14 = 17 / 1.2. */
+    --shell-notch: 14px;
     /* Masaüstünde panel bir UYGULAMA: sayfa kaymaz, kolonlar kendi içinde
        kayar. Öğretmen listeyi kaydırırken konular kartının yerinde kalması
        için gereken şey bu. Mobilde tam tersi — orada iç içe kaydırma
@@ -1208,9 +1265,9 @@
 /* Şerit (yalnızca masaüstü) ve bar sabit konumlu: içerik altlarından akar. */
 .pn-shell-rail {
   position: fixed;
-  left: var(--shell-pad);
-  top: var(--shell-top);
-  bottom: var(--shell-pad);
+  left: calc(var(--shell-pad) + var(--safe-l));
+  top: calc(var(--shell-top) + var(--safe-t));
+  bottom: calc(var(--shell-pad) + var(--safe-b));
   width: var(--shell-nav);
   z-index: 30;
   border-radius: var(--pn-r-bar);
@@ -1221,9 +1278,9 @@
 }
 .pn-shell-bar {
   position: fixed;
-  left: var(--shell-pad);
-  right: var(--shell-pad);
-  top: var(--shell-top);
+  left: calc(var(--shell-pad) + var(--safe-l));
+  right: calc(var(--shell-pad) + var(--safe-r));
+  top: calc(var(--shell-top) + var(--safe-t));
   height: var(--shell-nav);
   z-index: 31;
   border-radius: var(--pn-r-bar);
@@ -1236,8 +1293,8 @@
    alt yarısından şeridin üstüne kadar uzanır. */
 .pn-shell-seam {
   position: fixed;
-  left: calc(var(--shell-pad) + 1px);
-  top: calc(var(--shell-top) + var(--shell-nav) - 28px);
+  left: calc(var(--shell-pad) + var(--safe-l) + 1px);
+  top: calc(var(--shell-top) + var(--safe-t) + var(--shell-nav) - 28px);
   width: calc(var(--shell-nav) - 2px);
   height: 32px;
   z-index: 32;
@@ -1245,15 +1302,49 @@
   pointer-events: none;
 }
 
+/* L'nin iç köşesi.
+
+   Bar ve şerit iki ayrı yuvarlak dikdörtgen olduğu için birleştikleri yerde
+   90°'lik keskin bir çentik kalıyordu: dışarıda her köşe 17px kavisliyken
+   içeride tek bir sivri uç. Bu parça o çentiği doldurur.
+
+   Geometri: köşe noktası P = (pad + nav, top + nav). Parça P'den başlayan
+   R×R'lik bir kare, maskesi P + (R, R) merkezli R yarıçaplı diski KESER —
+   geriye kalan eğri üçgen, barın alt kenarıyla şeridin sağ kenarını teğet
+   olarak birleştiren içbükey yaydır. Yarıçap tek yerde tanımlı, iki kenar
+   da ondan türer; elle yerleştirilmiş bir maske değil.
+
+   Maske desteklenmezse parça SAYDAM kalır (aşağıdaki @supports): keskin bir
+   köşe, yanlış yerde duran opak bir kareden iyidir. Görünürlüğü `display`
+   ile değil `background` ile ayarlıyoruz — `display`, çağrı yerindeki
+   `hidden lg:block` yardımcı sınıflarının işi. */
+.pn-shell-notch {
+  position: fixed;
+  left: calc(var(--shell-pad) + var(--safe-l) + var(--shell-nav));
+  top: calc(var(--shell-top) + var(--safe-t) + var(--shell-nav));
+  width: var(--shell-notch);
+  height: var(--shell-notch);
+  z-index: 32;
+  background: transparent;
+  pointer-events: none;
+}
+@supports (mask-image: radial-gradient(#000, #000)) or (-webkit-mask-image: radial-gradient(#000, #000)) {
+  .pn-shell-notch {
+    background: var(--pn-navy);
+    -webkit-mask-image: radial-gradient(circle var(--shell-notch) at 100% 100%, transparent 99%, #000 100%);
+    mask-image: radial-gradient(circle var(--shell-notch) at 100% 100%, transparent 99%, #000 100%);
+  }
+}
+
 /* İçerik. Masaüstünde tam yükseklik ve iç kaydırma, mobilde normal akış. */
 .pn-shell-content {
-  padding: var(--shell-inset-top) var(--shell-pad) calc(var(--shell-pad) + env(safe-area-inset-bottom))
+  padding: var(--shell-inset-top) calc(var(--shell-pad) + var(--safe-r)) calc(var(--shell-pad) + var(--safe-b))
     var(--shell-inset-left);
 }
 @media (min-width: 1024px) {
   .pn-shell-content {
     height: 100dvh;
-    padding-bottom: var(--shell-pad);
+    padding-bottom: calc(var(--shell-pad) + var(--safe-b));
     display: flex;
     flex-direction: column;
     min-height: 0;
@@ -1327,33 +1418,85 @@
   border-radius: 11px;
 }
 
-/* Barın sağındaki açık mürekkepli çıkış düğmesi. Lacivert üstünde pembe
-   kontur + pembe ikon: ölçülen kontrast 8.53:1. */
-.pn-bar-ghost {
-  display: grid;
-  place-items: center;
-  width: 34px;
+/* =========================================================================
+   Barın sağındaki kontrol kümesi — TEK dil
+
+   Burada bir zamanlar dört ayrı tasarım vardı: nane bir hap (dakika), pembe
+   dolgulu bir kare (zil), pembe konturlu bir kare (çıkış) ve mor bir daire
+   (avatar). Dördü de aynı 34px'lik satırda duruyor ve dördü de farklı bir
+   şey olduğunu iddia ediyordu — oysa hepsi aynı şey: barın kontrolü.
+
+   Artık tek kutu var: 34px yükseklik, 11px yarıçap, lacivertin kendi açık
+   dolgusu ve konturu. Ayrım RENKLE değil İÇERİKLE yapılır — biri sayı
+   taşır, ikisi ikon. Renk yalnızca NİYET anında görünür: çıkış düğmesi
+   hover'da pembeye döner, dururken değil. Bir panelde durağan hâlde bağıran
+   bir "çıkış" düğmesine gerek yok.
+   ========================================================================= */
+.pn-bar-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--pn-1);
   height: 34px;
+  min-width: 34px;
+  padding: 0;
+  box-sizing: border-box;
   flex-shrink: 0;
   border-radius: 11px;
-  background: rgba(255, 214, 222, 0.1);
-  border: 1px solid rgba(255, 214, 222, 0.32);
-  color: var(--pn-pink);
+  background: var(--pn-on-navy-fill);
+  border: 1px solid var(--pn-on-navy-edge);
+  color: var(--pn-on-navy);
+  font-family: var(--font-mono);
+  font-size: var(--pn-t-num);
+  font-weight: 600;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
   cursor: pointer;
-  transition: background-color var(--pn-dur) var(--pn-ease), transform var(--pn-dur) var(--pn-ease);
+  transition: background-color var(--pn-dur) var(--pn-ease), border-color var(--pn-dur) var(--pn-ease),
+    color var(--pn-dur) var(--pn-ease);
   touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+/* Sayı taşıyan kutu: kare değil, içeriği kadar geniş. */
+.pn-bar-btn--num {
+  padding: 0 var(--pn-3);
+  cursor: default;
+}
+/* Etiketli kutu ("+ Yeni", "Geçmiş"): aynı kutu, yanında bir kelime. Gövde
+   yazısı, mono değil — bu bir sayı değil bir eylem. */
+.pn-bar-btn--text {
+  padding: 0 11px;
+  gap: 6px;
+  font-family: var(--font-sans);
+  font-size: 13px;
+  font-weight: 700;
+}
+/* Açık bir paneli temsil eden kutu (Geçmiş açıkken): şeritteki aktif nav
+   ikonuyla aynı açık mavi dolgu, aynı lacivert mürekkep. */
+.pn-bar-btn[data-active="true"] {
+  background: var(--pn-blue);
+  color: #132750;
+  border-color: rgba(207, 225, 255, 0.55);
 }
 @media (hover: hover) {
-  .pn-bar-ghost:hover:not(:disabled) {
-    background: rgba(255, 214, 222, 0.22);
-    transform: translateY(-1px);
+  .pn-bar-btn:hover:not(:disabled):not(.pn-bar-btn--num) {
+    background: rgba(207, 225, 255, 0.26);
+    border-color: rgba(207, 225, 255, 0.44);
+  }
+  /* Çıkış: yıkıcı olmayan ama geri dönüşü olan bir eylem. Rengi yalnızca
+     imleç üstüne geldiğinde alır. */
+  .pn-bar-btn--exit:hover:not(:disabled) {
+    background: rgba(255, 214, 222, 0.2);
+    border-color: rgba(255, 214, 222, 0.5);
+    color: var(--pn-pink);
   }
 }
-.pn-bar-ghost:focus-visible {
-  outline: 2px solid var(--pn-pink);
+.pn-bar-btn:focus-visible {
+  outline: 2px solid var(--pn-on-navy);
   outline-offset: 2px;
 }
-.pn-bar-ghost:disabled {
+.pn-bar-btn:disabled {
   opacity: 0.55;
   cursor: not-allowed;
 }
@@ -1380,12 +1523,14 @@
   color: #fffbf2;
 }
 
-/* Mobilde liste katlanır: ilk dört satır görünür, gerisi "Tümünü gör"
-   düğmesinin ardındadır. Katlama CSS'te yapılır, JS'te değil — bir
-   matchMedia okuması sunucu render'ında yanlış cevap verir ve hidrasyonda
-   liste bir kez sıçrardı. Masaüstünde kural hiç uygulanmaz, liste kendi
-   içinde kayar. */
-@media (max-width: 1023.98px) {
+/* Telefonda liste katlanır: ilk dört satır görünür, gerisi "Tümünü gör"
+   düğmesinin ardındadır. Eşik 768px — tam olarak içeriğin tek kolondan iki
+   kolona geçtiği yer. Tek kolonda liste ekranın yarısını yer, iki kolonda
+   kendi 195px'lik şeridinde durur ve katlamaya gerek kalmaz.
+
+   Katlama CSS'te yapılır, JS'te değil: bir matchMedia okuması sunucu
+   render'ında yanlış cevap verir ve liste hidrasyonda bir kez sıçrardı. */
+@media (max-width: 767.98px) {
   .pn-rail-list:not([data-show-all="true"]) [data-extra="true"] {
     display: none;
   }
@@ -1393,7 +1538,7 @@
 .pn-rail-more {
   display: block;
 }
-@media (min-width: 1024px) {
+@media (min-width: 768px) {
   .pn-rail-more {
     display: none;
   }
@@ -1410,8 +1555,16 @@
    `:not(:placeholder-shown)` — ikincisi olmadan sonuca tıklandığı anda alan
    kapanır ve kullanıcı yazdığı sorguyu göremez hâle gelir (yalnızca :focus
    ile kurulmuş açılan aramaların klasik hatası).
+
+   KAPALIYKEN KUTU YOK: dolgu ve kontur saydamdır, geriye yalnızca büyüteç
+   kalır. Bir arama ikonunun arkasındaki kutu, o ikon zaten bir alanın
+   kendisiyken, ikinci kez "burada bir şey var" demektir. Kutu alan
+   açıldığında belirir — çünkü orada gerçekten bir alan vardır.
    ========================================================================= */
 .pn-search {
+  /* Kapalıyken kutu yok: yalnızca büyüteç görünür. */
+  --pn-field-fill: transparent;
+  --pn-field-line: transparent;
   position: absolute;
   right: 0;
   top: 50%;
@@ -1424,7 +1577,8 @@
   cursor: pointer;
   z-index: 2;
   transition: width var(--pn-dur-panel) var(--pn-ease), padding var(--pn-dur-panel) var(--pn-ease),
-    border-color var(--pn-dur) var(--pn-ease), box-shadow var(--pn-dur) var(--pn-ease);
+    background-color var(--pn-dur) var(--pn-ease), border-color var(--pn-dur) var(--pn-ease),
+    box-shadow var(--pn-dur) var(--pn-ease);
 }
 @media (pointer: fine) {
   .pn-search {
@@ -1434,6 +1588,8 @@
 }
 .pn-search:focus,
 .pn-search:not(:placeholder-shown) {
+  --pn-field-fill: var(--color-surface-container);
+  --pn-field-line: var(--pn-hair-strong);
   width: 100%;
   text-indent: 0;
   padding: 0 32px 0 11px;
@@ -1479,8 +1635,8 @@
 }
 /* Mobilde aynı bileşen alttan çıkan bir karta döner. Aynı DOM, farklı
    konumlandırma — iki ayrı bileşen yazılsaydı içerikleri ayrı düşerdi.
-   Yükseklik üçte iki: liste görünürken altındaki bağlamın bir kısmı da
-   görünür kalır, tam ekran bir sayfa gibi davranmaz. */
+   Yükseklik: içeriği kadar, en çok %86 — liste görünürken altındaki
+   bağlamın bir kısmı da görünür kalır, tam ekran bir sayfa gibi davranmaz. */
 @media (max-width: 1023.98px) {
   .pn-drawer {
     position: fixed;
@@ -1488,10 +1644,49 @@
     right: 0;
     bottom: 0;
     z-index: 45;
-    height: min(66dvh, 620px);
-    border-radius: var(--pn-r-card) var(--pn-r-card) 0 0;
+    max-height: min(86dvh, 760px);
+    min-height: min(50dvh, 420px);
+    border-radius: 20px 20px 0 0;
     border-bottom: 0;
-    padding-bottom: env(safe-area-inset-bottom);
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+    /* Sürükleme geri dönüşü (useDragToDismiss). */
+    transition: transform 0.32s var(--pn-ease-out);
+  }
+  .pn-drawer::before {
+    content: "";
+    position: absolute;
+    top: 8px;
+    left: 50%;
+    width: 40px;
+    height: 4px;
+    margin-left: -20px;
+    border-radius: 999px;
+    background: var(--pn-hair-strong);
+    z-index: 2;
+    pointer-events: none;
+  }
+  .pn-drawer > .pn-band {
+    padding-top: 18px;
+  }
+  .pn-drawer-handle {
+    touch-action: none;
+    cursor: grab;
+  }
+  /* Çıkış: kapanırken bir kare boyunca aşağı kayar (bkz. SideDrawer'daki
+     `closing`). Giriş animasyonu (.pn-enter-right → yukarı) korunur. */
+  .pn-drawer[data-state="closed"] {
+    animation: pn-sheet-out-down var(--pn-dur-sheet-out) var(--pn-ease-in) both !important;
+    pointer-events: none;
+  }
+  .pn-drawer-scrim[data-state="closed"] {
+    animation: pn-fade-in var(--pn-dur-sheet-out) var(--pn-ease) reverse both;
+    pointer-events: none;
+  }
+}
+@media (min-width: 1024px) {
+  .pn-drawer[data-state="closed"] {
+    animation: pn-sheet-out-right var(--pn-dur-sheet-out) var(--pn-ease-in) both !important;
+    pointer-events: none;
   }
 }
 .pn-drawer-scrim {
@@ -1514,126 +1709,905 @@
     animation: none;
   }
 }
+}
 
 /* =========================================================================
-   Playground — "Kâğıt Uzay", gökyüzü kâğıdı.
+   Playground — panelle aynı kâğıt, ama bir STÜDYO yerleşimi.
 
-   Playground used to be the space side of the system: a navy ground with a
-   star field. It is now paper like everything else, on a light blue sheet
-   with the same 26px dot grid the panels and the marketing sections use — a
-   room a ten-year-old wants to sit in, not a console. The system's rules are
-   unchanged: flat fill, one outline weight, hard offset shadow, no blur, no
-   gradient. What flipped is only which side of the paper we are on, so the
-   outline now goes DARKER than the fill (navy #152343, the same ink as
-   .panel-theme) instead of darker-than-navy.
+   Playground bir zamanlar kendi temasıydı (kesik kâğıt: 3px lacivert kontur,
+   sert ofset gölge, noktalı gökyüzü). Artık panellerin "Kâğıt Uzay v2"
+   diliyle çizilir; buradaki sınıflar yalnızca bu rotaya özgü YERLEŞİMİ
+   tanımlar. Renk, yazı tipi ve kontrol dili yukarıdaki .panel-theme / .pn-*
+   kurallarından gelir.
 
-   The four accents are the landing page's own (landing-theme.ts): peach
-   #FF9F45, mint #2FD08A, sky blue #3D5FE0, coral pink #FF6B8A. They are
-   exposed as --pg-peach/-mint/-sky/-pink so a component can reach for a
-   specific colour without going through a semantic token that means
-   something else.
-
-   Scoped to .pg-theme, applied by app/playground/layout.tsx. Playground reads
-   almost everything through --color-* utilities, so retinting the tokens
-   moves the whole screen.
+   ---- Yerleşimin tek kuralı -------------------------------------------
+   ÇALIŞMA ALANI HİÇBİR ZAMAN YER DEĞİŞTİRMEZ. Geçmiş ve Düzenleme araçları
+   birer KOLON değil, üstte yüzen panellerdir (position: fixed). Önceki sürüm
+   bunları grid kolonu yapıyordu ve panel her açılıp kapandığında sahne
+   yeniden ölçülüyordu: üretilen görselin boyu değişiyor, transkript satırları
+   yeniden sarıyordu. Yüzen panelde açılış maliyeti bir transformdur, bir
+   düzen hesabı değil.
    ========================================================================= */
-.pg-theme {
-  /* ---- Sky-paper surfaces. Light blue is the ground; cards are white. ---- */
-  --color-surface: #dcebfb;
-  --color-surface-dim: #c8dcf5;
-  --color-surface-lowest: #a6c5ea;
-  --color-surface-low: #e7f1fd;
-  --color-surface-container: #ffffff;
-  --color-surface-high: #f1f7ff;
-  --color-surface-highest: #ffffff;
-  --color-surface-bright: #ffffff;
+@layer components {
 
-  /* Ink is navy, never black — the same ink the paper panels use. */
-  --color-on-surface: #152343;
-  --color-on-surface-variant: #4a5878;
-  --color-outline: #7d8db2;
-  --color-outline-variant: #b2c6e6;
+.pg-shell {
+  --pg-pad: 12px;
+  --pg-top: 14px;
+  --pg-bar: 50px;
+  --pg-gap: 12px;
+  /* One place for the panel widths: the panel is drawn this wide and the work
+     column steps aside by exactly the same amount. Two numbers that must agree
+     should be one number. */
+  --pg-hist-w: 346px;
+  --pg-tools-w: 384px;
+  position: relative;
+  --safe-t: env(safe-area-inset-top, 0px);
+  --safe-r: env(safe-area-inset-right, 0px);
+  --safe-b: env(safe-area-inset-bottom, 0px);
+  --safe-l: env(safe-area-inset-left, 0px);
+  height: 100dvh;
+  padding: calc(var(--pg-top) + var(--safe-t)) calc(var(--pg-pad) + var(--safe-r)) calc(var(--pg-pad) + var(--safe-b))
+    calc(var(--pg-pad) + var(--safe-l));
+  display: grid;
+  grid-template-rows: var(--pg-bar) minmax(0, 1fr);
+  row-gap: var(--pg-gap);
+  overflow: hidden;
+}
+@media (min-width: 1024px) {
+  .pg-shell {
+    --pg-pad: 22px;
+    --pg-top: 18px;
+    --pg-bar: 58px;
+    --pg-gap: 16px;
+  }
+}
 
-  /* ---- The four landing accents, by name. ---- */
-  --pg-peach: #ff9f45;
-  --pg-peach-deep: #d2701a;
-  --pg-peach-ink: #a1530c;
-  --pg-mint: #2fd08a;
-  --pg-mint-deep: #17915b;
-  --pg-sky: #3d5fe0;
-  --pg-sky-deep: #2437a6;
-  --pg-pink: #ff6b8a;
-  --pg-pink-deep: #ce3b5f;
+/* Bar: panelin .pn-shell-bar'ı ile aynı görünüm, ama akışta (fixed değil) —
+   kabuk zaten tam ekran ve kaymıyor, sabitlemeye gerek yok. */
+.pg-bar {
+  display: flex;
+  align-items: center;
+  /* See the note on .pg-body: a grid item that will not shrink drags the whole
+     shell past the viewport on a phone. */
+  min-width: 0;
+  overflow: hidden;
+  gap: 9px;
+  height: var(--pg-bar);
+  padding: 0 9px 0 13px;
+  border-radius: var(--pn-r-bar);
+  background: var(--pn-navy);
+  border: 1px solid var(--pn-navy-line);
+  box-shadow: var(--pn-shadow-float);
+  color: var(--pn-on-navy);
+}
+@media (min-width: 1024px) {
+  .pg-bar {
+    gap: 13px;
+    padding: 0 13px;
+  }
+}
 
-  /* Peach is the accent every component already reaches for through
-     --color-secondary: the send button, the ore meter, the selected model.
+/* Gövde: sahne (esner) + alt yerleşke (hızlı eylemler + composer). Panel
+   açılıp kapanırken buraya hiçbir şey olmaz. */
+.pg-body {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  /* `min-width: 0` is not cosmetic here: a grid item's automatic minimum size
+     is its CONTENT's min-content width, so one un-shrinkable row (the bar's
+     buttons, the composer's chips) silently widened the entire shell and the
+     page read as scrolled sideways on a phone. */
+  min-width: 0;
+  gap: var(--pg-gap);
+  /* An open panel does not sit ON the work — the work moves over. The padding
+     and the panel's own slide share a duration and an easing curve, so the
+     two read as one movement rather than as a card landing on a page.
+     Only from `lg` up: on a phone there is no room to step aside, and there
+     the panel is a sheet over the top with a scrim (see below). */
+  transition: padding var(--pn-dur-panel) var(--pn-ease);
+}
+@media (min-width: 1024px) {
+  .pg-body[data-history="true"] {
+    padding-left: calc(var(--pg-hist-w) + var(--pg-gap));
+  }
+  .pg-body[data-tools="true"] {
+    padding-right: calc(var(--pg-tools-w) + var(--pg-gap));
+  }
+}
 
-     One inversion to know about: on the old navy ground `-bright` meant
-     "lighter than the base so it reads on dark". On paper the readable step
-     is the DARKER one, so --color-secondary-bright is deep amber. Every
-     `text-secondary-bright` in the playground is a label on white — it has to
-     be ink, not a highlight. */
-  --color-secondary: var(--pg-peach);
-  --color-secondary-bright: var(--pg-peach-ink);
-  --color-on-secondary: #152343;
-  --color-secondary-container: var(--pg-peach-deep);
-  --color-on-secondary-container: #5c2f00;
+/* Okuma genişliği. 1600px'lik bir ekranda kenardan kenara uzayan bir sohbet
+   ne okunur ne de profesyonel görünür; 1180 hem transkripti hem composer'ı
+   aynı optik kolonda tutar ve sahnedeki görsel yine tüm yüksekliği alır. */
+.pg-center {
+  width: 100%;
+  max-width: 1180px;
+  margin-inline: auto;
+}
 
-  /* Sky blue: the student's own voice (their bubble) and the picker's
-     selected state. Same inversion — `-bright` is the darker, readable one. */
-  --color-primary: var(--pg-sky);
-  --color-primary-bright: var(--pg-sky-deep);
-  --color-on-primary: #ffffff;
-  --color-primary-container: #c9d9ff;
-  --color-on-primary-container: #16215c;
+.pg-stage {
+  flex: 1 1 auto;
+  min-height: 0;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
 
-  --color-tertiary: var(--pg-mint);
-  --color-on-tertiary: #05231a;
+/* Alt yerleşke: hızlı eylem satırı + composer. Aralarındaki boşluk kasten
+   küçük — ikisi tek bir "girdi bloğu" olarak okunmalı. */
+.pg-dock {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  flex-shrink: 0;
+}
 
-  --color-error: var(--pg-pink-deep);
-  --color-success: var(--pg-mint-deep);
+/* =========================================================================
+   Yüzen paneller (Geçmiş · Düzenleme araçları)
 
-  /* Cut-paper geometry. --pg-ink is the outline: darker than every fill. */
-  --pg-ink: #152343;
-  --pg-stroke: 3px;
-  --pg-lift: 6px;
+   İkisi de aynı sınıf: bardan bir açıklık aşağıda başlar, alt kenara kadar
+   iner, kendi kenarından 16px kayarak girer. Kapalıyken `visibility: hidden`
+   — yalnızca opaklık verilseydi görünmez bir panel tıklamaları yutardı.
+   ========================================================================= */
+.pg-panel {
+  /* Positioned against the shell. An absolutely positioned box is laid out
+     against its ancestor's PADDING box — which INCLUDES the padding — so the
+     frame inset has to be written out here, otherwise the panel sits flush
+     against the window edge while every other surface is 22px in.
 
-  --font-display: var(--font-fredoka, ui-rounded), ui-rounded, "Trebuchet MS", sans-serif;
-  --font-sans: var(--font-nunito, ui-sans-serif), ui-sans-serif, system-ui, sans-serif;
-  --font-mono: var(--font-plex-mono, ui-monospace), "IBM Plex Mono", ui-monospace, monospace;
+     Anchoring to the shell (not to .pg-body) is what lets .pg-body's padding
+     slide the work column without dragging the panel along with it. */
+  position: absolute;
+  top: calc(var(--pg-top) + var(--safe-t) + var(--pg-bar) + var(--pg-gap));
+  bottom: calc(var(--pg-pad) + var(--safe-b));
+  z-index: 46;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  background: var(--color-surface-container);
+  border: 1px solid var(--pn-hair-strong);
+  border-radius: var(--pn-r-card);
+  box-shadow: var(--pn-shadow-drawer);
+  overflow: hidden;
+  transition: transform var(--pn-dur-panel) var(--pn-ease), opacity var(--pn-dur-panel) var(--pn-ease),
+    visibility var(--pn-dur-panel);
+}
+.pg-panel--left {
+  left: calc(var(--pg-pad) + var(--safe-l));
+  width: min(var(--pg-hist-w), calc(100vw - 2 * var(--pg-pad)));
+}
+.pg-panel--right {
+  right: calc(var(--pg-pad) + var(--safe-r));
+  width: min(var(--pg-tools-w), calc(100vw - 2 * var(--pg-pad)));
+}
+.pg-panel[data-open="false"] {
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+}
+.pg-panel--left[data-open="false"] {
+  transform: translateX(-16px);
+}
+.pg-panel--right[data-open="false"] {
+  transform: translateX(16px);
+}
+/* Below `lg` there is nowhere for the work to step aside to, so the panel
+   stops being a column and becomes a BOTTOM SHEET: full width, rounded top,
+   a grip, sliding up from the bottom edge. It used to be a near-full-width
+   side panel sliding in 16px from the right — on a phone that is a page
+   pretending to be a panel, and there is no thumb gesture that closes it.
+   Same DOM as the desktop column; only the geometry changes. */
+@media (max-width: 1023.98px) {
+  .pg-panel {
+    position: fixed;
+    top: auto;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    width: 100%;
+    height: min(86dvh, 720px);
+    border-radius: 20px 20px 0 0;
+    border-bottom: 0;
+    padding-bottom: var(--safe-b);
+    transition: transform var(--pn-dur-sheet) var(--pn-ease-out), opacity var(--pn-dur-sheet-out) var(--pn-ease),
+      visibility var(--pn-dur-sheet);
+  }
+  .pg-panel--left[data-open="false"],
+  .pg-panel--right[data-open="false"] {
+    transform: translate3d(0, 100%, 0);
+    opacity: 1;
+    transition: transform var(--pn-dur-sheet-out) var(--pn-ease-in), visibility 0s linear var(--pn-dur-sheet-out);
+  }
+  /* The grip: a phone's "this can be pulled down" affordance. */
+  .pg-panel::before {
+    content: "";
+    position: absolute;
+    top: 8px;
+    left: 50%;
+    width: 40px;
+    height: 4px;
+    margin-left: -20px;
+    border-radius: 999px;
+    background: var(--pn-hair-strong);
+    z-index: 2;
+    pointer-events: none;
+  }
+  .pg-panel-head {
+    padding-top: 10px;
+  }
+  /* The header is the drag handle: it drags, it does not scroll. */
+  .pg-panel-handle {
+    touch-action: none;
+    cursor: grab;
+  }
+  /* Written with the parent for specificity: the base .pg-panel-head--navy
+     rule is declared AFTER this block and would otherwise win the tie. A
+     navy band under a grey grip reads as a stripe; on a phone the history
+     panel keeps its band cream and its label navy instead. */
+  .pg-panel > .pg-panel-head--navy {
+    background: var(--color-surface-container);
+    color: var(--pn-navy);
+    border-bottom-color: var(--pn-hair);
+  }
+  .pg-panel > .pg-panel-head--navy .pn-bar-btn {
+    background: var(--color-surface-container);
+    border-color: var(--pn-hair-strong);
+    color: var(--color-on-surface);
+  }
+}
 
+/* Perde yalnızca dar ekranda: orada panel içeriğin ÜSTÜNÜ kapatır ve
+   dışarı dokunmak onu kapatmalı. Masaüstünde panel yanda yüzer, arkadaki
+   çalışma alanı canlı kalır — orada bir perde çalışmayı kesintiye uğratır. */
+.pg-scrim {
+  position: fixed;
+  inset: 0;
+  z-index: 45;
+  background: rgba(20, 31, 60, 0.34);
+  animation: pn-fade-in 0.2s var(--pn-ease) both;
+}
+@media (min-width: 1024px) {
+  .pg-scrim {
+    display: none;
+  }
+}
+
+/* Panel başlığı: geçmişte lacivert (bardan kopan bir parça gibi), araçlarda
+   krem. İkisi de 52px, mono etiket. */
+.pg-panel-head {
+  display: flex;
+  align-items: center;
+  gap: var(--pn-3);
+  flex-shrink: 0;
+  min-height: 52px;
+  padding: 0 var(--pn-3) 0 var(--pn-5);
+  border-bottom: 1px solid var(--pn-hair);
+}
+.pg-panel-head--navy {
+  background: var(--pn-navy);
+  color: var(--pn-on-navy);
+  border-bottom-color: var(--pn-navy-line);
+}
+.pg-panel-label {
+  font-family: var(--font-mono);
+  font-size: var(--pn-t-label);
+  font-weight: 600;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  line-height: 1.2;
+}
+
+/* Araçlar panelindeki bölüm başlığı: gövde yazısı, 13px, koyu. */
+.pg-section-title {
+  font-family: var(--font-sans);
+  font-size: var(--pn-t-body);
+  font-weight: 700;
+  line-height: 1.2;
+  color: var(--color-on-surface);
+}
+
+/* =========================================================================
+   Çip: composer'ın ve araçlar panelinin ortak kontrolü. Üç durum: boş,
+   hover, seçili (lacivert dolgu). Dokunmatikte 38px, imleçte 32px.
+   ========================================================================= */
+.pg-chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  height: 38px;
+  padding: 0 11px;
+  border-radius: var(--pn-r-control);
+  border: 1px solid var(--pn-hair-strong);
+  background: var(--color-surface-container);
   color: var(--color-on-surface);
   font-family: var(--font-sans);
-}
-
-.pg-theme :is(h1, h2, h3, h4) {
-  font-family: var(--font-display);
+  font-size: var(--pn-t-body);
   font-weight: 600;
-  letter-spacing: -0.015em;
+  line-height: 1;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background-color var(--pn-dur-fast) var(--pn-ease), border-color var(--pn-dur-fast) var(--pn-ease),
+    color var(--pn-dur-fast) var(--pn-ease), transform var(--pn-dur) var(--pn-ease);
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+@media (pointer: fine) {
+  .pg-chip {
+    height: 32px;
+  }
+}
+@media (hover: hover) {
+  .pg-chip:hover:not(:disabled):not([data-active="true"]):not([aria-checked="true"]):not([aria-pressed="true"]) {
+    background: var(--pn-blue-tint);
+    border-color: var(--pn-blue-line);
+  }
+}
+.pg-chip:active:not(:disabled) {
+  transform: translateY(1px);
+}
+.pg-chip[data-active="true"],
+.pg-chip[aria-checked="true"],
+.pg-chip[aria-pressed="true"] {
+  background: var(--pn-navy);
+  color: var(--pn-on-navy);
+  border-color: var(--pn-navy);
+}
+.pg-chip:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.pg-chip:focus-visible {
+  outline: 2px solid var(--color-secondary);
+  outline-offset: 2px;
+}
+/* Oran çipleri: mono sayı, tabular — "16:9" ile "9:16" aynı genişlikte. */
+.pg-chip--mono {
+  font-family: var(--font-mono);
+  font-size: var(--pn-t-num);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  padding: 0 9px;
+}
+/* Etiket çipleri: sessiz — konturu yok, açık zemin. Prompt'a bir kelime
+   ekler; seçildiğinde mavi dolguya geçer, lacivert değil (seçili bir
+   etiket bir mod değil, bir ekleme). */
+.pg-chip--tag {
+  height: 30px;
+  padding: 0 9px;
+  gap: 4px;
+  background: var(--color-surface-low);
+  border-color: transparent;
+  color: var(--color-on-surface-variant);
+  font-size: var(--pn-t-caption);
+}
+@media (pointer: coarse) {
+  .pg-chip--tag {
+    height: 36px;
+  }
+}
+.pg-chip--tag[aria-pressed="true"] {
+  background: var(--pn-blue);
+  border-color: var(--pn-blue-line);
+  color: var(--pn-blue-ink-strong);
 }
 
-/* The one card shape the playground needs: composer, transcript media, the
-   upsell block, the code/preview panel and the model dialog all use it. */
-.pg-card {
+/* Composer'ın ana alanı: kartın kendi zemininde, kontursuz. Panel genel alan
+   kuralının (kontur + dolgu) DIŞINDA tutulur — .pn-bare. */
+.pg-prompt {
+  width: 100%;
+  resize: none;
+  background: transparent;
+  border: 0;
+  outline: none;
+  padding: var(--pn-2) var(--pn-5);
+  font-family: var(--font-sans);
+  font-size: 16px;
+  line-height: 1.5;
+  color: var(--color-on-surface);
+}
+@media (pointer: fine) {
+  .pg-prompt {
+    font-size: 15px;
+  }
+}
+.pg-prompt::placeholder {
+  color: var(--color-on-surface-variant);
+  opacity: 0.6;
+}
+
+/* =========================================================================
+   Sahne
+
+   Krem kart KALDIRILDI. Çıktı ve sohbet doğrudan açık mavi zeminin üstünde
+   durur: bir stüdyoda tuval odanın kendisidir, odanın içine konmuş ikinci
+   bir kutu değil. Geriye kalan tek yüzey üretilen şeyin kendisi.
+   ========================================================================= */
+.pg-stage-btn {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 999px;
   background: var(--color-surface-container);
-  border: var(--pg-stroke) solid var(--pg-ink);
-  border-radius: 20px;
-  box-shadow: 0 var(--pg-lift) 0 0 var(--pg-ink);
+  border: 1px solid var(--pn-hair-strong);
+  color: var(--color-on-surface);
+  box-shadow: var(--pn-shadow-float);
+  cursor: pointer;
+  transition: transform var(--pn-dur) var(--pn-ease), background-color var(--pn-dur-fast) var(--pn-ease), opacity var(--pn-dur-fast);
+  touch-action: manipulation;
 }
-.pg-card--flat { box-shadow: none; }
-.pg-card--sunken { background: var(--color-surface-low); }
+@media (hover: hover) {
+  .pg-stage-btn:hover:not(:disabled) {
+    transform: translateY(-1px);
+    background: var(--pn-blue-tint);
+  }
+}
+.pg-stage-btn:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
 
-/* Rendered markdown inside an assistant bubble.
-   The bubble sets the type; this only handles the things markdown adds — the
-   spacing between blocks and the syntax colors. Highlight.js ships themes as
-   raw CSS files, but importing one would drop a palette from another product
-   into the middle of ours, so the token classes are mapped onto the app's own
-   colors instead. Anything highlight.js emits that isn't listed here simply
-   inherits the code block's text color, which is a safe default.
+/* Çıktının altındaki yüzen eylem çubuğu: krem hap, saç kontur. Sahnenin
+   kendisi zemin olduğu için eylemler kendi yüzeyini taşır. */
+.pg-actionbar {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 4px;
+  border-radius: 999px;
+  background: var(--color-surface-container);
+  border: 1px solid var(--pn-hair-strong);
+  box-shadow: var(--pn-shadow-float);
+  max-width: 100%;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.pg-actionbar::-webkit-scrollbar {
+  display: none;
+}
+.pg-action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  min-height: 40px;
+  padding: 0 12px;
+  border-radius: 999px;
+  font-family: var(--font-sans);
+  font-size: var(--pn-t-body);
+  font-weight: 600;
+  color: var(--color-on-surface);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background-color var(--pn-dur-fast) var(--pn-ease), color var(--pn-dur-fast) var(--pn-ease);
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+@media (pointer: fine) {
+  .pg-action {
+    min-height: 32px;
+  }
+}
+@media (hover: hover) {
+  .pg-action:hover:not(:disabled) {
+    background: var(--pn-blue-tint);
+  }
+}
+.pg-action[aria-pressed="true"] {
+  background: var(--pn-blue);
+  color: var(--pn-blue-ink-strong);
+}
+.pg-action:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
 
-   These are the -deep/-ink variants of the four accents, not the accents
-   themselves: a code block is white paper, and #FF9F45 on white is a
-   highlighter, not a keyword. */
+/* Hızlı eylemler: composer'ın hemen üstünde tek satır. Eskiden üç adet
+   64px'lik krem karttı ve sahneden çaldıkları yer, taşıdıkları bilgiden
+   fazlaydı — üçü de tek tıkla açılan birer kısayol, birer kart değil. */
+.pg-quick {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 40px;
+  padding: 0 12px;
+  border-radius: 999px;
+  background: var(--color-surface-container);
+  border: 1px solid var(--pn-hair);
+  color: var(--color-on-surface);
+  font-family: var(--font-sans);
+  font-size: var(--pn-t-body);
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background-color var(--pn-dur-fast) var(--pn-ease), border-color var(--pn-dur-fast) var(--pn-ease),
+    transform var(--pn-dur) var(--pn-ease);
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+@media (pointer: fine) {
+  .pg-quick {
+    min-height: 34px;
+  }
+}
+@media (hover: hover) {
+  .pg-quick:hover:not(:disabled) {
+    background: var(--pn-blue-tint);
+    border-color: var(--pn-blue-line);
+  }
+}
+.pg-quick:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.pg-quick:focus-visible {
+  outline: 2px solid var(--color-secondary);
+  outline-offset: 2px;
+}
+
+/* =========================================================================
+   Stüdyo kadranı: sayısal ayarların kaydırıcısı. Tarayıcının kendi görünümü
+   üç motorda üç farklı yükseklik veriyor ve hiçbiri panelin çizgi kalınlığına
+   uymuyor, o yüzden ray ve topuz elle çiziliyor. Topuz dokunmatikte 20px:
+   parmakla tutulabilecek en küçük ölçü.
+   ========================================================================= */
+.pg-range {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 20px;
+  background: transparent;
+  cursor: pointer;
+  touch-action: pan-y;
+}
+.pg-range:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.pg-range::-webkit-slider-runnable-track {
+  height: 4px;
+  border-radius: 999px;
+  background: var(--pn-hair-strong);
+}
+.pg-range::-moz-range-track {
+  height: 4px;
+  border-radius: 999px;
+  background: var(--pn-hair-strong);
+}
+.pg-range::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 16px;
+  height: 16px;
+  margin-top: -6px;
+  border-radius: 999px;
+  border: 2px solid var(--pn-navy);
+  background: var(--color-surface-container);
+  transition: transform var(--pn-dur-fast) var(--pn-ease);
+}
+.pg-range::-moz-range-thumb {
+  width: 16px;
+  height: 16px;
+  border-radius: 999px;
+  border: 2px solid var(--pn-navy);
+  background: var(--color-surface-container);
+}
+@media (pointer: coarse) {
+  .pg-range::-webkit-slider-thumb {
+    width: 20px;
+    height: 20px;
+    margin-top: -8px;
+  }
+  .pg-range::-moz-range-thumb {
+    width: 20px;
+    height: 20px;
+  }
+}
+.pg-range:active::-webkit-slider-thumb {
+  transform: scale(1.15);
+}
+.pg-range:focus-visible {
+  outline: 2px solid var(--color-secondary);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* Kaydırılan yüzeyler kendi kaydırmasını kapsar. */
+.pg-scroll {
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pg-body,
+  .pg-panel,
+  .pg-scrim {
+    transition: none !important;
+    animation: none !important;
+  }
+}
+}
+
+/* =========================================================================
+   Model tarayıcı — katmansız (üretilen Popover/Dialog bileşeninin kendi
+   yardımcı sınıflarını ezmesi gerekiyor).
+
+   Masaüstünde tetikleyicisine tutunan bir popover, dar ekranda alttan çıkan
+   bir sayfa (sheet). İkisi de AYNI içeriği çizer; fark yalnızca yüzeyin
+   nereye oturduğudur — dar bir ekranda popover'ı küçültmek, listeyi
+   okunmaz bir sütuna sıkıştırmak demekti.
+   ========================================================================= */
+[data-slot="popover-content"].pg-browser {
+  padding: 0;
+  gap: 0;
+  width: min(820px, calc(100vw - 2rem));
+  border-radius: var(--pn-r-card);
+  border: 1px solid var(--pn-hair-strong);
+  box-shadow: var(--pn-shadow-drawer);
+  overflow: hidden;
+}
+/* =========================================================================
+   Sheet — TEK kesinti yüzeyi (components/panel-ui/sheet.tsx)
+
+   Masaüstünde sağdan giren, pencere boyunca duran bir çekmece; dar ekranda
+   alttan çıkan bir kart. Ortalanmış diyalog artık yok: bir form, bir onay,
+   bir görüntüleyici — hepsi bu iki geometriden birine oturur.
+
+   Katmansız yazıldı (.pg-sheet gibi): Radix'in içerik düğümü Tailwind
+   yardımcı sınıfı taşımıyor ama ileride taşırsa bu kurallar kazanmalı.
+   ========================================================================= */
+.pn-sheet-scrim {
+  position: fixed;
+  inset: 0;
+  /* 48/49, altında değil ÜSTÜNDE değil: Radix Select ve Popover içerikleri
+     z-50'de portal'lanır ve bir formun İÇİNDEKİ açılır liste sheet'in önünde
+     durmak zorunda. Playground'un yüzen panelleri (46) ve yan panel (45)
+     ise sheet'in altında kalır. */
+  z-index: 48;
+  background: rgba(20, 31, 60, 0.38);
+}
+.pn-sheet-scrim[data-state="open"] {
+  animation: pn-fade-in var(--pn-dur-sheet-out) var(--pn-ease) both;
+}
+.pn-sheet-scrim[data-state="closed"] {
+  animation: pn-fade-in var(--pn-dur-sheet-out) var(--pn-ease) reverse both;
+}
+@media (min-width: 1024px) {
+  /* Masaüstünde perde daha hafif: çekmece bir kolon gibi durur, arkadaki
+     sayfa karartılmış bir fotoğraf değil, hâlâ "orada" olan bir çalışma. */
+  .pn-sheet-scrim {
+    background: rgba(20, 31, 60, 0.22);
+  }
+}
+
+.pn-sheet {
+  position: fixed;
+  z-index: 49;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  background: var(--color-surface-container);
+  border: 1px solid var(--pn-hair-strong);
+  box-shadow: var(--pn-shadow-drawer);
+  color: var(--color-on-surface);
+  outline: none;
+  overflow: hidden;
+  /* Sürükleme geri dönüşü (bkz. useDragToDismiss): parmak bırakılınca kart
+     bu eğriyle yerine oturur. Animasyon karelerinde inline `transition:none`
+     bunu bastırır. */
+  transition: transform 0.32s var(--pn-ease-out);
+}
+
+/* ---- Masaüstü: sağ çekmece ------------------------------------------- */
+@media (min-width: 1024px) {
+  /* Çerçeveyle aynı kenar boşlukları (.pn-shell / .pg-shell: üst 18, yan ve
+     alt 22): çekmece, barın ve içerik kolonunun oturduğu ızgaraya oturur. */
+  .pn-sheet {
+    top: calc(18px + env(safe-area-inset-top, 0px));
+    right: calc(22px + env(safe-area-inset-right, 0px));
+    bottom: calc(22px + env(safe-area-inset-bottom, 0px));
+    width: 460px;
+    max-width: calc(100vw - 44px);
+    border-radius: var(--pn-r-card);
+  }
+  .pn-sheet[data-size="sm"] {
+    width: 380px;
+    /* Kısa bir soru pencere boyunca uzamaz: yukarıdan asılı, içeriği kadar. */
+    bottom: auto;
+    max-height: calc(100dvh - 40px);
+  }
+  .pn-sheet[data-size="lg"] {
+    width: 680px;
+  }
+  .pn-sheet[data-size="full"] {
+    width: min(1100px, 92vw);
+  }
+  .pn-sheet[data-state="open"] {
+    animation: pn-sheet-in-right var(--pn-dur-sheet) var(--pn-ease-out) both;
+  }
+  .pn-sheet[data-state="closed"] {
+    animation: pn-sheet-out-right var(--pn-dur-sheet-out) var(--pn-ease-in) both;
+  }
+  /* Tutamak yalnızca dokunmatik geometride var. */
+  .pn-sheet-handle {
+    display: none;
+  }
+}
+@keyframes pn-sheet-in-right {
+  from {
+    transform: translate3d(32px, 0, 0);
+    opacity: 0;
+  }
+  to {
+    transform: translate3d(0, 0, 0);
+    opacity: 1;
+  }
+}
+@keyframes pn-sheet-out-right {
+  from {
+    transform: translate3d(0, 0, 0);
+    opacity: 1;
+  }
+  to {
+    transform: translate3d(24px, 0, 0);
+    opacity: 0;
+  }
+}
+
+/* ---- Dar ekran: alt kart ---------------------------------------------- */
+@media (max-width: 1023.98px) {
+  .pn-sheet {
+    left: 0;
+    right: 0;
+    bottom: 0;
+    width: 100%;
+    max-height: min(92dvh, 820px);
+    border-radius: 20px 20px 0 0;
+    border-bottom: 0;
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+  .pn-sheet[data-size="lg"] {
+    height: min(92dvh, 820px);
+  }
+  .pn-sheet[data-size="full"] {
+    height: 94dvh;
+    max-height: 94dvh;
+  }
+  .pn-sheet[data-state="open"] {
+    animation: pn-sheet-in-up var(--pn-dur-sheet) var(--pn-ease-out) both;
+  }
+  .pn-sheet[data-state="closed"] {
+    animation: pn-sheet-out-down var(--pn-dur-sheet-out) var(--pn-ease-in) both;
+  }
+  .pn-sheet-handle {
+    display: flex;
+    justify-content: center;
+    padding: 8px 0 2px;
+    flex-shrink: 0;
+    cursor: grab;
+    /* Tutamak kaydırmaz, sürükler: tarayıcı buradaki dikey hareketi sayfa
+       kaydırması sanmasın. Gövde (pn-scroll) kendi kaydırmasını korur. */
+    touch-action: none;
+  }
+  .pn-sheet-handle:active {
+    cursor: grabbing;
+  }
+  .pn-sheet-grip {
+    width: 40px;
+    height: 4px;
+    border-radius: 999px;
+    background: var(--pn-hair-strong);
+  }
+  /* Başlık bandı da tutamağın parçası (sheet.tsx aynı işleyicileri
+     verir), o yüzden orada da kaydırma değil sürükleme. */
+  .pn-sheet-head {
+    touch-action: none;
+  }
+}
+@keyframes pn-sheet-in-up {
+  from {
+    transform: translate3d(0, 100%, 0);
+  }
+  to {
+    transform: translate3d(0, 0, 0);
+  }
+}
+@keyframes pn-sheet-out-down {
+  from {
+    transform: translate3d(0, var(--sheet-drag, 0px), 0);
+  }
+  to {
+    transform: translate3d(0, 100%, 0);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .pn-sheet[data-state="open"],
+  .pn-sheet[data-state="closed"],
+  .pn-sheet-scrim[data-state="open"],
+  .pn-sheet-scrim[data-state="closed"] {
+    animation: none !important;
+  }
+  .pn-sheet {
+    transition: none;
+  }
+}
+
+/* =========================================================================
+   Açılır içerik — kartlar yumuşak açılır
+
+   İki mekanizma var ve ikisi de yüksekliği canlandırır:
+   · Radix Collapsible: içerik düğümü açılış/kapanışta kendi ölçtüğü
+     yüksekliği --radix-collapsible-content-height ile verir; keyframe onu
+     kullanır. Sıfırdan bir çırpıda beliren liste, "açıldı" değil "değişti"
+     okunur.
+   · .pn-expand: elle yazılan açılır satırlar için (konu kartları, öğrenci
+     listesi, stüdyo). Bir grid'in satır boyu 0fr → 1fr geçişi, yüksekliği
+     JS ölçmeden canlandırmanın tek CSS yolu. İçerik `overflow:hidden` bir
+     sarmalayıcıda durur.
+   ========================================================================= */
+[data-slot="collapsible-content"][data-state="open"] {
+  animation: pn-collapse-open var(--pn-dur-panel) var(--pn-ease-out) both;
+}
+[data-slot="collapsible-content"][data-state="closed"] {
+  animation: pn-collapse-close 0.2s var(--pn-ease-in) both;
+}
+@keyframes pn-collapse-open {
+  from {
+    height: 0;
+    opacity: 0;
+  }
+  to {
+    height: var(--radix-collapsible-content-height);
+    opacity: 1;
+  }
+}
+@keyframes pn-collapse-close {
+  from {
+    height: var(--radix-collapsible-content-height);
+    opacity: 1;
+  }
+  to {
+    height: 0;
+    opacity: 0;
+  }
+}
+[data-slot="collapsible-content"] {
+  overflow: hidden;
+}
+
+.pn-expand {
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows var(--pn-dur-panel) var(--pn-ease-out), opacity var(--pn-dur) var(--pn-ease);
+  opacity: 0;
+}
+.pn-expand[data-open="true"] {
+  grid-template-rows: 1fr;
+  opacity: 1;
+}
+.pn-expand > * {
+  min-height: 0;
+  overflow: hidden;
+}
+@media (prefers-reduced-motion: reduce) {
+  [data-slot="collapsible-content"][data-state="open"],
+  [data-slot="collapsible-content"][data-state="closed"] {
+    animation: none !important;
+  }
+  .pn-expand {
+    transition: none;
+  }
+}
+
+
+/* =========================================================================
+   Model cevabındaki markdown — bileşen katmanının DIŞINDA: highlight.js'in
+   ürettiği sınıfları renklendirir, bunlar yardımcı sınıflarla çakışmaz.
+   Renkler panelin mürekkep aileleri: kod bloğu krem kâğıttır, doygun bir
+   vurgu rengi orada fosforlu kalem gibi durur.
+   ========================================================================= */
 .pg-md > :first-child { margin-top: 0; }
 .pg-md > :last-child { margin-bottom: 0; }
 
@@ -1642,116 +2616,28 @@
 .pg-md .hljs-quote { color: var(--color-outline); font-style: italic; }
 .pg-md .hljs-keyword,
 .pg-md .hljs-selector-tag,
-.pg-md .hljs-operator { color: var(--pg-sky-deep); }
+.pg-md .hljs-operator { color: var(--pn-blue-ink); }
 .pg-md .hljs-string,
-.pg-md .hljs-regexp { color: var(--pg-mint-deep); }
+.pg-md .hljs-regexp { color: var(--pn-mint-ink); }
 .pg-md .hljs-number,
 .pg-md .hljs-literal,
 .pg-md .hljs-built_in,
-.pg-md .hljs-type { color: var(--pg-peach-ink); }
+.pg-md .hljs-type { color: var(--pn-peach-ink); }
 .pg-md .hljs-title,
 .pg-md .hljs-title.class_,
 .pg-md .hljs-title.function_,
-.pg-md .hljs-section { color: var(--pg-pink-deep); }
+.pg-md .hljs-section { color: var(--pn-pink-ink); }
 .pg-md .hljs-attr,
 .pg-md .hljs-attribute,
 .pg-md .hljs-property,
 .pg-md .hljs-variable,
-.pg-md .hljs-params { color: var(--pg-sky); }
+.pg-md .hljs-params { color: var(--pn-violet-ink); }
 .pg-md .hljs-tag,
-.pg-md .hljs-name { color: var(--pg-peach-deep); }
+.pg-md .hljs-name { color: var(--pn-peach-ink-strong); }
 .pg-md .hljs-meta,
 .pg-md .hljs-punctuation { color: var(--color-outline); }
 .pg-md .hljs-emphasis { font-style: italic; }
 .pg-md .hljs-strong { font-weight: 600; }
-
-/* Pills (model chips, the balance readout, tab groups). Same physics, smaller
-   numbers so a row of them doesn't read as five stacked cards. */
-.pg-pill {
-  background: var(--color-surface-container);
-  border: 2.5px solid var(--pg-ink);
-  border-radius: 999px;
-  box-shadow: 0 3px 0 0 var(--pg-ink);
-}
-
-/* Send / primary action. Peach slab, navy text, the marketing press.
-
-   Fill/shadow/text come from --pg-btn-fill/-shadow/-fg (the same trick
-   .pn-btn uses on the paper side) so a colour variant is three lines rather
-   than a copy of the whole shadow stack. Every variant keeps navy text: all
-   four accents are light enough that white type on them fails contrast. */
-.pg-btn {
-  --pg-btn-fill: var(--color-secondary);
-  --pg-btn-shadow: var(--color-secondary-container);
-  --pg-btn-fg: var(--color-on-secondary);
-  background: var(--pg-btn-fill);
-  color: var(--pg-btn-fg);
-  border: 2.5px solid var(--pg-ink);
-  border-radius: 14px;
-  box-shadow: 0 4px 0 0 var(--pg-btn-shadow), 0 4px 0 2.5px var(--pg-ink);
-  transition: transform 0.11s cubic-bezier(0.2, 0.8, 0.3, 1),
-    box-shadow 0.11s cubic-bezier(0.2, 0.8, 0.3, 1);
-}
-.pg-btn:active:not(:disabled) {
-  transform: translateY(4px);
-  box-shadow: 0 0 0 0 var(--pg-btn-shadow), 0 0 0 2.5px var(--pg-ink);
-}
-.pg-btn:disabled { opacity: 0.5; }
-
-/* Stop is coral, not peach: pressing it interrupts something, and it replaces
-   the send button in place — same slot, same physics, different intent. */
-.pg-btn--pink { --pg-btn-fill: var(--pg-pink); --pg-btn-shadow: var(--pg-pink-deep); }
-.pg-btn--mint { --pg-btn-fill: var(--pg-mint); --pg-btn-shadow: var(--pg-mint-deep); }
-.pg-btn--sky { --pg-btn-fill: var(--pg-sky); --pg-btn-shadow: var(--pg-sky-deep); --pg-btn-fg: #ffffff; }
-
-/* Form fields, matching the paper side's rule but outlined in --pg-ink. */
-.pg-theme :is(input, textarea, select):not([type="checkbox"]):not([type="radio"]):not(.pg-bare) {
-  background: var(--color-surface-container);
-  color: var(--color-on-surface);
-  border: 2.5px solid var(--pg-ink);
-  border-radius: 12px;
-}
-.pg-theme :is(input, textarea):not(.pg-bare)::placeholder {
-  color: var(--color-on-surface-variant);
-  opacity: 0.6;
-}
-.pg-theme :is(input, textarea, select):not(.pg-bare):focus-visible {
-  outline: 3px solid var(--color-secondary);
-  outline-offset: 2px;
-}
-
-/* Dialogs opened from the playground portal to <body>, which is outside
-   .pg-theme — so they need the tokens re-declared, not inherited. The four
-   accents come along too: the picker inside reaches for --pg-sky. */
-[data-slot="dialog-content"].pg-dialog,
-[data-slot="popover-content"].pg-dialog {
-  background: #ffffff;
-  color: #152343;
-  border: 3px solid #152343;
-  border-radius: 20px;
-  box-shadow: 0 6px 0 0 #152343;
-  backdrop-filter: none;
-  -webkit-backdrop-filter: none;
-  --pg-peach: #ff9f45;
-  --pg-peach-deep: #d2701a;
-  --pg-peach-ink: #a1530c;
-  --pg-mint: #2fd08a;
-  --pg-mint-deep: #17915b;
-  --pg-sky: #3d5fe0;
-  --pg-sky-deep: #2437a6;
-  --pg-pink: #ff6b8a;
-  --pg-pink-deep: #ce3b5f;
-}
-
-/* The Playground ground: the same 26px dot grid .panel-grid-bg paints on
-   cream, on light blue instead — so a student moving from the dashboard into
-   the playground stays on one continuous sheet of paper, just a bluer piece
-   of it. Replaces the star field this route used to sit on. */
-.pg-dots {
-  background-color: var(--color-surface);
-  background-image: radial-gradient(#9dbde6 1.5px, transparent 1.5px);
-  background-size: 26px 26px;
-}
 
 /* Transparency checkerboard, shown behind a cut-out sticker so a student can
    see what "arka planı silindi" actually produced before downloading it.
@@ -1762,24 +2648,4 @@
   background-image:
     conic-gradient(from 0deg at 50% 50%, #e6edf7 25%, transparent 0 50%, #e6edf7 0 75%, transparent 0);
   background-size: 16px 16px;
-}
-
-/* A sparse scatter of larger confetti dots in the four accents over the grid.
-   This is the one place the playground ground is allowed a texture — it is
-   what keeps a flat dot grid from reading as graph paper. Hard-edged (a
-   99%/100% stop, not a fade) so it obeys the no-gradient rule, tiled at
-   coprime-ish sizes so the repeat never lines up into a visible pattern. */
-.pg-confetti {
-  pointer-events: none;
-  opacity: 0.55;
-  background-image:
-    radial-gradient(circle 3.5px at 12% 18%, var(--pg-mint) 99%, transparent 100%),
-    radial-gradient(circle 3px at 68% 11%, var(--pg-peach) 99%, transparent 100%),
-    radial-gradient(circle 3px at 86% 63%, var(--pg-pink) 99%, transparent 100%),
-    radial-gradient(circle 2.5px at 31% 74%, var(--pg-sky) 99%, transparent 100%),
-    radial-gradient(circle 3px at 52% 39%, var(--pg-peach) 99%, transparent 100%),
-    radial-gradient(circle 2.5px at 7% 55%, var(--pg-pink) 99%, transparent 100%),
-    radial-gradient(circle 3.5px at 93% 27%, var(--pg-mint) 99%, transparent 100%),
-    radial-gradient(circle 2.5px at 45% 91%, var(--pg-sky) 99%, transparent 100%);
-  background-size: 421px 421px, 383px 383px, 457px 457px, 337px 337px, 521px 521px, 401px 401px, 479px 479px, 359px 359px;
 }

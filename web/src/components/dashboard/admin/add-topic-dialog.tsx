@@ -1,8 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/panel-ui/dialog";
-import { Button } from "@/components/panel-ui/button";
+import { Sheet, SheetBody, SheetContent, SheetFooter, SheetHeader } from "@/components/panel-ui/sheet";
 import { Input } from "@/components/panel-ui/input";
 import { Label } from "@/components/panel-ui/label";
 import { Textarea } from "@/components/panel-ui/textarea";
@@ -40,13 +39,11 @@ export function AddTopicDialog({ open, onOpenChange, onAddTopic, allowAddToEnd }
   }
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="w-[calc(100%-1rem)] sm:max-w-lg">
-        <DialogHeader>
-          <DialogTitle>Yeni Konu Ekle</DialogTitle>
-          <DialogDescription>Öğrenci için yeni bir öğrenme konusu oluşturun. Daha sonra kaynak ekleyebilirsiniz.</DialogDescription>
-        </DialogHeader>
-        <form onSubmit={handleSubmit} className="space-y-4">
+    <Sheet open={open} onOpenChange={onOpenChange}>
+      <SheetContent onDismiss={() => onOpenChange(false)}>
+        <SheetHeader tone="blue" title="Yeni Konu Ekle" subtitle="Öğrenci için yeni bir konu. Kaynakları sonra eklersin." />
+        <form onSubmit={handleSubmit} className="flex min-h-0 flex-1 flex-col">
+          <SheetBody className="space-y-4">
           <div className="space-y-2">
             <Label htmlFor="topic-title">Konu Başlığı</Label>
             <Input
@@ -75,17 +72,18 @@ export function AddTopicDialog({ open, onOpenChange, onAddTopic, allowAddToEnd }
               </Label>
             </div>
           )}
-          <div className="flex justify-end gap-2">
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={isLoading}>
+          </SheetBody>
+          <SheetFooter>
+            <button type="button" className="pn-btn pn-btn--paper" onClick={() => onOpenChange(false)} disabled={isLoading}>
               İptal
-            </Button>
-            <Button type="submit" disabled={isLoading || !title.trim()}>
-              {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+            </button>
+            <button type="submit" className="pn-btn pn-btn--blue" disabled={isLoading || !title.trim()}>
+              {isLoading && <Loader2 className="size-4 animate-spin" />}
               Konu Oluştur
-            </Button>
-          </div>
+            </button>
+          </SheetFooter>
         </form>
-      </DialogContent>
-    </Dialog>
+      </SheetContent>
+    </Sheet>
   );
 }

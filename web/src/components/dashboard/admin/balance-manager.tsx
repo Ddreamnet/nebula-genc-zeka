@@ -5,16 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/panel-ui/button";
 import { Input } from "@/components/panel-ui/input";
 import { Label } from "@/components/panel-ui/label";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/panel-ui/alert-dialog";
+import { ConfirmSheet } from "@/components/panel-ui/sheet";
 import { createClient } from "@/lib/supabase/client";
 import { Clock, CheckCircle2, Calendar, Plus, Minus, RotateCcw, Receipt } from "lucide-react";
 import { toast } from "sonner";
@@ -317,7 +308,7 @@ export function BalanceManager({ teacherId }: BalanceManagerProps) {
           ) : (
             <div className="space-y-3">
               {paymentHistory.map((payment) => (
-                <Card key={payment.id} className="border-l-4 border-l-primary">
+                <Card key={payment.id} className="border-l-[3px] border-l-[color:var(--pn-mint-ink)]">
                   <CardContent className="p-4">
                     <div className="flex items-start justify-between gap-4">
                       <div className="space-y-1 flex-1">
@@ -360,27 +351,15 @@ export function BalanceManager({ teacherId }: BalanceManagerProps) {
         </CardContent>
       </Card>
 
-      <AlertDialog open={showResetDialog} onOpenChange={setShowResetDialog}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Bakiyeyi Sıfırla</AlertDialogTitle>
-            <AlertDialogDescription>
-              Bu işlem öğretmenin tüm bakiyesini (toplam dakika, normal ders sayısı, deneme dersi sayısı) sıfırlayacak ve mevcut bakiye ödeme geçmişine
-              kaydedilecek. Devam etmek istediğinize emin misiniz?
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>İptal</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={handleResetBalance}
-              disabled={actionBusy}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-            >
-              Sıfırla ve Kaydet
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      <ConfirmSheet
+        open={showResetDialog}
+        onOpenChange={setShowResetDialog}
+        title="Bakiyeyi Sıfırla"
+        description="Toplam dakika, normal ve deneme ders sayıları sıfırlanır; mevcut bakiye ödeme geçmişine yazılır."
+        confirmLabel="Sıfırla ve Kaydet"
+        loading={actionBusy}
+        onConfirm={handleResetBalance}
+      />
     </div>
   );
 }

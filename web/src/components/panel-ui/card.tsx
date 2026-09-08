@@ -2,6 +2,12 @@ import * as React from "react"
 
 import { cn } from "@/lib/cn"
 
+// Yarıçap BİLEREK burada verilmiyor: `.pn-card` (globals.css) 16px'i taşıyor
+// ve bileşen katmanında olduğu için bir çağrı yeri gerektiğinde `rounded-*`
+// ile ezebiliyor. Burada `rounded-xl` yazılı kaldığında panelde iki farklı
+// kart yarıçapı oluyordu — 12px (bu bileşen) ve 16px (elle yazılan .pn-card
+// bölümleri) — ve ikisi yan yana gelen her yerde göze çarpıyordu.
+
 function Card({
   className,
   size = "default",
@@ -12,7 +18,7 @@ function Card({
       data-slot="card"
       data-size={size}
       className={cn(
-        "pn-card group/card flex flex-col gap-(--card-spacing) overflow-hidden rounded-xl py-(--card-spacing) text-sm text-card-foreground [--card-spacing:--spacing(4)] has-data-[slot=card-footer]:pb-0 has-[>img:first-child]:pt-0 data-[size=sm]:[--card-spacing:--spacing(3)] data-[size=sm]:has-data-[slot=card-footer]:pb-0 *:[img:first-child]:rounded-t-xl *:[img:last-child]:rounded-b-xl",
+        "pn-card group/card flex flex-col gap-(--card-spacing) overflow-hidden py-(--card-spacing) text-sm text-card-foreground [--card-spacing:--spacing(4)] has-data-[slot=card-footer]:pb-0 has-[>img:first-child]:pt-0 data-[size=sm]:[--card-spacing:--spacing(3)] data-[size=sm]:has-data-[slot=card-footer]:pb-0 *:[img:first-child]:rounded-t-xl *:[img:last-child]:rounded-b-xl",
         className
       )}
       {...props}

@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { createClient } from "@/lib/supabase/client";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/panel-ui/dialog";
+import { Sheet, SheetBody, SheetContent, SheetHeader } from "@/components/panel-ui/sheet";
 import { Button } from "@/components/panel-ui/button";
 import { Input } from "@/components/panel-ui/input";
 import { Label } from "@/components/panel-ui/label";
@@ -206,7 +206,7 @@ export function BlogManager({ open, onOpenChange }: BlogManagerProps) {
   }
 
   return (
-    <Dialog
+    <Sheet
       open={open}
       onOpenChange={(v) => {
         if (!v) {
@@ -216,26 +216,36 @@ export function BlogManager({ open, onOpenChange }: BlogManagerProps) {
         onOpenChange(v);
       }}
     >
-      <DialogContent className="w-[calc(100%-1rem)] max-w-4xl max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            {view === "edit" && (
-              <Button
-                variant="ghost"
-                size="icon"
+      <SheetContent
+        size="full"
+        onDismiss={() => {
+          setView("list");
+          resetForm();
+          onOpenChange(false);
+        }}
+      >
+        <SheetHeader
+          tone="violet"
+          title={view === "list" ? "Blog Yönetimi" : editingPost?.id ? "Yazıyı Düzenle" : "Yeni Yazı"}
+          subtitle={view === "list" ? `${posts.length} yazı` : editingPost?.slug ? `/${editingPost.slug}` : "Taslak olarak kaydedilir"}
+          icon={
+            view === "edit" ? (
+              <button
+                type="button"
                 aria-label="Listeye dön"
+                className="pn-btn pn-btn--icon pn-btn--paper !size-9 pointer-fine:!size-8"
                 onClick={() => {
                   setView("list");
                   resetForm();
                 }}
               >
-                <ArrowLeft className="h-4 w-4" />
-              </Button>
-            )}
-            {view === "list" ? "Blog Yönetimi" : editingPost?.id ? "Yazıyı Düzenle" : "Yeni Yazı"}
-          </DialogTitle>
-        </DialogHeader>
+                <ArrowLeft className="size-4" strokeWidth={2} aria-hidden />
+              </button>
+            ) : undefined
+          }
+        />
 
+        <SheetBody>
         {view === "list" && (
           <div className="space-y-4">
             <Button onClick={startNew} className="w-full sm:w-auto">
@@ -352,7 +362,8 @@ export function BlogManager({ open, onOpenChange }: BlogManagerProps) {
             </div>
           </div>
         )}
-      </DialogContent>
-    </Dialog>
+        </SheetBody>
+      </SheetContent>
+    </Sheet>
   );
 }

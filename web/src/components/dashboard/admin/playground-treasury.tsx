@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Gem, TriangleAlert, RefreshCw } from "lucide-react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/panel-ui/dialog";
+import { Sheet, SheetBody, SheetContent, SheetHeader, SheetTrigger } from "@/components/panel-ui/sheet";
 import { cn } from "@/lib/cn";
 
 /**
@@ -182,28 +182,40 @@ function TreasuryBody() {
   );
 }
 
-export function PlaygroundTreasuryButton() {
-  const [open, setOpen] = useState(false);
+/**
+ * Kasa — kendi düğmesiyle ya da dışarıdan kontrol edilerek açılır.
+ *
+ * Kontrollü modda düğmesini çizmez: panel navigasyonundaki ikon onu açar ve
+ * aynı eylemi açan ikinci bir düğme olmaz. Radix kapalı içeriği mount
+ * etmediği için OpenRouter isteği yalnızca diyalog açıldığında yapılır.
+ */
+export function PlaygroundTreasuryButton({
+  open: controlledOpen,
+  onOpenChange,
+}: { open?: boolean; onOpenChange?: (open: boolean) => void } = {}) {
+  const [uncontrolledOpen, setUncontrolledOpen] = useState(false);
+  const controlled = controlledOpen !== undefined;
+  const open = controlled ? controlledOpen : uncontrolledOpen;
+  const setOpen = controlled ? (onOpenChange ?? (() => {})) : setUncontrolledOpen;
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Sheet open={open} onOpenChange={setOpen}>
       {/* asChild so the panel's own button styling is kept and Radix still
           restores focus here when the dialog closes. */}
-      <DialogTrigger asChild>
-        <button type="button" className="pn-btn pn-btn--sm pn-btn--purple">
-          <Gem className="h-4 w-4" />
-          <span className="hidden sm:inline">Kasa</span>
-        </button>
-      </DialogTrigger>
-      <DialogContent className="w-[calc(100%-1rem)] max-h-[90vh] overflow-y-auto sm:max-w-2xl">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <Gem className="size-4 text-secondary" />
-            Playground kasası
-          </DialogTitle>
-        </DialogHeader>
-        <TreasuryBody />
-      </DialogContent>
-    </Dialog>
+      {!controlled && (
+        <SheetTrigger asChild>
+          <button type="button" className="pn-btn pn-btn--sm pn-btn--violet">
+            <Gem className="h-4 w-4" />
+            <span className="hidden sm:inline">Kasa</span>
+          </button>
+        </SheetTrigger>
+      )}
+      <SheetContent size="lg" onDismiss={() => setOpen(false)}>
+        <SheetHeader tone="violet" title="Playground kasası" subtitle="OpenRouter bakiyesi ve cevher dağıtımı" icon={<Gem className="size-5 shrink-0 text-[color:var(--pn-violet-ink)]" strokeWidth={1.9} aria-hidden />} />
+        <SheetBody>
+          <TreasuryBody />
+        </SheetBody>
+      </SheetContent>
+    </Sheet>
   );
 }

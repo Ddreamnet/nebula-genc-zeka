@@ -3,16 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Check, ChevronDown } from "lucide-react";
 import { toast } from "sonner";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/panel-ui/alert-dialog";
+import { ConfirmSheet } from "@/components/panel-ui/sheet";
 import { createClient } from "@/lib/supabase/client";
 import { clearWeekCache } from "@/lib/lesson/week-cache";
 import { completeLesson, undoCompleteLesson, getNextCompletableInstance, getLastCompletedInstance } from "@/lib/lesson/service";
@@ -35,15 +26,25 @@ type ChainLink = "linked" | "broken" | "none";
 /** Zincir geometrisi VERİDEN türetilir, elle yerleştirilmez. Kopuk bir çiftte
  *  boşluk büyür ve halkalar küçülür; `ringBottom` ikisinden hesaplandığı için
  *  halkalar her durumda boşluğun tam ortasında kalır. Sabit bir değer
- *  yazılsaydı kopuk çiftte halkalar boşluğu ıskalardı. */
+ *  yazılsaydı kopuk çiftte halkalar boşluğu ıskalardı.
+ *
+ *  Değerler bir kez daraltıldı (14/26/20 → 10/18/14): zincir bir şema değil,
+ *  bir listenin okunma sırası. Bağın kendisi 10px'te de aynı şeyi söylüyor
+ *  ve iki dersli bir gün ekranda 22px daha az yer kaplıyor. */
 const CHAIN_GEOMETRY: Record<ChainLink, { gap: number; ring: number; ink: string }> = {
-  linked: { gap: 14, ring: 14, ink: "var(--color-outline)" },
-  broken: { gap: 26, ring: 9, ink: "var(--pn-pink-ink)" },
-  none: { gap: 20, ring: 14, ink: "transparent" },
+  linked: { gap: 10, ring: 10, ink: "var(--color-outline)" },
+  broken: { gap: 18, ring: 8, ink: "var(--pn-pink-ink)" },
+  none: { gap: 14, ring: 14, ink: "transparent" },
 };
 
 type LessonState = "completed" | "now" | "planned" | "moved";
 
+/** `label` artık satırda BASILMAZ; `title` ve `aria-label` içinde yaşar.
+ *  Bir satırda durum üç kez söyleniyordu: halka, zemin rengi ve sağdaki
+ *  rozet. Üçünden en pahalısı rozetti — hem yer kaplıyor hem her satırda
+ *  aynı üç kelimeyi tekrar ediyordu. Renk ve halka kalır, rozet gider.
+ *  Tek istisna ERTELENMİŞ ders: onu renk tek başına anlatamaz, o yüzden
+ *  gün sütununda "SAL → PER" olarak, yani bilgiyle birlikte görünür. */
 const STATE_STYLE: Record<LessonState, { bg: string; line: string; tone: string; ring: string; label: string }> = {
   completed: {
     bg: "var(--pn-mint-sel)",
@@ -79,8 +80,11 @@ interface Props {
   studentId: string;
   studentName: string;
   teacherId: string;
-  /** Şu an işlenmekte olan dersin saat aralığı — "ŞU AN" rozetini bu belirler. */
+  /** Şu an işlenmekte olan dersin saat aralığı — "şu an" tonunu bu belirler. */
   activeRange?: { start: string; end: string } | null;
+  /** Canlı dersin ne kadarı geçti (0–1). Satırın alt kenarındaki 2px'lik
+   *  çizgi bunu çizer; başlıkta ayrı bir ilerleme satırı YOK. */
+  activeProgress?: number;
   onChanged?: () => void;
 }
 
@@ -98,7 +102,7 @@ interface Props {
  * yalnızca SON tamamlanan ders geri alınabilir (ikisi de RPC'nin kendi
  * kısıtı; arayüz sadece aynı kısıtı görünür kılar).
  */
-export function LessonChain({ studentId, studentName, teacherId, activeRange, onChanged }: Props) {
+export function LessonChain({ studentId, studentName, teacherId, activeRange, activeProgress = 0, onChanged }: Props) {
   const [instances, setInstances] = useState<LessonInstance[]>([]);
   const [nextId, setNextId] = useState<string | null>(null);
   const [lastId, setLastId] = useState<string | null>(null);
@@ -237,7 +241,8 @@ export function LessonChain({ studentId, studentName, teacherId, activeRange, on
 
   if (loading) {
     // Görünen satır sayısı kadar yer tutulur: yüklendiğinde blok zıplamaz.
-    return <div className="h-[104px] animate-pulse rounded-[12px] bg-[color:var(--pn-blue-tint)]" />;
+    // 88 = iki satır (39) + aralarındaki bağ (10).
+    return <div className="h-[88px] animate-pulse rounded-[12px] bg-[color:var(--pn-blue-tint)]" />;
   }
 
   if (visible.length === 0) {
@@ -258,6 +263,13 @@ export function LessonChain({ studentId, studentName, teacherId, activeRange, on
             (instance.status === "planned" && instance.id === nextId) ||
             (instance.status === "completed" && instance.id === lastId);
           const date = parseLocalDate(instance.lesson_date);
+          // Gün etiketi yalnızca DEĞİŞTİĞİNDE yazılır. Varsayılan görünüm tek
+          // bir günün iki dersi olduğu için aynı üç harf iki kez alt alta
+          // duruyordu; bir sütunun her satırında aynı değer varsa o sütun
+          // bilgi taşımıyor demektir.
+          const previous = index > 0 ? visible[index - 1] : null;
+          const originDate = instance.original_date ? parseLocalDate(instance.original_date) : null;
+          const showDay = state === "moved" || !previous || previous.lesson_date !== instance.lesson_date;
 
           return (
             <div key={instance.id} className="relative" style={{ paddingBottom: gap }}>
@@ -274,15 +286,20 @@ export function LessonChain({ studentId, studentName, teacherId, activeRange, on
                       ? "Yalnızca en son işlenen ders geri alınabilir"
                       : "Sırayla işaretlenir — önce bir önceki ders"
                 }
+                aria-label={`${instance.lesson_number}. ders · ${SHORT_DAYS[date.getDay()]} ${instance.start_time.slice(0, 5)} · ${style.label}`}
                 className={cn(
-                  "flex w-full items-center gap-2.5 rounded-[11px] border px-2.5 py-2 text-left transition-transform duration-[.16s]",
+                  // Dokunmatikte 39px, farede 31px. Yükseklik farkı dolgudan
+                  // gelir, yazı boyundan değil — satır her iki cihazda da aynı
+                  // şeyi aynı ölçekte söyler, yalnızca parmağa daha çok yer
+                  // bırakır.
+                  "relative flex w-full items-center gap-2 overflow-hidden rounded-[11px] border px-2 py-2.5 text-left transition-transform duration-[.16s] pointer-fine:py-1.5",
                   actionable ? "cursor-pointer hover:-translate-y-px" : "cursor-default",
                 )}
                 style={{ background: style.bg, borderColor: style.line }}
               >
                 <span
                   aria-hidden
-                  className="grid size-[19px] shrink-0 place-items-center rounded-full border-[1.5px]"
+                  className="grid size-[17px] shrink-0 place-items-center rounded-full border-[1.5px]"
                   style={{ background: style.ring, borderColor: style.tone }}
                 >
                   <Check
@@ -292,19 +309,44 @@ export function LessonChain({ studentId, studentName, teacherId, activeRange, on
                   />
                 </span>
                 <span className="shrink-0 text-[13px] font-semibold text-on-surface">{instance.lesson_number}. ders</span>
-                <span
-                  className="shrink-0 font-mono text-[10px] font-semibold tracking-wider"
-                  style={{ color: style.tone }}
-                >
-                  {SHORT_DAYS[date.getDay()]}
-                </span>
+                {showDay && (
+                  <span
+                    className="shrink-0 font-mono text-[10px] font-semibold tracking-wider"
+                    style={{ color: style.tone }}
+                  >
+                    {/* Ertelenmiş ders gün sütununda kendi hikâyesini anlatır:
+                        nereden nereye. Ayrı bir "ERTELENDİ" rozeti bunun
+                        yanında yalnızca bir kelime tekrarı olurdu. */}
+                    {originDate && state === "moved"
+                      ? `${SHORT_DAYS[originDate.getDay()]} → ${SHORT_DAYS[date.getDay()]}`
+                      : SHORT_DAYS[date.getDay()]}
+                  </span>
+                )}
                 <span className="shrink-0 font-mono text-[10px] tabular-nums text-on-surface-variant">
                   {instance.start_time.slice(0, 5)} – {instance.end_time.slice(0, 5)}
                 </span>
                 <span className="min-w-0 flex-1" />
-                <span className="pn-tag shrink-0" style={{ background: style.ring, color: style.tone }}>
-                  {style.label}
-                </span>
+                {/* Sağ uçta rozet değil EYLEM durur — ve yalnızca gerçekten
+                    tıklanabilen satırda. Durumu tekrar eden bir etiket yer
+                    kaplıyordu; hangi satırın tıklanabildiğini ise hiçbir şey
+                    söylemiyordu. Yer aynı, taşıdığı bilgi farklı. */}
+                {actionable && (
+                  <span
+                    className="shrink-0 font-mono text-[10px] font-semibold uppercase tracking-[.12em]"
+                    style={{ color: style.tone }}
+                  >
+                    {instance.status === "completed" ? "Geri al" : "İşaretle"}
+                  </span>
+                )}
+                {/* Canlı dersin ilerleme çizgisi. Başlıktaki ayrı ilerleme
+                    satırının yerine geçer: aynı bilgi, sıfır ek yükseklik. */}
+                {state === "now" && activeProgress > 0 && (
+                  <span
+                    aria-hidden
+                    className="absolute inset-x-1.5 bottom-[3px] h-[2px] origin-left rounded-full opacity-60 transition-transform duration-1000 ease-linear"
+                    style={{ background: style.tone, transform: `scaleX(${Math.min(activeProgress, 1)})` }}
+                  />
+                )}
               </button>
 
               {/* Aynı günün iki dersini bağlayan yarım halkalar. Kart
@@ -334,11 +376,14 @@ export function LessonChain({ studentId, studentName, teacherId, activeRange, on
           type="button"
           onClick={() => setExpanded((value) => !value)}
           aria-expanded={expanded}
-          className="mt-2.5 flex w-full items-center justify-center gap-1.5 rounded-[10px] border border-[color:var(--pn-blue-line)] bg-[color:rgba(255,251,242,.72)] py-2 text-[12px] font-semibold text-[color:var(--pn-blue-ink-strong)] transition-colors duration-[.16s] hover:bg-surface-container"
+          // Tam genişlikte bir çubuk değil, sağa yaslanmış küçük bir bağlantı:
+          // bu bir eylem değil bir GÖRÜNÜM anahtarı, ve altındaki konular
+          // kartıyla aynı görsel ağırlıkta olması gerekmiyordu.
+          className="ml-auto mt-1.5 flex min-h-9 items-center gap-1.5 rounded-[8px] px-2 text-[12px] font-semibold text-[color:var(--pn-blue-ink)] transition-colors duration-[.16s] hover:bg-[color:rgba(255,251,242,.7)] pointer-fine:min-h-0 pointer-fine:py-1"
         >
           {expanded ? "Yalnızca bugün" : "Bu haftanın tümü"}
-          <span className="font-mono text-[10px] font-semibold text-[color:var(--pn-blue-ink)]">
-            {weekRows.length} ders
+          <span className="font-mono text-[10px] font-semibold tabular-nums text-[color:var(--pn-blue-ink-strong)]">
+            {weekRows.length}
           </span>
           <ChevronDown
             className={cn("size-3.5 transition-transform duration-[.18s]", expanded && "rotate-180")}
@@ -348,24 +393,21 @@ export function LessonChain({ studentId, studentName, teacherId, activeRange, on
         </button>
       )}
 
-      <AlertDialog open={!!pending} onOpenChange={(open) => !open && setPending(null)}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>{pending?.mode === "undo" ? "Son dersi geri al" : "Dersi işaretle"}</AlertDialogTitle>
-            <AlertDialogDescription>
-              {pending?.mode === "undo"
-                ? `${studentName} için son işlenen dersi geri almak istiyor musunuz? Öğretmen bakiyesi de düzeltilecek.`
-                : `${studentName} için ${pending?.instance.lesson_number}. dersi işlendi olarak işaretlemek istiyor musunuz?`}
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel disabled={running}>İptal</AlertDialogCancel>
-            <AlertDialogAction onClick={runConfirm} disabled={running}>
-              {running ? "İşleniyor…" : pending?.mode === "undo" ? "Geri al" : "Onayla"}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      <ConfirmSheet
+        open={!!pending}
+        onOpenChange={(open) => !open && setPending(null)}
+        tone={pending?.mode === "undo" ? "peach" : "mint"}
+        destructive={false}
+        title={pending?.mode === "undo" ? "Son dersi geri al" : "Dersi işaretle"}
+        description={
+          pending?.mode === "undo"
+            ? `${studentName} için son işlenen ders geri alınacak; bakiye de düzeltilecek.`
+            : `${studentName} için ${pending?.instance.lesson_number}. ders işlendi olarak işaretlenecek.`
+        }
+        confirmLabel={running ? "İşleniyor…" : pending?.mode === "undo" ? "Geri al" : "Onayla"}
+        loading={running}
+        onConfirm={runConfirm}
+      />
     </>
   );
 }

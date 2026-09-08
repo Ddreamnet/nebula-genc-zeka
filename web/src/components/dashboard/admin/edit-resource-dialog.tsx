@@ -1,8 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/panel-ui/dialog";
-import { Button } from "@/components/panel-ui/button";
+import { Sheet, SheetBody, SheetContent, SheetFooter, SheetHeader } from "@/components/panel-ui/sheet";
 import { Input } from "@/components/panel-ui/input";
 import { Textarea } from "@/components/panel-ui/textarea";
 import { Label } from "@/components/panel-ui/label";
@@ -51,12 +50,11 @@ export function EditResourceDialog({ open, onOpenChange, onEditResource, resourc
   }
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="w-[calc(100%-1rem)] sm:max-w-lg">
-        <DialogHeader>
-          <DialogTitle>Kaynağı Düzenle</DialogTitle>
-        </DialogHeader>
-        <form onSubmit={handleSubmit} className="space-y-4">
+    <Sheet open={open} onOpenChange={onOpenChange}>
+      <SheetContent onDismiss={() => onOpenChange(false)}>
+        <SheetHeader tone="blue" title="Kaynağı Düzenle" />
+        <form onSubmit={handleSubmit} className="flex min-h-0 flex-1 flex-col">
+          <SheetBody className="space-y-4">
           <div>
             <Label htmlFor="title">Başlık</Label>
             <Input id="title" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Kaynak başlığı" required />
@@ -85,16 +83,17 @@ export function EditResourceDialog({ open, onOpenChange, onEditResource, resourc
             <Label htmlFor="resourceUrl">Kaynak URL</Label>
             <Input id="resourceUrl" type="url" value={resourceUrl} onChange={(e) => setResourceUrl(e.target.value)} placeholder="https://..." required />
           </div>
-          <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+          </SheetBody>
+          <SheetFooter>
+            <button type="button" className="pn-btn pn-btn--paper" onClick={() => onOpenChange(false)}>
               İptal
-            </Button>
-            <Button type="submit" disabled={loading}>
+            </button>
+            <button type="submit" className="pn-btn pn-btn--blue" disabled={loading}>
               {loading ? "Kaydediliyor..." : "Kaydet"}
-            </Button>
-          </DialogFooter>
+            </button>
+          </SheetFooter>
         </form>
-      </DialogContent>
-    </Dialog>
+      </SheetContent>
+    </Sheet>
   );
 }

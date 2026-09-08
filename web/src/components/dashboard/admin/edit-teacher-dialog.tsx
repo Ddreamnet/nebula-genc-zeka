@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/panel-ui/dialog";
+import { Sheet, SheetBody, SheetContent, SheetFooter, SheetHeader } from "@/components/panel-ui/sheet";
 import { Button } from "@/components/panel-ui/button";
 import { Input } from "@/components/panel-ui/input";
 import { Label } from "@/components/panel-ui/label";
@@ -225,13 +225,12 @@ export function EditTeacherDialog({ open, onOpenChange, onTeacherUpdated, teache
   }
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="w-[calc(100%-1rem)] sm:max-w-md max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle>Öğretmen Ayarları</DialogTitle>
-        </DialogHeader>
+    <Sheet open={open} onOpenChange={onOpenChange}>
+      <SheetContent onDismiss={() => onOpenChange(false)}>
+        <SheetHeader tone="violet" title="Öğretmen Ayarları" subtitle={currentName} />
 
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} className="flex min-h-0 flex-1 flex-col">
+          <SheetBody className="space-y-4">
           <div className="space-y-2">
             <Label htmlFor="name">Öğretmen Adı</Label>
             <Input id="name" type="text" value={name} onChange={(e) => setName(e.target.value)} placeholder="Ad Soyad" required />
@@ -330,17 +329,18 @@ export function EditTeacherDialog({ open, onOpenChange, onTeacherUpdated, teache
             </Button>
           </div>
 
-          <div className="flex justify-end gap-2 pt-4">
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={loading}>
+          </SheetBody>
+          <SheetFooter>
+            <button type="button" className="pn-btn pn-btn--paper" onClick={() => onOpenChange(false)} disabled={loading}>
               İptal
-            </Button>
-            <Button type="submit" disabled={loading}>
-              {loading && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+            </button>
+            <button type="submit" className="pn-btn pn-btn--violet" disabled={loading}>
+              {loading && <Loader2 className="size-4 animate-spin" />}
               Kaydet
-            </Button>
-          </div>
+            </button>
+          </SheetFooter>
         </form>
-      </DialogContent>
-    </Dialog>
+      </SheetContent>
+    </Sheet>
   );
 }

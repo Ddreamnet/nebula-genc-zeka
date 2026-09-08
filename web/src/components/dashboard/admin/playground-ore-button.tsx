@@ -51,9 +51,17 @@ export function PlaygroundOreButton({ studentUserId }: { studentUserId: string }
       open={open}
     >
       <PopoverTrigger asChild>
-        <Button variant="ghost" size="sm" aria-label="Playground cevheri">
-          <Gem className="h-4 w-4" />
-        </Button>
+        {/* Satırdaki diğer iki eylemle (hakkında, ayarlar) AYNI kutu: aynı
+            boy, aynı saç kontur, aynı zemin. Eskiden kontursuz bir "ghost"
+            düğmeydi ve üçlü kümede tek başına havada duruyordu. */}
+        <button
+          type="button"
+          aria-label="Playground cevheri"
+          title="Playground cevheri"
+          className="grid size-9 shrink-0 place-items-center rounded-[10px] border border-[color:var(--pn-hair)] bg-surface-low text-on-surface-variant transition-colors duration-[.16s] hover:bg-[color:var(--pn-mint-tint)] hover:text-[color:var(--pn-mint-ink)] pointer-fine:size-7"
+        >
+          <Gem className="size-3.5" strokeWidth={1.9} aria-hidden />
+        </button>
       </PopoverTrigger>
       <PopoverContent className="w-64">
         <p className="text-xs text-muted-foreground">

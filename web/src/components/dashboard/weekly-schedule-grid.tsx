@@ -2,16 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/panel-ui/alert-dialog";
+import { ConfirmSheet } from "@/components/panel-ui/sheet";
 import { Button } from "@/components/panel-ui/button";
 import { Switch } from "@/components/panel-ui/switch";
 import { Label } from "@/components/panel-ui/label";
@@ -418,43 +409,33 @@ export function WeeklyScheduleGrid({ teacherId }: WeeklyScheduleGridProps) {
         </>
       )}
 
-      <AlertDialog open={confirmAction === "complete"} onOpenChange={(o) => !o && closeConfirm()}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>{isTrialTarget ? "Deneme Dersini İşle" : "Dersi İşle"}</AlertDialogTitle>
-            <AlertDialogDescription>
-              {isTrialTarget
-                ? "Bu deneme dersini işlendi olarak işaretlemek istediğinize emin misiniz?"
-                : `${selectedLesson?.student_name ?? "Bu öğrenci"} için bu dersi işlendi olarak işaretlemek istiyor musunuz? Öğretmen bakiyesine ders süresi eklenecek.`}
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel disabled={processing}>İptal</AlertDialogCancel>
-            <AlertDialogAction onClick={completeAction} disabled={processing}>
-              {processing ? "İşleniyor..." : "İşlendi Olarak İşaretle"}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      <ConfirmSheet
+        open={confirmAction === "complete"}
+        onOpenChange={(o) => !o && closeConfirm()}
+        tone="mint"
+        destructive={false}
+        title={isTrialTarget ? "Deneme Dersini İşle" : "Dersi İşle"}
+        description={
+          isTrialTarget
+            ? "Bu deneme dersi işlendi olarak işaretlenecek."
+            : `${selectedLesson?.student_name ?? "Bu öğrenci"} için bu ders işlendi olarak işaretlenecek; süresi bakiyeye eklenir.`
+        }
+        confirmLabel={processing ? "İşleniyor..." : "İşlendi Olarak İşaretle"}
+        loading={processing}
+        onConfirm={completeAction}
+      />
 
-      <AlertDialog open={confirmAction === "incomplete"} onOpenChange={(o) => !o && closeConfirm()}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>İşlediyi Geri Al</AlertDialogTitle>
-            <AlertDialogDescription>
-              {isTrialTarget
-                ? "Bu deneme dersinin işlendiğini geri almak istediğinize emin misiniz?"
-                : "Bu dersin işlendiğini geri almak istediğinize emin misiniz? Öğretmen bakiyesi de düzeltilecektir."}
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel disabled={processing}>İptal</AlertDialogCancel>
-            <AlertDialogAction onClick={incompleteAction} disabled={processing}>
-              {processing ? "İşleniyor..." : "İşlendiyi Geri Al"}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      <ConfirmSheet
+        open={confirmAction === "incomplete"}
+        onOpenChange={(o) => !o && closeConfirm()}
+        tone="peach"
+        destructive={false}
+        title="İşlendiyi Geri Al"
+        description={isTrialTarget ? "Bu deneme dersinin işlendiği geri alınacak." : "Bu dersin işlendiği geri alınacak; bakiye de düzeltilir."}
+        confirmLabel={processing ? "İşleniyor..." : "Geri Al"}
+        loading={processing}
+        onConfirm={incompleteAction}
+      />
     </div>
   );
 }

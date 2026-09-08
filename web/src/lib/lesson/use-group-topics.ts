@@ -12,7 +12,7 @@
  * group by the time it's viewed.
  *
  * Solo rows (a single member) flow through the same hook with the second
- * slot left undefined, so teacher-student-topics.tsx has one code path for
+ * slot left undefined, so the teacher panel’s topics card has one code path for
  * both solo and group display.
  */
 import { useCallback, useEffect, useMemo, useState } from "react";

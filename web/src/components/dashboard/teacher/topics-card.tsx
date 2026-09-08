@@ -120,7 +120,7 @@ export function TopicsCard({ members, groupName, onOpenLibrary }: Props) {
 
   return (
     <section className="pn-card min-h-0 flex-1" aria-label={`${heading} için konular`}>
-      <div className="pn-band pn-band--blue py-3">
+      <div className="pn-band pn-band--blue">
         <div className="flex min-w-0 flex-col">
           <h2 className="pn-card-title">Konular</h2>
           <p className="pn-card-sub truncate">
@@ -129,8 +129,13 @@ export function TopicsCard({ members, groupName, onOpenLibrary }: Props) {
           </p>
         </div>
 
-        <div className="flex min-w-11 flex-1 items-center gap-2">
-          <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-[color:rgba(21,35,67,.12)]">
+        {/* İlerleme çubuğu SABİT 64px ve BAŞLIĞIN HEMEN YANINDA. İki hata
+            birden düzeltildi: `flex-1` verildiğinde çubuk geniş bir kartta
+            1100px'e uzuyordu (20 konudan 9'unu anlatmak için bandın yarısı),
+            ve sağa yaslandığında "9/20" ile ne'yin 9/20'si olduğu bandın iki
+            ucuna düşüyordu. Sayı etiketinin yanında durur. */}
+        <div className="flex shrink-0 items-center gap-2">
+          <div className="h-1.5 w-16 overflow-hidden rounded-full bg-[color:rgba(21,35,67,.12)]">
             <div
               className="h-full rounded-full bg-[color:var(--pn-mint-ink)] transition-[width] duration-[.26s]"
               style={{ width: `${Math.round(ratio * 100)}%` }}
@@ -140,6 +145,7 @@ export function TopicsCard({ members, groupName, onOpenLibrary }: Props) {
             {done}/{topics.length}
           </span>
         </div>
+        <span className="flex-1" />
 
         <button
           type="button"
@@ -153,7 +159,8 @@ export function TopicsCard({ members, groupName, onOpenLibrary }: Props) {
       </div>
 
       <div className="pn-scroll @container flex min-h-0 flex-1 flex-col gap-1.5 p-2.5">
-        {loading && <div className="h-16 animate-pulse rounded-[12px] bg-[color:var(--pn-blue-tint)]" />}
+        {/* Yalnızca liste henüz BOŞKEN iskelet: bir yeniden okuma sırasında dolu listenin üstünde beliren boş bir blok, konuların bir anlığına aşağı kaymasına yol açıyordu. */}
+        {loading && topics.length === 0 && <div className="h-16 animate-pulse rounded-[12px] bg-[color:var(--pn-blue-tint)]" />}
 
         {!loading && topics.length === 0 && (
           <div className="flex flex-1 flex-col items-center justify-center gap-2 py-8 text-center">
@@ -173,13 +180,13 @@ export function TopicsCard({ members, groupName, onOpenLibrary }: Props) {
               className="rounded-[12px] border border-l-[3px]"
               style={{ background: style.bg, borderColor: style.line, borderLeftColor: style.tone }}
             >
-              <div className="flex items-center gap-2.5 p-2.5">
+              <div className="flex items-center gap-2 p-2">
                 <button
                   type="button"
                   onClick={() => toggleTopic(topic)}
                   aria-label={topic.is_completed ? `${topic.title} — tamamlanmadı yap` : `${topic.title} — tamamlandı yap`}
                   aria-pressed={topic.is_completed}
-                  className="grid size-5 shrink-0 place-items-center rounded-full border-[1.5px] transition-transform duration-[.18s] hover:scale-110"
+                  className="grid size-[18px] shrink-0 place-items-center rounded-full border-[1.5px] transition-transform duration-[.18s] hover:scale-110"
                   style={{ background: style.dot, borderColor: style.tone }}
                 >
                   <Check
@@ -203,9 +210,16 @@ export function TopicsCard({ members, groupName, onOpenLibrary }: Props) {
                   className="flex min-w-0 flex-1 items-center gap-2 text-left"
                 >
                   <span className="min-w-0 flex-1 truncate text-[13px] font-semibold text-on-surface">{topic.title}</span>
+                  {/* Sayı çıplak: "3 kaynak" hapı her satırda aynı kelimeyi
+                      tekrar ediyordu ve beş satırda beş dolu hap, listenin
+                      kendisinden daha çok yer kaplıyordu. Kelime aria'da
+                      duruyor; gözün ihtiyacı olan tek şey sayı. */}
                   {topic.resources.length > 0 && (
-                    <span className="pn-chip pn-chip--quiet hidden @[360px]:inline-flex">
-                      {topic.resources.length} kaynak
+                    <span
+                      className="hidden shrink-0 font-mono text-[10px] font-semibold tabular-nums text-outline @[300px]:inline"
+                      aria-label={`${topic.resources.length} kaynak`}
+                    >
+                      {topic.resources.length}
                     </span>
                   )}
                   <ChevronDown
@@ -216,7 +230,8 @@ export function TopicsCard({ members, groupName, onOpenLibrary }: Props) {
                 </button>
               </div>
 
-              {isOpen && (
+              <div className="pn-expand" data-open={isOpen} inert={!isOpen}>
+                <div>
                 <div className="flex flex-col gap-1 border-t border-[color:var(--pn-hair)] p-2">
                   {topic.resources.length === 0 ? (
                     <p className="px-1.5 py-2 text-[12px] text-on-surface-variant">Bu konuda henüz kaynak yok.</p>
@@ -258,7 +273,8 @@ export function TopicsCard({ members, groupName, onOpenLibrary }: Props) {
                     ))
                   )}
                 </div>
-              )}
+                </div>
+              </div>
             </div>
           );
         })}

@@ -4,17 +4,7 @@ import { useState } from "react";
 import { Download, Eye, FileText, Paperclip, Pencil, Trash2, X } from "lucide-react";
 import { format } from "date-fns";
 import { tr } from "date-fns/locale";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from "@/components/panel-ui/alert-dialog";
+import { ConfirmSheet } from "@/components/panel-ui/sheet";
 import { useAsyncAction } from "@/lib/use-async-action";
 import { isPreviewable, type HomeworkBatch, type PreviewState } from "@/lib/homework/use-homework-batches";
 import { cn } from "@/lib/cn";
@@ -51,9 +41,13 @@ export function HomeworkBatchList({
   emptyText?: string;
 }) {
   const [open, setOpen] = useState<string | null>(null);
+  /** Which batch the "sil" question is about; one sheet serves every row. */
+  const [confirmId, setConfirmId] = useState<string | null>(null);
   const [runDelete, deleting] = useAsyncAction(async (batchId: string) => {
     await onDelete?.(batchId);
+    setConfirmId(null);
   });
+  const confirmBatch = batches.find((b) => b.batch_id === confirmId) ?? null;
 
   if (loading) {
     return (
@@ -96,7 +90,7 @@ export function HomeworkBatchList({
               type="button"
               onClick={() => setOpen(isOpen ? null : batch.batch_id)}
               aria-expanded={isOpen}
-              className="flex w-full flex-col gap-1.5 p-2.5 text-left"
+              className="flex w-full flex-col gap-1.5 p-2 text-left"
             >
               <div className="flex items-baseline gap-2">
                 <span className="min-w-0 flex-1 truncate text-[13px] font-semibold text-on-surface">{batch.title}</span>
@@ -116,7 +110,8 @@ export function HomeworkBatchList({
               </div>
             </button>
 
-            {isOpen && (
+            <div className="pn-expand" data-open={isOpen} inert={!isOpen}>
+              <div>
               <div className="flex flex-col gap-1 border-t border-[color:var(--pn-hair)] p-2">
                 {batch.description && (
                   <p className="px-1.5 pb-1 text-[12px] leading-relaxed text-on-surface-variant">{batch.description}</p>
@@ -147,36 +142,30 @@ export function HomeworkBatchList({
                       </button>
                     )}
                     {onDelete && (
-                      <AlertDialog>
-                        <AlertDialogTrigger asChild>
-                          <button type="button" className="pn-btn pn-btn--sm pn-btn--pink">
-                            <Trash2 className="size-3.5" strokeWidth={1.9} aria-hidden />
-                            Sil
-                          </button>
-                        </AlertDialogTrigger>
-                        <AlertDialogContent>
-                          <AlertDialogHeader>
-                            <AlertDialogTitle>Ödevi sil</AlertDialogTitle>
-                            <AlertDialogDescription>
-                              Bu ödev ve içindeki {batch.files.length} dosya kalıcı olarak silinecek. Bu işlem geri alınamaz.
-                            </AlertDialogDescription>
-                          </AlertDialogHeader>
-                          <AlertDialogFooter>
-                            <AlertDialogCancel disabled={deleting}>İptal</AlertDialogCancel>
-                            <AlertDialogAction onClick={() => runDelete(batch.batch_id)} disabled={deleting}>
-                              {deleting ? "Siliniyor…" : "Sil"}
-                            </AlertDialogAction>
-                          </AlertDialogFooter>
-                        </AlertDialogContent>
-                      </AlertDialog>
+                      <button type="button" className="pn-btn pn-btn--sm pn-btn--pink" onClick={() => setConfirmId(batch.batch_id)}>
+                        <Trash2 className="size-3.5" strokeWidth={1.9} aria-hidden />
+                        Sil
+                      </button>
                     )}
                   </div>
                 )}
               </div>
-            )}
+              </div>
+            </div>
           </div>
         );
       })}
+      <ConfirmSheet
+        open={!!confirmBatch}
+        onOpenChange={(o) => !o && setConfirmId(null)}
+        title="Ödevi sil"
+        description={confirmBatch ? `Bu ödev ve içindeki ${confirmBatch.files.length} dosya kalıcı olarak silinecek. Geri alınamaz.` : undefined}
+        confirmLabel={deleting ? "Siliniyor…" : "Sil"}
+        loading={deleting}
+        onConfirm={() => {
+          if (confirmBatch) void runDelete(confirmBatch.batch_id);
+        }}
+      />
     </>
   );
 }

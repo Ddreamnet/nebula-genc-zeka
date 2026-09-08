@@ -2,7 +2,7 @@
 
 import { useRef, useState } from "react";
 import { toast } from "sonner";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/panel-ui/dialog";
+import { Sheet, SheetBody, SheetContent, SheetFooter, SheetHeader } from "@/components/panel-ui/sheet";
 import { Button } from "@/components/panel-ui/button";
 import { Input } from "@/components/panel-ui/input";
 import { Label } from "@/components/panel-ui/label";
@@ -151,14 +151,11 @@ export function UploadHomeworkDialog({ open, onOpenChange, studentId, teacherId,
   }
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="w-[calc(100%-1rem)] sm:max-w-[500px] max-h-[90dvh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle>Ödev Yükle</DialogTitle>
-          <DialogDescription>Ödevinizi başlık, açıklama ve dosya ile yükleyin</DialogDescription>
-        </DialogHeader>
+    <Sheet open={open} onOpenChange={onOpenChange}>
+      <SheetContent onDismiss={() => onOpenChange(false)}>
+        <SheetHeader tone="peach" title="Ödev Yükle" subtitle="Başlık, açıklama ve dosyalar" />
 
-        <div className="space-y-4 py-4">
+        <SheetBody className="space-y-4">
           <div className="space-y-2">
             <Label htmlFor="hw-title">Ödev Başlığı *</Label>
             <Input id="hw-title" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Örn: İngilizce Kompozisyon" disabled={uploading} />
@@ -191,24 +188,24 @@ export function UploadHomeworkDialog({ open, onOpenChange, studentId, teacherId,
             )}
             <p className="text-xs text-muted-foreground">Desteklenen formatlar: JPG, PNG, WEBP, PDF, DOCX (Maks. 10MB)</p>
           </div>
-        </div>
+        </SheetBody>
 
-        <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={uploading}>
+        <SheetFooter>
+          <button type="button" className="pn-btn pn-btn--paper" onClick={() => onOpenChange(false)} disabled={uploading}>
             İptal
-          </Button>
-          <Button onClick={handleSubmit} disabled={uploading}>
+          </button>
+          <button type="button" className="pn-btn pn-btn--peach" onClick={handleSubmit} disabled={uploading}>
             {uploading ? (
               "Yükleniyor..."
             ) : (
               <>
-                <Upload className="h-4 w-4 mr-2" />
+                <Upload className="size-4" strokeWidth={1.9} />
                 Yükle
               </>
             )}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+          </button>
+        </SheetFooter>
+      </SheetContent>
+    </Sheet>
   );
 }

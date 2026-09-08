@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/panel-ui/dialog";
+import { Sheet, SheetBody, SheetContent, SheetHeader } from "@/components/panel-ui/sheet";
 import { Button } from "@/components/panel-ui/button";
 import { Input } from "@/components/panel-ui/input";
 import { Label } from "@/components/panel-ui/label";
@@ -122,16 +122,11 @@ export function ManageGroupsDialog({ open, onOpenChange, teacherId, students, gr
   }
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="w-[calc(100%-1rem)] sm:max-w-xl max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <Users className="h-5 w-5" />
-            Grup Dersleri
-          </DialogTitle>
-        </DialogHeader>
+    <Sheet open={open} onOpenChange={onOpenChange}>
+      <SheetContent size="lg" onDismiss={() => onOpenChange(false)}>
+        <SheetHeader tone="violet" title="Grup Dersleri" subtitle="Aynı saatte ders alan ikili gruplar" icon={<Users className="size-5 shrink-0 text-[color:var(--pn-violet-ink)]" strokeWidth={1.9} aria-hidden />} />
 
-        <div className="space-y-5">
+        <SheetBody className="space-y-5">
           <div>
             <h4 className="text-sm font-medium mb-2">Mevcut Gruplar</h4>
             {groups.length === 0 ? (
@@ -252,8 +247,8 @@ export function ManageGroupsDialog({ open, onOpenChange, teacherId, students, gr
               {creating ? "Oluşturuluyor..." : "Grup Oluştur"}
             </Button>
           </div>
-        </div>
-      </DialogContent>
-    </Dialog>
+        </SheetBody>
+      </SheetContent>
+    </Sheet>
   );
 }

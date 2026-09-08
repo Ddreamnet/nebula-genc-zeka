@@ -1,15 +1,17 @@
 "use client";
 
-import { useState } from "react";
-import { ArrowRight, ChevronDown, ClipboardList, GraduationCap, ListOrdered, Lock, Palette, Smile } from "lucide-react";
+import { useState, type ReactNode } from "react";
+import { ArrowRight, ChevronDown, ClipboardList, ListOrdered, Lock, Palette, Smile } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/panel-ui/popover";
+import { Sheet, SheetContent, SheetTitle, SheetTrigger } from "@/components/panel-ui/sheet";
+import { useIsWide } from "@/lib/use-is-wide";
 import { LESSON_EXPRESSIONS, LESSON_STYLES, buildLadder, buildStyleRun, type LessonStep } from "@/lib/playground/lesson-runs";
 import { buildPrompt, cardsFor, type PromptCard, type PromptCardField } from "@/lib/playground/prompt-cards";
 import type { ToolModality } from "@/lib/playground/tools";
 
 /**
- * "Ders" — the prompt cards and the classroom runs, behind one button.
+ * "Ders" — the prompt cards and the classroom runs, behind one trigger.
  *
  * Two different things share this panel because a student reaches for them in
  * the same breath: a card writes a prompt, a run takes a prompt and makes
@@ -36,6 +38,7 @@ export function LessonTools({
   onUsePrompt,
   onRun,
   onRunExpressions,
+  trigger,
 }: {
   /** What's in the composer right now — the ladder and style run take it apart. */
   prompt: string;
@@ -53,16 +56,17 @@ export function LessonTools({
   onUsePrompt: (prompt: string) => void;
   onRun: (label: string, steps: LessonStep[]) => void;
   onRunExpressions: () => void;
+  /** The element that opens the panel. Rendered with `asChild`. */
+  trigger: ReactNode;
 }) {
   const [open, setOpen] = useState(false);
+  const wide = useIsWide();
   const [card, setCard] = useState<PromptCard | null>(null);
 
   const cards = cardsFor(modality, categoryId);
   const ladder = buildLadder(prompt);
   const styles = buildStyleRun(prompt);
-
-  // Audio/video tools with neither cards nor runs would open an empty box.
-  if (cards.length === 0 && !showRuns) return null;
+  const empty = cards.length === 0 && !showRuns;
 
   function close() {
     setOpen(false);
@@ -75,112 +79,118 @@ export function LessonTools({
     onRun(label, steps);
   }
 
-  return (
-    <Popover
-      open={open}
-      onOpenChange={(next) => {
-        setOpen(next);
-        if (!next) setCard(null);
+  // One body, two surfaces: a popover pinned above the trigger on a wide
+  // screen, a bottom sheet on a phone. The list is exactly the same node.
+  const body = card ? (
+    <PromptCardForm
+      card={card}
+      wide={wide}
+      onBack={() => setCard(null)}
+      onUse={(built) => {
+        onUsePrompt(built);
+        close();
       }}
-    >
-      <PopoverTrigger asChild>
-        <button
-          type="button"
-          disabled={disabled}
-          aria-label="Ders araçları"
-          title="Ders araçları — tarif kartları ve turlar"
-          className={cn(
-            "inline-flex size-10 shrink-0 items-center justify-center rounded-xl border transition disabled:opacity-40",
-            open
-              ? "border-[var(--pg-ink)] bg-[var(--pg-mint)] text-on-surface"
-              : "border-outline-variant text-on-surface-variant hover:border-secondary/40 hover:text-on-surface",
-          )}
-        >
-          <GraduationCap className="size-4" />
-        </button>
-      </PopoverTrigger>
+    />
+  ) : (
+    <div className={cn("overflow-y-auto p-2", wide ? "max-h-[min(72vh,600px)]" : "pn-scroll min-h-0 flex-1")}>
+      {empty && (
+        <p className="px-3 py-6 text-center text-[13px] text-on-surface-variant">Bu model için hazır bir şablon yok.</p>
+      )}
+      {cards.length > 0 && (
+        <>
+          <SectionLabel>Tarif kartı — doldur, prompt kendi yazılsın</SectionLabel>
+          {cards.map((c) => (
+            <Row key={c.id} icon={ClipboardList} title={c.name} detail={c.purpose} note={c.source} onClick={() => setCard(c)} />
+          ))}
+        </>
+      )}
+
+      {showRuns && (
+        <>
+          <SectionLabel>Tur — bir fikir, birkaç üretim, yan yana</SectionLabel>
+          <Row
+            icon={ListOrdered}
+            title="Merdiven"
+            detail={
+              ladder
+                ? `${ladder.length} tur — tarifin kelime kelime nasıl büyüdüğünü gösterir`
+                : "Önce virgüllü, detaylı bir tarif yaz — merdiven onu kademelere böler"
+            }
+            cost={ladder ? ladder.length * oreCost : null}
+            balance={balance}
+            disabled={!ladder}
+            onClick={() => start("Merdiven", ladder)}
+          />
+          <Row
+            icon={Palette}
+            title="Stil turu"
+            detail={styles ? LESSON_STYLES.join(" · ") : "Önce bir tarif yaz"}
+            cost={styles ? styles.length * oreCost : null}
+            balance={balance}
+            disabled={!styles}
+            onClick={() => start("Stil turu", styles)}
+          />
+          <Row
+            icon={Smile}
+            title="İfade turu"
+            detail={
+              hasImageInThread
+                ? LESSON_EXPRESSIONS.map((e) => e.label).join(" · ")
+                : "Önce bir avatar üret — ifade turu onu referans alır"
+            }
+            cost={hasImageInThread ? LESSON_EXPRESSIONS.length * oreCost : null}
+            balance={balance}
+            disabled={!hasImageInThread}
+            onClick={() => {
+              close();
+              onRunExpressions();
+            }}
+          />
+        </>
+      )}
+    </div>
+  );
+
+  const onOpenChange = (next: boolean) => {
+    if (disabled) return;
+    setOpen(next);
+    if (!next) setCard(null);
+  };
+
+  if (!wide) {
+    return (
+      <Sheet open={open} onOpenChange={onOpenChange}>
+        <SheetTrigger asChild>{trigger}</SheetTrigger>
+        <SheetContent size="lg" onDismiss={() => onOpenChange(false)}>
+          <SheetTitle className="sr-only">Prompt şablonları ve sınıf turları</SheetTitle>
+          {body}
+        </SheetContent>
+      </Sheet>
+    );
+  }
+
+  return (
+    <Popover open={open} onOpenChange={onOpenChange}>
+      <PopoverTrigger asChild>{trigger}</PopoverTrigger>
       <PopoverContent
         align="start"
         side="top"
         sideOffset={10}
         // The open card is wider than the list: a chip row like the cinematic
-        // card's ten camera moves wraps to five lines at list width, which
-        // turns a vocabulary into a wall.
-        className={cn("pg-dialog gap-0 overflow-hidden p-0 ring-0", card ? "w-[min(580px,94vw)]" : "w-[min(460px,94vw)]")}
+        // card's ten camera moves wraps to five lines at list width.
+        className={cn("gap-0 overflow-hidden p-0", card ? "w-[min(580px,94vw)]" : "w-[min(460px,94vw)]")}
       >
-        {card ? (
-          <PromptCardForm
-            card={card}
-            onBack={() => setCard(null)}
-            onUse={(built) => {
-              onUsePrompt(built);
-              close();
-            }}
-          />
-        ) : (
-          <div className="max-h-[min(72vh,600px)] overflow-y-auto p-2">
-            {cards.length > 0 && (
-              <>
-                <SectionLabel>Tarif kartı — doldur, prompt kendi yazılsın</SectionLabel>
-                {cards.map((c) => (
-                  <Row key={c.id} icon={ClipboardList} title={c.name} detail={c.purpose} note={c.source} onClick={() => setCard(c)} />
-                ))}
-              </>
-            )}
-
-            {showRuns && (
-              <>
-                <SectionLabel>Tur — bir fikir, birkaç üretim, yan yana</SectionLabel>
-                <Row
-                  icon={ListOrdered}
-                  title="Merdiven"
-                  detail={
-                    ladder
-                      ? `${ladder.length} tur — tarifin kelime kelime nasıl büyüdüğünü gösterir`
-                      : "Önce virgüllü, detaylı bir tarif yaz — merdiven onu kademelere böler"
-                  }
-                  cost={ladder ? ladder.length * oreCost : null}
-                  balance={balance}
-                  disabled={!ladder}
-                  onClick={() => start("Merdiven", ladder)}
-                />
-                <Row
-                  icon={Palette}
-                  title="Stil turu"
-                  detail={styles ? LESSON_STYLES.join(" · ") : "Önce bir tarif yaz"}
-                  cost={styles ? styles.length * oreCost : null}
-                  balance={balance}
-                  disabled={!styles}
-                  onClick={() => start("Stil turu", styles)}
-                />
-                <Row
-                  icon={Smile}
-                  title="İfade turu"
-                  detail={
-                    hasImageInThread
-                      ? LESSON_EXPRESSIONS.map((e) => e.label).join(" · ")
-                      : "Önce bir avatar üret — ifade turu onu referans alır"
-                  }
-                  cost={hasImageInThread ? LESSON_EXPRESSIONS.length * oreCost : null}
-                  balance={balance}
-                  disabled={!hasImageInThread}
-                  onClick={() => {
-                    close();
-                    onRunExpressions();
-                  }}
-                />
-              </>
-            )}
-          </div>
-        )}
+        {body}
       </PopoverContent>
     </Popover>
   );
 }
 
-function SectionLabel({ children }: { children: React.ReactNode }) {
+function SectionLabel({ children }: { children: ReactNode }) {
   return (
-    <h3 className="px-2 pb-1 pt-2 font-mono text-micro uppercase tracking-widest text-on-surface-variant/70">{children}</h3>
+    <p className="pn-divider mt-1" style={{ ["--pn-divider-ink" as string]: "var(--pn-blue-ink)" }}>
+      {children}
+    </p>
   );
 }
 
@@ -216,31 +226,31 @@ function Row({
       type="button"
       onClick={onClick}
       disabled={blocked}
-      className={cn(
-        "flex w-full items-center gap-2.5 rounded-xl px-2 py-2 text-left transition",
-        blocked ? "cursor-not-allowed opacity-55" : "hover:bg-surface-high",
-      )}
+      className={cn("pn-row gap-2.5 p-2", blocked && "cursor-not-allowed opacity-55")}
+      style={{ ["--pn-row-hover" as string]: "var(--pn-blue-tint)" }}
     >
       <span
         className={cn(
-          "inline-flex size-8 shrink-0 items-center justify-center rounded-lg border-2",
-          blocked ? "border-outline-variant text-on-surface-variant" : "border-[var(--pg-ink)] bg-[var(--pg-mint)] text-on-surface",
+          "grid size-8 shrink-0 place-items-center rounded-[9px] border",
+          blocked
+            ? "border-[color:var(--pn-hair)] text-on-surface-variant"
+            : "border-[color:var(--pn-mint-line)] bg-[color:var(--pn-mint)] text-[color:var(--pn-mint-ink-strong)]",
         )}
       >
-        <Icon className="size-4" />
+        <Icon className="size-4" strokeWidth={1.9} />
       </span>
       <span className="min-w-0 flex-1">
-        <span className="block text-mini font-semibold leading-snug text-on-surface">{title}</span>
-        <span className="block truncate text-micro leading-snug text-on-surface-variant">{detail}</span>
-        {note && <span className="block truncate font-mono text-micro leading-snug text-on-surface-variant/60">{note}</span>}
+        <span className="block text-[13px] font-bold leading-snug text-on-surface">{title}</span>
+        <span className="block truncate text-[12px] leading-snug text-on-surface-variant">{detail}</span>
+        {note && <span className="block truncate font-mono text-[10px] leading-snug text-on-surface-variant/70">{note}</span>}
       </span>
       {cost != null &&
         (tooExpensive ? (
-          <span className="inline-flex shrink-0 items-center gap-1 font-mono text-micro text-error">
+          <span className="inline-flex shrink-0 items-center gap-1 font-mono text-[10px] font-semibold text-[color:var(--pn-pink-ink)]">
             <Lock className="size-3" /> {cost} cevher
           </span>
         ) : (
-          <span className="shrink-0 font-mono text-micro text-secondary-bright">{cost} cevher</span>
+          <span className="shrink-0 font-mono text-[10px] font-semibold text-[color:var(--pn-peach-ink)]">{cost} cevher</span>
         ))}
     </button>
   );
@@ -254,20 +264,8 @@ function Row({
  * prompt is made of pieces, and watching the sentence grow as you tap a chip is
  * what makes that land. It writes into the composer rather than sending — the
  * student still presses gönder, and can still change a word first.
- *
- * Advanced groups start collapsed so the cinematic card opens on three boxes
- * instead of twenty. Everything is still one tap away; nothing is hidden from
- * the student who wants it.
  */
-function PromptCardForm({
-  card,
-  onBack,
-  onUse,
-}: {
-  card: PromptCard;
-  onBack: () => void;
-  onUse: (prompt: string) => void;
-}) {
+function PromptCardForm({ card, wide, onBack, onUse }: { card: PromptCard; wide: boolean; onBack: () => void; onUse: (prompt: string) => void }) {
   const [values, setValues] = useState<Record<string, string>>({});
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({});
   const built = buildPrompt(card, values);
@@ -277,19 +275,15 @@ function PromptCardForm({
   }
 
   return (
-    <div className="flex max-h-[min(76vh,640px)] flex-col">
-      <header className="flex shrink-0 items-center gap-2 border-b border-outline-variant px-3 py-2">
-        <ClipboardList className="size-4 shrink-0 text-secondary" />
+    <div className={cn("flex flex-col", wide ? "max-h-[min(76vh,640px)]" : "min-h-0 flex-1")}>
+      <header className="pn-band pn-band--blue shrink-0">
+        <ClipboardList className="size-4 shrink-0 text-[color:var(--pn-blue-ink)]" strokeWidth={1.9} />
         <span className="min-w-0 flex-1">
-          <span className="block truncate text-mini font-semibold text-on-surface">{card.name}</span>
-          <span className="block truncate font-mono text-micro text-on-surface-variant">{card.source}</span>
+          <span className="block truncate text-[13px] font-bold text-on-surface">{card.name}</span>
+          <span className="block truncate font-mono text-[10px] text-on-surface-variant">{card.source}</span>
         </span>
-        <button
-          type="button"
-          onClick={onBack}
-          className="shrink-0 rounded-lg px-2 py-1 font-mono text-micro text-on-surface-variant transition hover:bg-surface-high hover:text-on-surface"
-        >
-          geri
+        <button type="button" onClick={onBack} className="pn-btn pn-btn--sm pn-btn--paper">
+          Geri
         </button>
       </header>
 
@@ -303,19 +297,19 @@ function PromptCardForm({
                   type="button"
                   onClick={() => setOpenGroups((g) => ({ ...g, [group.label]: !isOpen }))}
                   aria-expanded={isOpen}
-                  className="mb-1 flex w-full items-center gap-1.5 rounded-lg py-1 text-left font-mono text-micro tracking-widest text-on-surface-variant transition hover:text-on-surface"
+                  className="mb-1 flex w-full items-center gap-1.5 rounded-[8px] py-1 text-left font-mono text-[10px] font-semibold uppercase tracking-[0.14em] text-on-surface-variant transition-colors hover:text-on-surface"
                 >
                   <ChevronDown className={cn("size-3 shrink-0 transition-transform duration-200", isOpen && "rotate-180")} />
                   {group.label}
-                  <span className="font-sans tracking-normal opacity-60">({group.fields.length} isteğe bağlı)</span>
+                  <span className="font-sans normal-case tracking-normal opacity-70">({group.fields.length} isteğe bağlı)</span>
                 </button>
               ) : (
-                <h4 className="mb-1 font-mono text-micro tracking-widest text-on-surface-variant">{group.label}</h4>
+                <h4 className="mb-1 font-mono text-[10px] font-semibold uppercase tracking-[0.14em] text-on-surface-variant">{group.label}</h4>
               )}
 
               {isOpen && (
                 <>
-                  {group.hint && <p className="mb-2 text-micro leading-relaxed text-on-surface-variant/80">{group.hint}</p>}
+                  {group.hint && <p className="mb-2 text-[12px] leading-relaxed text-on-surface-variant">{group.hint}</p>}
                   {group.fields.map((f) => (
                     <Field key={f.key} field={f} value={values[f.key] ?? ""} onChange={(v) => set(f.key, v)} />
                   ))}
@@ -326,16 +320,12 @@ function PromptCardForm({
         })}
       </div>
 
-      <footer className="shrink-0 border-t border-outline-variant p-2.5">
-        <p className="pg-card pg-card--flat pg-card--sunken mb-2 max-h-28 overflow-y-auto px-2.5 py-2 text-xs leading-relaxed text-on-surface">
+      <footer className="shrink-0 border-t border-[color:var(--pn-hair)] bg-surface-low p-2.5">
+        <p className="mb-2 max-h-28 overflow-y-auto rounded-[10px] border border-[color:var(--pn-hair)] bg-surface-container px-2.5 py-2 text-[12px] leading-relaxed text-on-surface">
           {built}
         </p>
-        <button
-          type="button"
-          onClick={() => onUse(built)}
-          className="pg-btn flex w-full items-center justify-center gap-2 px-3 py-2 text-mini font-semibold"
-        >
-          Bu tarifi kullan <ArrowRight className="size-3.5" />
+        <button type="button" onClick={() => onUse(built)} className="pn-btn pn-btn--peach w-full">
+          Bu tarifi kullan <ArrowRight className="size-4" />
         </button>
       </footer>
     </div>
@@ -345,28 +335,17 @@ function PromptCardForm({
 function Field({ field, value, onChange }: { field: PromptCardField; value: string; onChange: (v: string) => void }) {
   return (
     <div className="mb-2.5">
-      <label className="mb-1 flex items-baseline gap-1.5 font-mono text-micro tracking-widest text-on-surface-variant">
+      <label className="mb-1 flex items-baseline gap-1.5 text-[12px] font-semibold text-on-surface">
         {field.label}
-        {field.optional && <span className="font-sans tracking-normal opacity-60">isteğe bağlı</span>}
+        {field.optional && <span className="font-normal text-on-surface-variant">isteğe bağlı</span>}
       </label>
       {field.long ? (
-        <textarea
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
-          placeholder={field.placeholder}
-          rows={2}
-          className="w-full resize-none px-2.5 py-1.5 text-mini leading-snug text-on-surface outline-none"
-        />
+        <textarea value={value} onChange={(e) => onChange(e.target.value)} placeholder={field.placeholder} rows={2} className="w-full resize-none px-2.5 py-1.5 leading-snug outline-none" />
       ) : (
-        <input
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
-          placeholder={field.placeholder}
-          className="w-full px-2.5 py-1.5 text-mini text-on-surface outline-none"
-        />
+        <input value={value} onChange={(e) => onChange(e.target.value)} placeholder={field.placeholder} className="w-full px-2.5 py-1.5 outline-none" />
       )}
       {field.options && (
-        <div className="mt-1 flex flex-wrap gap-1">
+        <div className="mt-1.5 flex flex-wrap gap-1">
           {field.options.map((opt) => {
             const active = value === opt;
             return (
@@ -376,12 +355,8 @@ function Field({ field, value, onChange }: { field: PromptCardField; value: stri
                 // Tapping the active chip clears it — the only way back out of
                 // an optional field once a chip has filled it.
                 onClick={() => onChange(active ? "" : opt)}
-                className={cn(
-                  "rounded-full border px-2 py-0.5 font-mono text-micro transition",
-                  active
-                    ? "border-[var(--pg-ink)] bg-[var(--pg-mint)] text-on-surface"
-                    : "border-outline-variant text-on-surface-variant hover:border-outline hover:text-on-surface",
-                )}
+                aria-pressed={active}
+                className="pg-chip pg-chip--tag"
               >
                 {opt}
               </button>

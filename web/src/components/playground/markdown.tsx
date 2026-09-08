@@ -54,9 +54,9 @@ function CodeBlock({
   const code = nodeText(children);
 
   return (
-    <div className="pg-card pg-card--flat my-2 overflow-hidden">
-      <div className="flex items-center justify-between border-b border-outline-variant px-2.5 py-1">
-        <span className="font-mono text-micro uppercase tracking-wider text-on-surface-variant/70">
+    <div className="my-2 overflow-hidden rounded-[12px] border border-[color:var(--pn-hair-strong)] bg-surface-low">
+      <div className="flex items-center justify-between border-b border-[color:var(--pn-hair)] px-2.5 py-1">
+        <span className="font-mono text-[10px] font-semibold uppercase tracking-[0.14em] text-on-surface-variant">
           {language ?? "kod"}
         </span>
         <button
@@ -67,12 +67,12 @@ function CodeBlock({
             setTimeout(() => setCopied(false), 1500);
           }}
           aria-label="Kodu kopyala"
-          className="inline-flex size-6 items-center justify-center rounded-md text-on-surface-variant transition hover:bg-surface-container hover:text-on-surface"
+          className="inline-flex size-6 items-center justify-center rounded-[7px] text-on-surface-variant transition-colors hover:bg-surface-container hover:text-on-surface"
         >
           {copied ? <Check className="size-3 text-success" /> : <Copy className="size-3" />}
         </button>
       </div>
-      <pre className="max-h-96 overflow-auto p-3 font-mono text-micro leading-relaxed">
+      <pre className="max-h-96 overflow-auto p-3 font-mono text-[12px] leading-relaxed">
         {/* The highlighted nodes are rendered untouched; `hljs` is what the
             colour rules in globals.css hang off. */}
         <code className={cn("hljs", className)}>{children}</code>
@@ -96,7 +96,7 @@ const COMPONENTS: Components = {
     const language = /language-(\w+)/.exec(className ?? "")?.[1] ?? null;
     if (!language && !nodeText(children).includes("\n")) {
       return (
-        <code className="rounded bg-surface-container px-1 py-0.5 font-mono text-[0.9em] text-secondary-bright" {...props}>
+        <code className="rounded-[5px] bg-surface-low px-1 py-0.5 font-mono text-[0.9em] text-[color:var(--pn-peach-ink)]" {...props}>
           {children}
         </code>
       );
@@ -115,7 +115,7 @@ const COMPONENTS: Components = {
       href={href}
       target="_blank"
       rel="noopener noreferrer nofollow"
-      className="text-secondary underline decoration-secondary/40 underline-offset-2 transition hover:decoration-secondary"
+      className="text-[color:var(--pn-blue-ink)] underline decoration-[color:var(--pn-blue-line)] underline-offset-2 transition-colors hover:decoration-[color:var(--pn-blue-ink)]"
     >
       {children}
     </a>
@@ -125,13 +125,13 @@ const COMPONENTS: Components = {
   // would break the whole transcript layout on a phone.
   table: ({ children }) => (
     <div className="my-2 overflow-x-auto">
-      <table className="w-full border-collapse text-mini">{children}</table>
+      <table className="w-full border-collapse text-[13px]">{children}</table>
     </div>
   ),
   th: ({ children }) => (
-    <th className="border border-outline-variant bg-surface-container px-2 py-1 text-left font-medium">{children}</th>
+    <th className="border border-[color:var(--pn-hair-strong)] bg-surface-low px-2 py-1 text-left font-semibold">{children}</th>
   ),
-  td: ({ children }) => <td className="border border-outline-variant px-2 py-1 align-top">{children}</td>,
+  td: ({ children }) => <td className="border border-[color:var(--pn-hair-strong)] px-2 py-1 align-top">{children}</td>,
 
   h1: ({ children }) => <h1 className="mt-3 mb-1.5 font-display text-base font-semibold first:mt-0">{children}</h1>,
   h2: ({ children }) => <h2 className="mt-3 mb-1.5 font-display text-sm font-semibold first:mt-0">{children}</h2>,
@@ -141,9 +141,9 @@ const COMPONENTS: Components = {
   ol: ({ children }) => <ol className="my-1.5 list-decimal space-y-0.5 pl-5 marker:text-on-surface-variant/50">{children}</ol>,
 
   blockquote: ({ children }) => (
-    <blockquote className="my-2 border-l-2 border-secondary/40 pl-3 text-on-surface-variant italic">{children}</blockquote>
+    <blockquote className="my-2 border-l-2 border-[color:var(--pn-peach-line)] pl-3 text-on-surface-variant italic">{children}</blockquote>
   ),
-  hr: () => <hr className="my-3 border-outline-variant" />,
+  hr: () => <hr className="my-3 border-[color:var(--pn-hair-strong)]" />,
   // Tight paragraphs: a chat bubble is not an article, and the default
   // top-and-bottom margin doubles the gap between every line of an answer.
   p: ({ children }) => <p className="my-1.5 first:mt-0 last:mb-0">{children}</p>,

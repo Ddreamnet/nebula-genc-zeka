@@ -65,7 +65,7 @@ export function StudentTopicsSection({
                 <Card
                   key={topic.id}
                   className={cn(
-                    "border-l-4",
+                    "border-l-[3px]",
                     isFullyCompleted
                       ? "border-l-success bg-success/10"
                       : "border-l-tertiary bg-tertiary/10",

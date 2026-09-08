@@ -1,18 +1,17 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import Link from "next/link";
 import dynamic from "next/dynamic";
-import { BookOpen, LogOut, Sparkles, Users } from "lucide-react";
+import { BookOpen, Calendar, Gamepad2, Gem, Newspaper, Plus, Users, Wallet } from "lucide-react";
 import { toast } from "sonner";
 import { createClient } from "@/lib/supabase/client";
 import { useAuth } from "@/contexts/auth-context";
 import { adminRestoreStudent } from "@/lib/lesson/service";
 import { fetchGlobalTopics } from "@/lib/lesson/global-topics-cache";
-import { Button } from "@/components/panel-ui/button";
-import { Logo } from "@/components/site/logo";
-import { WelcomeBanner } from "./welcome-banner";
-import { TeacherList } from "./admin/teacher-list";
+import { PanelShell, type PanelNavItem } from "@/components/panel-shell/panel-shell";
+import { SideDrawer } from "@/components/panel-shell/side-drawer";
+import { longDateLabel } from "@/lib/lesson/next-lesson";
+import { TeacherRail } from "./admin/teacher-rail";
 import { StudentList } from "./admin/student-list";
 import { CreateTeacherDialog } from "./admin/create-teacher-dialog";
 import { CreateStudentDialog } from "./admin/create-student-dialog";
@@ -22,7 +21,6 @@ import { ManageGroupsDialog } from "./admin/manage-groups-dialog";
 import { BalanceManager } from "./admin/balance-manager";
 import { PlaygroundTreasuryButton } from "./admin/playground-treasury";
 import { WeeklyScheduleGrid } from "./weekly-schedule-grid";
-import { Card, CardContent } from "@/components/panel-ui/card";
 import { AddTopicDialog } from "./admin/add-topic-dialog";
 import { AddResourceDialog } from "./admin/add-resource-dialog";
 import { EditTopicDialog } from "./admin/edit-topic-dialog";
@@ -34,7 +32,6 @@ import { GlobalTopicsManager } from "./global-topics-manager";
 const BlogManager = dynamic(() => import("./admin/blog-manager").then((mod) => mod.BlogManager));
 import { NotificationBell } from "./admin/notification-bell";
 import { StudentAboutDialog } from "./student-about-dialog";
-import { cn } from "@/lib/cn";
 import type { Teacher, Student, Topic, Resource } from "@/lib/admin/types";
 
 export function AdminDashboard() {
@@ -49,7 +46,11 @@ export function AdminDashboard() {
   const [showManageGroups, setShowManageGroups] = useState(false);
   const [editingStudent, setEditingStudent] = useState<Student | null>(null);
   const [editingTeacher, setEditingTeacher] = useState<Teacher | null>(null);
-  const [activeTab, setActiveTab] = useState<"students" | "schedule" | "balance">("students");
+  // Üç panel de aynı yuvayı paylaşır; ikisi aynı anda açılamaz çünkü
+  // `drawer` tek bir değerdir. Eskiden bunlar sekmeydi ve sekme şeridi ana
+  // kolonun üstünde kalıcı bir satır harcıyordu.
+  const [drawer, setDrawer] = useState<"schedule" | "balance" | null>(null);
+  const [showTreasury, setShowTreasury] = useState(false);
 
   const [expandedStudents, setExpandedStudents] = useState<Set<string>>(new Set());
   const [studentTopicsMap, setStudentTopicsMap] = useState<Map<string, Topic[]>>(new Map());
@@ -283,142 +284,156 @@ export function AdminDashboard() {
     );
   }
 
+  const nav: PanelNavItem[] = [
+    { key: "teachers", label: "Öğretmenler", icon: Users, tone: "blue", active: drawer === null, onClick: () => setDrawer(null) },
+    {
+      key: "schedule",
+      label: "Haftalık program",
+      icon: Calendar,
+      tone: "mint",
+      active: drawer === "schedule",
+      onClick: () => setDrawer(drawer === "schedule" ? null : "schedule"),
+    },
+    {
+      key: "balance",
+      label: "Bakiye",
+      icon: Wallet,
+      tone: "peach",
+      active: drawer === "balance",
+      onClick: () => setDrawer(drawer === "balance" ? null : "balance"),
+    },
+    { key: "playground", label: "Playground", icon: Gamepad2, tone: "violet", href: "/playground" },
+    { key: "topics", label: "Konu kütüphanesi", icon: BookOpen, tone: "blue", onClick: () => setShowGlobalTopics(true) },
+    { key: "treasury", label: "Playground kasası", icon: Gem, tone: "mint", onClick: () => setShowTreasury(true) },
+    { key: "blog", label: "Blog yönetimi", icon: Newspaper, tone: "pink", onClick: () => setShowBlogManager(true) },
+  ];
+
   return (
-    <div className="min-h-dvh">
-      <header className="sticky top-0 z-20">
-        <div className="mx-auto flex h-16 w-full max-w-6xl items-center justify-between gap-3 pl-4 pr-2 sm:grid sm:h-20 sm:grid-cols-[1fr_auto_1fr] sm:pr-4">
-          <Logo light disableLink large />
-          <WelcomeBanner name="Admin" variant="header" />
-          <div className="flex items-center justify-end gap-2">
-            <button type="button" aria-label="Konular" className="pn-btn pn-btn--sm pn-btn--green" onClick={() => setShowGlobalTopics(true)}>
-              <BookOpen className="h-4 w-4" />
-              <span className="hidden sm:inline">Konular</span>
-            </button>
-            <button type="button" aria-label="Blog yönetimi" className="pn-btn pn-btn--sm pn-btn--green" onClick={() => setShowBlogManager(true)}>
-              Blog
-            </button>
-            <NotificationBell />
-            <PlaygroundTreasuryButton />
-            <Link href="/playground" aria-label="Playground" className="pn-btn pn-btn--sm pn-btn--orange">
-              <Sparkles className="h-4 w-4" />
-              <span className="hidden sm:inline">Playground</span>
-            </Link>
-            <button type="button" aria-label="Çıkış yap" className="pn-btn pn-btn--sm pn-btn--red" disabled={signingOut} onClick={handleSignOut}>
-              <LogOut className="h-4 w-4" />
-              <span className="hidden sm:inline">{signingOut ? "Çıkış..." : "Çıkış"}</span>
-            </button>
-          </div>
-        </div>
-      </header>
-
-      <WelcomeBanner name="Admin" variant="banner" />
-
-      <div className="mx-auto grid w-full max-w-6xl grid-cols-1 gap-6 px-4 pt-4 pb-6 lg:grid-cols-[320px_1fr]">
-        <TeacherList
+    <PanelShell
+      greeting="Yönetim paneli"
+      subline={longDateLabel(new Date())}
+      nav={nav}
+      initials="AD"
+      onSignOut={handleSignOut}
+      signingOut={signingOut}
+      chip={
+        <span className="pn-bar-btn pn-bar-btn--num" title="Aktif öğretmen sayısı">
+          {teachers.length}
+          <span className="text-[10px] font-normal tracking-wide text-[color:var(--pn-on-navy-dim)]">ÖĞRETMEN</span>
+        </span>
+      }
+      bell={<NotificationBell variant="bar" />}
+    >
+      <div className="grid min-h-0 flex-1 grid-cols-1 items-start gap-3 md:grid-cols-[210px_1fr] lg:items-stretch lg:gap-4">
+        <TeacherRail
           teachers={teachers}
-          selectedTeacher={selectedTeacher}
-          onSelectTeacher={(t) => {
-            setSelectedTeacherId(t.user_id);
-            setActiveTab("students");
+          selectedId={selectedTeacherId}
+          onSelect={(teacher) => {
+            setSelectedTeacherId(teacher.user_id);
+            setDrawer(null);
           }}
-          onCreateTeacher={() => setShowCreateTeacher(true)}
-          onEditTeacher={setEditingTeacher}
+          onCreate={() => setShowCreateTeacher(true)}
+          onEdit={setEditingTeacher}
         />
 
-        <div>
-          {selectedTeacher ? (
-            <>
-              <div className="mb-3 flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
-                {/* Scrolls rather than wraps on a phone: three pills plus two
-                    action buttons used to break onto a second line and the tab
-                    group stopped reading as one control. */}
-                <div className="-mx-1 flex items-center gap-1 overflow-x-auto rounded-full border border-outline-variant bg-surface-container/60 p-1 font-mono text-xs sm:mx-0">
-                  <button
-                    onClick={() => setActiveTab("students")}
-                    className={cn(
-                      "min-h-9 shrink-0 rounded-full px-3 transition",
-                      activeTab === "students" ? "bg-secondary text-on-secondary" : "text-on-surface-variant",
-                    )}
-                  >
-                    Öğrenciler
+        <div className="flex min-h-0 min-w-0 items-stretch gap-3">
+          {drawer !== "schedule" &&
+            (selectedTeacher ? (
+              <section className="pn-card min-h-0 flex-1" aria-label={`${selectedTeacher.full_name} öğrencileri`}>
+                <div className="pn-band pn-band--blue">
+                  <div className="flex min-w-0 flex-col">
+                    <h2 className="pn-card-title truncate">{selectedTeacher.full_name}</h2>
+                    <p className="pn-card-sub truncate">
+                      {selectedTeacher.students.filter((s) => !s.is_archived).length} aktif öğrenci
+                    </p>
+                  </div>
+                  <span className="flex-1" />
+                  <button type="button" className="pn-btn pn-btn--sm pn-btn--paper" onClick={() => setShowManageGroups(true)}>
+                    <Users className="size-4" strokeWidth={1.9} aria-hidden />
+                    Gruplar
                   </button>
-                  <button
-                    onClick={() => setActiveTab("schedule")}
-                    className={cn(
-                      "min-h-9 shrink-0 rounded-full px-3 transition",
-                      activeTab === "schedule" ? "bg-secondary text-on-secondary" : "text-on-surface-variant",
-                    )}
-                  >
-                    Ders Programı
-                  </button>
-                  <button
-                    onClick={() => setActiveTab("balance")}
-                    className={cn(
-                      "min-h-9 shrink-0 rounded-full px-3 transition",
-                      activeTab === "balance" ? "bg-secondary text-on-secondary" : "text-on-surface-variant",
-                    )}
-                  >
-                    Bakiye
+                  <button type="button" className="pn-btn pn-btn--sm pn-btn--blue" onClick={() => setShowCreateStudent(true)}>
+                    <Plus className="size-4" strokeWidth={2} aria-hidden />
+                    Öğrenci
                   </button>
                 </div>
-                {activeTab === "students" && (
-                  <div className="flex items-center gap-2">
-                    <Button size="sm" variant="outline" onClick={() => setShowManageGroups(true)}>
-                      <Users className="h-4 w-4" />
-                      <span className="ml-1.5">Gruplar</span>
-                    </Button>
-                    <Button size="sm" onClick={() => setShowCreateStudent(true)}>
-                      Öğrenci Oluştur
-                    </Button>
-                  </div>
-                )}
+
+                <div className="pn-scroll min-h-0 flex-1 p-2.5">
+                  <StudentList
+                    students={selectedTeacher.students}
+                    groups={selectedTeacher.groups ?? []}
+                    onRestoreStudent={handleRestoreStudent}
+                    onEditStudent={setEditingStudent}
+                    onOpenStudentAbout={(student) => {
+                      setStudentAboutData({
+                        studentId: student.student_id,
+                        studentName: student.profiles.full_name,
+                        aboutText: student.about_text,
+                      });
+                      setShowStudentAbout(true);
+                    }}
+                    restoringId={restoringId}
+                    expandedStudents={expandedStudents}
+                    studentTopics={studentTopicsMap}
+                    studentCompletedTopics={studentCompletedTopics}
+                    onToggleStudent={toggleStudent}
+                    onAddTopic={(studentId) => {
+                      setSelectedStudentForTopic(studentId);
+                      setShowAddTopic(true);
+                    }}
+                    onAddResource={(topicId) => {
+                      setSelectedTopicForResource(topicId);
+                      setShowAddResource(true);
+                    }}
+                    onEditTopic={(topic) => {
+                      setEditingTopic(topic);
+                      setShowEditTopic(true);
+                    }}
+                    onEditResource={(resource) => {
+                      setEditingResource(resource);
+                      setShowEditResource(true);
+                    }}
+                    onDeleteTopic={topicsCrud.handleDeleteTopic}
+                    onDeleteResource={topicsCrud.handleDeleteResource}
+                  />
+                </div>
+              </section>
+            ) : (
+              // Boş bir yuva, başarısız bir kart değil — kesikli çerçeve
+              // "seçim bekliyor" der.
+              <div className="flex min-h-[112px] flex-1 flex-col items-center justify-center gap-1.5 rounded-[16px] border-[1.5px] border-dashed border-[color:rgba(74,47,184,.32)] px-6 py-5 text-center lg:min-h-[220px]">
+                <p className="font-display text-[15px] font-semibold text-[color:var(--pn-violet-ink)]">Bir öğretmen seç</p>
+                <p className="max-w-[240px] text-[12px] text-on-surface-variant">Öğrencileri ve konuları burada görünür.</p>
               </div>
-              {activeTab === "students" ? (
-                <StudentList
-                  students={selectedTeacher.students}
-                  groups={selectedTeacher.groups ?? []}
-                  onRestoreStudent={handleRestoreStudent}
-                  onEditStudent={setEditingStudent}
-                  onOpenStudentAbout={(student) => {
-                    setStudentAboutData({ studentId: student.student_id, studentName: student.profiles.full_name, aboutText: student.about_text });
-                    setShowStudentAbout(true);
-                  }}
-                  restoringId={restoringId}
-                  expandedStudents={expandedStudents}
-                  studentTopics={studentTopicsMap}
-                  studentCompletedTopics={studentCompletedTopics}
-                  onToggleStudent={toggleStudent}
-                  onAddTopic={(studentId) => {
-                    setSelectedStudentForTopic(studentId);
-                    setShowAddTopic(true);
-                  }}
-                  onAddResource={(topicId) => {
-                    setSelectedTopicForResource(topicId);
-                    setShowAddResource(true);
-                  }}
-                  onEditTopic={(topic) => {
-                    setEditingTopic(topic);
-                    setShowEditTopic(true);
-                  }}
-                  onEditResource={(resource) => {
-                    setEditingResource(resource);
-                    setShowEditResource(true);
-                  }}
-                  onDeleteTopic={topicsCrud.handleDeleteTopic}
-                  onDeleteResource={topicsCrud.handleDeleteResource}
-                />
-              ) : activeTab === "schedule" ? (
-                <Card>
-                  <CardContent className="pt-6">
-                    <WeeklyScheduleGrid teacherId={selectedTeacher.user_id} />
-                  </CardContent>
-                </Card>
-              ) : (
+            ))}
+
+          {selectedTeacher && drawer === "balance" && (
+            <SideDrawer open wide onClose={() => setDrawer(null)} tone="peach" title="Bakiye" subtitle={selectedTeacher.full_name}>
+              <div className="min-w-0 overflow-x-auto">
                 <BalanceManager teacherId={selectedTeacher.user_id} />
-              )}
-            </>
-          ) : (
-            <p className="text-sm text-on-surface-variant">Öğrencilerini görmek için bir öğretmen seç.</p>
+              </div>
+            </SideDrawer>
+          )}
+
+          {selectedTeacher && drawer === "schedule" && (
+            <SideDrawer
+              open
+              wide
+              onClose={() => setDrawer(null)}
+              tone="mint"
+              title="Haftalık program"
+              subtitle={selectedTeacher.full_name}
+            >
+              <div className="min-w-0 overflow-x-auto">
+                <WeeklyScheduleGrid teacherId={selectedTeacher.user_id} />
+              </div>
+            </SideDrawer>
+          )}
+
+          {!selectedTeacher && drawer !== null && (
+            <div className="flex flex-1 items-center justify-center rounded-[16px] border-[1.5px] border-dashed border-[color:rgba(74,47,184,.32)] px-6 text-center text-[12px] text-on-surface-variant">
+              Önce bir öğretmen seç.
+            </div>
           )}
         </div>
       </div>
@@ -506,6 +521,8 @@ export function AdminDashboard() {
           }}
         />
       )}
-    </div>
+
+      <PlaygroundTreasuryButton open={showTreasury} onOpenChange={setShowTreasury} />
+    </PanelShell>
   );
 }

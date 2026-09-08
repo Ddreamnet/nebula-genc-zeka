@@ -2,8 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/panel-ui/dialog";
-import { Button } from "@/components/panel-ui/button";
+import { Sheet, SheetBody, SheetContent, SheetFooter, SheetHeader } from "@/components/panel-ui/sheet";
 import { Input } from "@/components/panel-ui/input";
 import { Label } from "@/components/panel-ui/label";
 import { Textarea } from "@/components/panel-ui/textarea";
@@ -52,14 +51,11 @@ export function EditHomeworkDialog({ open, onOpenChange, batchId, currentTitle, 
   }
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="w-[calc(100%-1rem)] sm:max-w-[500px] max-h-[90dvh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle>Ödevi Düzenle</DialogTitle>
-          <DialogDescription>Ödev başlığını ve açıklamasını güncelleyin</DialogDescription>
-        </DialogHeader>
+    <Sheet open={open} onOpenChange={onOpenChange}>
+      <SheetContent onDismiss={() => onOpenChange(false)}>
+        <SheetHeader tone="peach" title="Ödevi Düzenle" subtitle="Başlık ve açıklama" />
 
-        <div className="space-y-4 py-4">
+        <SheetBody className="space-y-4">
           <div className="space-y-2">
             <Label htmlFor="edit-hw-title">Ödev Başlığı *</Label>
             <Input id="edit-hw-title" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Örn: İngilizce Kompozisyon" disabled={updating} />
@@ -69,24 +65,24 @@ export function EditHomeworkDialog({ open, onOpenChange, batchId, currentTitle, 
             <Label htmlFor="edit-hw-description">Açıklama</Label>
             <Textarea id="edit-hw-description" value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Ödev hakkında ek bilgiler..." rows={3} disabled={updating} className="max-h-[120px] overflow-y-auto" />
           </div>
-        </div>
+        </SheetBody>
 
-        <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={updating}>
+        <SheetFooter>
+          <button type="button" className="pn-btn pn-btn--paper" onClick={() => onOpenChange(false)} disabled={updating}>
             İptal
-          </Button>
-          <Button onClick={handleSubmit} disabled={updating}>
+          </button>
+          <button type="button" className="pn-btn pn-btn--peach" onClick={handleSubmit} disabled={updating}>
             {updating ? (
               "Güncelleniyor..."
             ) : (
               <>
-                <Save className="h-4 w-4 mr-2" />
+                <Save className="size-4" />
                 Kaydet
               </>
             )}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+          </button>
+        </SheetFooter>
+      </SheetContent>
+    </Sheet>
   );
 }

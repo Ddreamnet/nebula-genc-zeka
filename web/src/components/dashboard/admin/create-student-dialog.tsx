@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/panel-ui/dialog";
+import { Sheet, SheetBody, SheetContent, SheetFooter, SheetHeader } from "@/components/panel-ui/sheet";
 import { Button } from "@/components/panel-ui/button";
 import { Input } from "@/components/panel-ui/input";
 import { Label } from "@/components/panel-ui/label";
@@ -119,16 +119,12 @@ export function CreateStudentDialog({ open, onOpenChange, onStudentCreated, teac
   }
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="w-[calc(100%-1rem)] sm:max-w-2xl max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <UserPlus className="h-5 w-5" />
-            Öğrenci Hesabı Oluştur
-          </DialogTitle>
-        </DialogHeader>
+    <Sheet open={open} onOpenChange={onOpenChange}>
+      <SheetContent size="lg" onDismiss={() => onOpenChange(false)}>
+        <SheetHeader tone="blue" title="Öğrenci Hesabı Oluştur" subtitle="Hesap, geçici şifre ve ders programı" icon={<UserPlus className="size-5 shrink-0 text-[color:var(--pn-blue-ink)]" strokeWidth={1.9} aria-hidden />} />
 
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} className="flex min-h-0 flex-1 flex-col">
+          <SheetBody className="space-y-4">
           <div className="space-y-2">
             <Label htmlFor="email">Öğrenci E-postası</Label>
             <Input
@@ -239,17 +235,18 @@ export function CreateStudentDialog({ open, onOpenChange, onStudentCreated, teac
             </p>
           </div>
 
-          <div className="flex justify-end gap-2">
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={loading}>
+          </SheetBody>
+          <SheetFooter>
+            <button type="button" className="pn-btn pn-btn--paper" onClick={() => onOpenChange(false)} disabled={loading}>
               İptal
-            </Button>
-            <Button type="submit" disabled={loading}>
-              {loading && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+            </button>
+            <button type="submit" className="pn-btn pn-btn--blue" disabled={loading}>
+              {loading && <Loader2 className="size-4 animate-spin" />}
               Hesap Oluştur
-            </Button>
-          </div>
+            </button>
+          </SheetFooter>
         </form>
-      </DialogContent>
-    </Dialog>
+      </SheetContent>
+    </Sheet>
   );
 }

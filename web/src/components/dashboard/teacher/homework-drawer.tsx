@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Upload } from "lucide-react";
 import { SideDrawer } from "@/components/panel-shell/side-drawer";
 import { useHomeworkBatches, type HomeworkBatch } from "@/lib/homework/use-homework-batches";
@@ -38,11 +38,12 @@ export function HomeworkDrawer({
   const [uploadOpen, setUploadOpen] = useState(false);
   const [editing, setEditing] = useState<HomeworkBatch | null>(null);
 
-  // Grup değişince seçili üye sıfırlanır — yoksa iki kişilik bir gruptan tek
-  // kişilik bir satıra geçildiğinde indeks 1 boşa düşer.
-  useEffect(() => setMemberIndex(0), [members.map((m) => m.student_id).join(",")]);
-
-  const active = members[memberIndex] ?? members[0];
+  // İndeks bir effect'le sıfırlanmaz, KIRPILIR: iki kişilik bir gruptan tek
+  // kişilik bir satıra geçildiğinde indeks 1 aralık dışına düşer ve buradaki
+  // clamp onu anında geçerli kılar. Effect ile sıfırlamak aynı sonucu bir
+  // render turu geç verirdi — arada bir kare boş panel görünürdü.
+  const activeIndex = Math.min(memberIndex, Math.max(members.length - 1, 0));
+  const active = members[activeIndex];
   const { batches, loading, refetch, preview, openPreview, closePreview, download, remove } = useHomeworkBatches(
     active?.student_id ?? "",
     teacherId,
@@ -88,10 +89,10 @@ export function HomeworkDrawer({
                 key={member.id}
                 type="button"
                 onClick={() => setMemberIndex(index)}
-                aria-pressed={index === memberIndex}
+                aria-pressed={index === activeIndex}
                 className={cn(
                   "min-h-9 flex-1 truncate rounded-full px-2.5 text-[12px] font-semibold transition-colors duration-[.16s] pointer-fine:min-h-7",
-                  index === memberIndex
+                  index === activeIndex
                     ? "bg-[color:var(--pn-peach)] text-[color:var(--pn-peach-ink-strong)]"
                     : "text-on-surface-variant",
                 )}

@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/panel-ui/dialog";
+import { Sheet, SheetBody, SheetContent, SheetFooter, SheetHeader } from "@/components/panel-ui/sheet";
 import { Button } from "@/components/panel-ui/button";
 import { Separator } from "@/components/panel-ui/separator";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/panel-ui/popover";
@@ -162,13 +162,11 @@ export function StudentAboutDialog({ open, onOpenChange, studentId, studentName,
   if (!editor) return null;
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="w-[calc(100%-1rem)] sm:max-w-xl max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle>{studentName} Hakkında</DialogTitle>
-        </DialogHeader>
+    <Sheet open={open} onOpenChange={onOpenChange}>
+      <SheetContent size="lg" onDismiss={() => onOpenChange(false)}>
+        <SheetHeader tone="blue" title={`${studentName} Hakkında`} subtitle={isReadOnly ? "Öğretmenin notları" : "Öğrenciye dair notların — yalnız sen görürsün"} />
 
-        <div className="py-2">
+        <SheetBody>
           {!isReadOnly && (
             <div className="flex flex-wrap items-center gap-0.5 sm:gap-1 p-1.5 sm:p-2 border rounded-t-lg bg-muted/30 border-b-0 overflow-x-auto">
               <ToolToggle pressed={editor.isActive("heading", { level: 1 })} onClick={() => editor.chain().focus().toggleHeading({ level: 1 }).run()} title="Başlık 1">
@@ -240,19 +238,19 @@ export function StudentAboutDialog({ open, onOpenChange, studentId, studentName,
               <EditorContent editor={editor} />
             )}
           </div>
-        </div>
+        </SheetBody>
 
         {!isReadOnly && (
-          <DialogFooter className="gap-2 sm:gap-0">
-            <Button variant="outline" onClick={() => onOpenChange(false)} disabled={saving}>
+          <SheetFooter>
+            <button type="button" className="pn-btn pn-btn--paper" onClick={() => onOpenChange(false)} disabled={saving}>
               İptal
-            </Button>
-            <Button onClick={handleSave} disabled={saving}>
+            </button>
+            <button type="button" className="pn-btn pn-btn--blue" onClick={handleSave} disabled={saving}>
               {saving ? "Kaydediliyor..." : "Kaydet"}
-            </Button>
-          </DialogFooter>
+            </button>
+          </SheetFooter>
         )}
-      </DialogContent>
-    </Dialog>
+      </SheetContent>
+    </Sheet>
   );
 }

@@ -1,22 +1,12 @@
 "use client";
 
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/panel-ui/dialog";
+import { ConfirmSheet, Sheet, SheetBody, SheetContent, SheetFooter, SheetHeader } from "@/components/panel-ui/sheet";
 import { Button } from "@/components/panel-ui/button";
 import { Input } from "@/components/panel-ui/input";
 import { Label } from "@/components/panel-ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/panel-ui/select";
 import { Checkbox } from "@/components/panel-ui/checkbox";
 import { Separator } from "@/components/panel-ui/separator";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/panel-ui/alert-dialog";
 import { Loader2, Trash2, Archive, AlertTriangle, ChevronLeft, ChevronRight, AlignLeft, UserMinus } from "lucide-react";
 import { formatTime } from "@/lib/lesson/format";
 import { DAYS_OF_WEEK, type StudentLessonBase } from "@/lib/admin/types";
@@ -79,13 +69,12 @@ export function EditStudentDialog(props: EditStudentDialogProps) {
   const [runResetAll, resettingAll] = useAsyncAction(handleResetAllLessons);
 
   return (
-    <Dialog open={props.open} onOpenChange={props.onOpenChange}>
-      <DialogContent className="w-[calc(100%-1rem)] sm:max-w-2xl max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle>Öğrenci Ayarları</DialogTitle>
-        </DialogHeader>
+    <Sheet open={props.open} onOpenChange={props.onOpenChange}>
+      <SheetContent size="lg" onDismiss={() => props.onOpenChange(false)}>
+        <SheetHeader tone="blue" title="Öğrenci Ayarları" subtitle={props.currentName} />
 
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} className="flex min-h-0 flex-1 flex-col">
+          <SheetBody className="space-y-4">
           <div className="space-y-2">
             <Label htmlFor="name">Öğrenci Adı</Label>
             <Input id="name" type="text" value={name} onChange={(e) => setName(e.target.value)} placeholder="Ad Soyad" required />
@@ -332,57 +321,44 @@ export function EditStudentDialog(props: EditStudentDialogProps) {
             )}
           </div>
 
-          <Separator className="my-4" />
-
-          <div className="flex gap-3">
-            <Button type="submit" disabled={loading || conflicts.length > 0} className="flex-1">
-              {loading && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-              Kaydet
-            </Button>
-            <Button type="button" variant="outline" onClick={() => props.onOpenChange(false)} disabled={loading}>
+          </SheetBody>
+          <SheetFooter>
+            <button type="button" className="pn-btn pn-btn--paper" onClick={() => props.onOpenChange(false)} disabled={loading}>
               İptal
-            </Button>
-          </div>
+            </button>
+            <button type="submit" className="pn-btn pn-btn--blue" disabled={loading || conflicts.length > 0}>
+              {loading && <Loader2 className="size-4 animate-spin" />}
+              Kaydet
+            </button>
+          </SheetFooter>
         </form>
 
-        <AlertDialog open={showConfirm} onOpenChange={setShowConfirm}>
-          <AlertDialogContent>
-            <AlertDialogHeader>
-              <AlertDialogTitle>Ders Tarihlerini Güncelle</AlertDialogTitle>
-              <AlertDialogDescription>Ders tarihlerini güncellemek istediğinize emin misiniz?</AlertDialogDescription>
-            </AlertDialogHeader>
-            <div className="flex items-center space-x-2 py-4">
-              <Checkbox id="updateRemaining" checked={updateRemainingDays} onCheckedChange={(checked) => setUpdateRemainingDays(!!checked)} />
-              <label htmlFor="updateRemaining" className="text-sm font-medium leading-none">
-                Kalan günleri de güncelle
-              </label>
-            </div>
-            <AlertDialogFooter>
-              <AlertDialogCancel disabled={updatingDates}>İptal</AlertDialogCancel>
-              <AlertDialogAction onClick={runDateUpdate} disabled={updatingDates}>
-                {updatingDates ? "Güncelleniyor..." : "Onayla"}
-              </AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
+        <ConfirmSheet
+          open={showConfirm}
+          onOpenChange={setShowConfirm}
+          tone="blue"
+          title="Ders Tarihlerini Güncelle"
+          description="Ders tarihlerini güncellemek istediğine emin misin?"
+          confirmLabel={updatingDates ? "Güncelleniyor..." : "Onayla"}
+          loading={updatingDates}
+          onConfirm={runDateUpdate}
+        >
+          <label htmlFor="updateRemaining" className="flex cursor-pointer items-center gap-2 text-[13px] font-semibold text-on-surface">
+            <Checkbox id="updateRemaining" checked={updateRemainingDays} onCheckedChange={(checked) => setUpdateRemainingDays(!!checked)} />
+            Kalan günleri de güncelle
+          </label>
+        </ConfirmSheet>
 
-        <AlertDialog open={showResetConfirm} onOpenChange={setShowResetConfirm}>
-          <AlertDialogContent>
-            <AlertDialogHeader>
-              <AlertDialogTitle>Tüm Dersleri Sıfırla</AlertDialogTitle>
-              <AlertDialogDescription>
-                Tüm işlenen dersleri ve tarihleri sıfırlamak istediğinize emin misiniz? Bu işlem öğretmen bakiyesini etkilemez.
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-              <AlertDialogCancel disabled={resettingAll}>İptal</AlertDialogCancel>
-              <AlertDialogAction onClick={runResetAll} disabled={resettingAll}>
-                {resettingAll ? "Sıfırlanıyor..." : "Sıfırla"}
-              </AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
-      </DialogContent>
-    </Dialog>
+        <ConfirmSheet
+          open={showResetConfirm}
+          onOpenChange={setShowResetConfirm}
+          title="Tüm Dersleri Sıfırla"
+          description="Tüm işlenen dersler ve tarihler sıfırlanacak. Öğretmen bakiyesi etkilenmez."
+          confirmLabel={resettingAll ? "Sıfırlanıyor..." : "Sıfırla"}
+          loading={resettingAll}
+          onConfirm={runResetAll}
+        />
+      </SheetContent>
+    </Sheet>
   );
 }

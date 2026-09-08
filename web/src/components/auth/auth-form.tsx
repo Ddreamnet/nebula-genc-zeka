@@ -50,6 +50,15 @@ export function AuthForm() {
     return () => cancelAnimationFrame(raf);
   }, []);
 
+  // The dashboard's JS is fetched while the student is still typing their
+  // password, so the push after a successful sign-in is a render, not a
+  // download. The route itself is dynamic (it reads the session), so what
+  // this warms is the code and the loading boundary — the part that used to
+  // be the visible pause after "Giriş Yap".
+  useEffect(() => {
+    router.prefetch("/dashboard");
+  }, [router]);
+
   const mascotState: MascotState = pwFocused
     ? showPw
       ? "peeking"

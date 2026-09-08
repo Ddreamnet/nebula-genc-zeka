@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/panel-ui/dialog";
+import { Sheet, SheetBody, SheetContent, SheetHeader } from "@/components/panel-ui/sheet";
 import { Card, CardContent } from "@/components/panel-ui/card";
 import { Button } from "@/components/panel-ui/button";
 import { Switch } from "@/components/panel-ui/switch";
@@ -268,16 +268,11 @@ export function GlobalTopicsManager({ open, onOpenChange, isAdmin = false }: Glo
 
   return (
     <>
-      <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="w-[calc(100%-1rem)] sm:max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2 text-base sm:text-lg">
-              <BookOpen className="h-4 w-4 sm:h-5 sm:w-5" />
-              Global Konular Yönetimi
-            </DialogTitle>
-          </DialogHeader>
+      <Sheet open={open} onOpenChange={onOpenChange}>
+        <SheetContent size="lg" onDismiss={() => onOpenChange(false)}>
+          <SheetHeader tone="blue" title="Global Konular" subtitle={isAdmin ? "Her öğrenciye atanabilen ortak konular" : "Ortak konular ve kaynaklar"} icon={<BookOpen className="size-5 shrink-0 text-[color:var(--pn-blue-ink)]" strokeWidth={1.9} aria-hidden />} />
 
-          <div className="flex-1 overflow-y-auto">
+          <SheetBody>
             <div className="space-y-4">
               <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
                 <p className="text-xs sm:text-sm text-muted-foreground">{isAdmin ? "Herhangi bir öğrenciye atanabilecek global konuları yönetin" : "Global konular ve kaynaklar"}</p>
@@ -353,9 +348,9 @@ export function GlobalTopicsManager({ open, onOpenChange, isAdmin = false }: Glo
                 </DndContext>
               )}
             </div>
-          </div>
-        </DialogContent>
-      </Dialog>
+          </SheetBody>
+        </SheetContent>
+      </Sheet>
 
       <AddTopicDialog open={showAddTopic} onOpenChange={setShowAddTopic} onAddTopic={handleAddTopic} allowAddToEnd />
       <AddResourceDialog open={showAddResource} onOpenChange={setShowAddResource} topicId={selectedTopicId} topicTitle={globalTopics.find((t) => t.id === selectedTopicId)?.title} onAddResource={handleAddResource} />

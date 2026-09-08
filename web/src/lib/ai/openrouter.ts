@@ -1,4 +1,5 @@
-import { DEFAULT_ASPECT_RATIO, type AspectRatio } from "@/lib/playground/aspect";
+import type { RequestBody } from "@/lib/playground/request";
+export type { ChatMessage, ContentPart } from "@/lib/playground/request";
 
 const BASE_URL = "https://openrouter.ai/api/v1";
 
@@ -37,22 +38,6 @@ function headers() {
     Authorization: `Bearer ${process.env.OPENROUTER_API_KEY}`,
     "Content-Type": "application/json",
   };
-}
-
-/**
- * A chat message is either plain text or OpenAI-style content parts. The parts
- * form is how images reach a vision model — verified live against OpenRouter
- * (google/gemini-2.5-flash correctly described a test PNG sent this way):
- *   content: [{ type: "text", text }, { type: "image_url", image_url: { url } }]
- * `url` takes an http(s) URL or a `data:image/...;base64,...` data URL.
- */
-export type ContentPart =
-  | { type: "text"; text: string }
-  | { type: "image_url"; image_url: { url: string } };
-
-export interface ChatMessage {
-  role: "system" | "user" | "assistant";
-  content: string | ContentPart[];
 }
 
 /**
@@ -106,23 +91,13 @@ export type TextStreamEvent =
 /**
  * Streaming text generation.
  *
- * Replaces the old buffered `generateText`: the student sees words as they are
- * written instead of watching a spinner for the whole answer, and an aborted
- * request stops paying for tokens the moment they stop being wanted.
- *
- * `reasoning` asks the model to expose its thinking as a separate `reasoning`
- * delta channel. Verified live: DeepSeek R1 and GPT-5 Mini both stream it, and
- * a model that has no such channel (Llama 3.3) ignores the parameter rather
- * than erroring — so the flag is safe to send. It is still opt-in per tool,
- * because on a model that only thinks *when asked* (Claude) turning it on buys
- * visible reasoning at the price of billed thinking tokens, and ore is charged
- * at a flat rate per message.
+ * Takes a body built by `lib/playground/request.ts` rather than assembling
+ * one here: the `</>` preview panel builds it with the same function, so what
+ * a student reads there is byte-for-byte what leaves this fetch. Everything
+ * this module still owns is transport — the key, the deadline, the SSE
+ * parsing and the cancellation.
  */
-export async function* streamText(
-  messages: ChatMessage[],
-  model: string,
-  options: { reasoning?: boolean; signal?: AbortSignal } = {},
-): AsyncGenerator<TextStreamEvent> {
+export async function* streamText(body: RequestBody, options: { signal?: AbortSignal } = {}): AsyncGenerator<TextStreamEvent> {
   // Two deadlines, one signal: our own ceiling and the caller's cancellation
   // (a student pressing stop, or the browser hanging up on them).
   const signals = [AbortSignal.timeout(TIMEOUT_MS.stream)];
@@ -131,13 +106,7 @@ export async function* streamText(
   const res = await fetch(`${BASE_URL}/chat/completions`, {
     method: "POST",
     headers: headers(),
-    body: JSON.stringify({
-      model,
-      messages,
-      stream: true,
-      stream_options: { include_usage: true },
-      ...(options.reasoning ? { reasoning: { enabled: true } } : {}),
-    }),
+    body: JSON.stringify(body),
     signal: AbortSignal.any(signals),
   }).catch((err) => {
     // A caller-side abort is a deliberate stop, not a timeout — the route
@@ -161,32 +130,22 @@ export async function* streamText(
 }
 
 /**
- * `references` turns a plain text-to-image call into image-to-image / editing.
- * Note this is a *different* mechanism from the chat `image_url` content parts
- * above — the /images endpoint takes its own `input_references` array, and the
- * per-model ceiling lives in `supported_parameters.input_references.max`
+ * One image. The body carries the studio's dials — resolution, seed,
+ * transparent background, quality, output format — and `input_references`,
+ * which turns a plain text-to-image call into image-to-image / editing.
+ *
+ * Note `input_references` is a *different* mechanism from the chat
+ * `image_url` content parts: the /images endpoint takes its own array, and
+ * the per-model ceiling lives in `supported_parameters.input_references.max`
  * (`maxImageInputs` in the tool catalog mirrors it). Verified live on
  * x-ai/grok-imagine-image-quality: a reference PNG plus "turn this into a
  * planet" returned an edited image and billed $0.05 output + $0.01 per input.
  */
-export async function generateImage(
-  prompt: string,
-  model: string,
-  references: string[] = [],
-  aspectRatio: AspectRatio = DEFAULT_ASPECT_RATIO,
-): Promise<{ b64: string; mediaType: string; costUsd: number }> {
+export async function generateImage(body: RequestBody): Promise<{ b64: string; mediaType: string; costUsd: number }> {
   const res = await fetch(`${BASE_URL}/images`, {
     method: "POST",
     headers: headers(),
-    body: JSON.stringify({
-      model,
-      prompt,
-      n: 1,
-      aspect_ratio: aspectRatio,
-      ...(references.length > 0
-        ? { input_references: references.map((url) => ({ type: "image_url", image_url: { url } })) }
-        : {}),
-    }),
+    body: JSON.stringify(body),
     signal: AbortSignal.timeout(TIMEOUT_MS.image),
   }).catch(() => {
     throw timeoutError("image generation", TIMEOUT_MS.image);
@@ -199,8 +158,11 @@ export async function generateImage(
 }
 
 /**
- * `firstFrame` turns text-to-video into image-to-video: the picture becomes
- * frame 0 and the model animates out of it.
+ * Kicks off a video job. The render itself is asynchronous and polled.
+ *
+ * `frame_images` in the body turns text-to-video into image-to-video: the
+ * picture becomes frame 0 and the model animates out of it, and a second
+ * entry with `frame_type: "last_frame"` tells it where to end up.
  *
  * Two things here were verified live rather than assumed (job
  * mQV1rACgRQz8KRGwBTZ2 on x-ai/grok-imagine-video, 1s/480p, $0.052):
@@ -209,38 +171,17 @@ export async function generateImage(
  *    from chat `image_url` parts and /images `input_references`;
  *  - a `data:image/...;base64,...` URL is accepted end to end, even though
  *    the cookbook only shows public HTTPS URLs. The returned MP4's first frame
- *    was the uploaded picture, so the provider really does receive it. That is
- *    what lets a student's attachment go straight through without being
- *    published to a public URL first.
+ *    was the uploaded picture, so the provider really does receive it.
  *
- * Which models accept it comes from `supported_frame_images` in
- * GET /videos/models (mirrored by `maxImageInputs` in the tool catalog);
- * OpenAI's Sora 2 Pro is the one live tool that supports no frame images at
- * all, so the catalog leaves it unset and the composer hides the button.
+ * Which models accept which frames comes from `supported_frame_images` in
+ * GET /videos/models, mirrored into `capabilities.generated.ts`; the body
+ * builder will not write a frame the catalog does not list.
  */
-export async function startVideo(
-  prompt: string,
-  model: string,
-  duration = 4,
-  resolution = "720p",
-  firstFrame?: string,
-): Promise<{ jobId: string }> {
+export async function startVideo(body: RequestBody): Promise<{ jobId: string }> {
   const res = await fetch(`${BASE_URL}/videos`, {
     method: "POST",
     headers: headers(),
-    body: JSON.stringify({
-      model,
-      prompt,
-      duration,
-      resolution,
-      ...(firstFrame
-        ? {
-            frame_images: [
-              { type: "image_url", image_url: { url: firstFrame }, frame_type: "first_frame" },
-            ],
-          }
-        : {}),
-    }),
+    body: JSON.stringify(body),
     signal: AbortSignal.timeout(TIMEOUT_MS.job),
   }).catch(() => {
     throw timeoutError("video start", TIMEOUT_MS.job);
@@ -317,23 +258,16 @@ function pcm16ToWav(pcm: Buffer, sampleRate = 24000, channels = 1): Buffer {
  *  - Google (lyria-3-pro-preview, lyria-3-clip-preview): takes no `audio`
  *    param at all and returns one single chunk that's already a complete,
  *    real MP3 file (verified via its ID3 header / ffprobe) — passed through as-is.
+ *
+ * Which of the two shapes a body has is decided by the builder, so the voice
+ * a student picked in the studio is on the wire the panel showed them.
  */
-export async function generateAudio(
-  messages: ChatMessage[],
-  model: string,
-): Promise<{ audioBuffer: Buffer; mimeType: string; costUsd: number }> {
-  const isOpenAiVoice = model.startsWith("openai/");
+export async function generateAudio(body: RequestBody): Promise<{ audioBuffer: Buffer; mimeType: string; costUsd: number }> {
+  const isOpenAiVoice = typeof body.model === "string" && body.model.startsWith("openai/");
   const res = await fetch(`${BASE_URL}/chat/completions`, {
     method: "POST",
     headers: headers(),
-    body: JSON.stringify({
-      model,
-      modalities: ["text", "audio"],
-      ...(isOpenAiVoice ? { audio: { voice: "alloy", format: "pcm16" } } : {}),
-      stream: true,
-      stream_options: { include_usage: true },
-      messages,
-    }),
+    body: JSON.stringify(body),
     signal: AbortSignal.timeout(TIMEOUT_MS.audio),
   }).catch(() => {
     throw timeoutError("audio generation", TIMEOUT_MS.audio);
@@ -352,10 +286,9 @@ export async function generateAudio(
 
   if (chunks.length === 0) throw new Error("OpenRouter returned no audio (possibly content-filtered)");
   const raw = Buffer.concat(chunks);
-  const isWav = isOpenAiVoice;
   return {
-    audioBuffer: isWav ? pcm16ToWav(raw) : raw,
-    mimeType: isWav ? "audio/wav" : "audio/mpeg",
+    audioBuffer: isOpenAiVoice ? pcm16ToWav(raw) : raw,
+    mimeType: isOpenAiVoice ? "audio/wav" : "audio/mpeg",
     costUsd,
   };
 }

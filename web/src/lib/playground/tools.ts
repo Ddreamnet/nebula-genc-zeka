@@ -22,6 +22,7 @@
  */
 import type { LucideIcon } from "lucide-react";
 import { Box, Clapperboard, Music2, Mic2, Globe, MessageSquareText, Gamepad2, Video, Wand2, Camera, Search } from "lucide-react";
+import type { AspectRatio } from "@/lib/playground/aspect";
 
 export type ToolStatus = "live" | "soon";
 export type ToolModality = "text" | "image" | "video" | "audio";
@@ -58,7 +59,11 @@ export type ProviderId =
   | "krea"
   | "microsoft"
   | "amazon"
-  | "mistral";
+  | "mistral"
+  | "cohere"
+  | "tencent"
+  | "baidu"
+  | "sourceful";
 
 export interface PlaygroundTool {
   id: string;
@@ -73,6 +78,17 @@ export interface PlaygroundTool {
   /** Video only — most models default to 4s/720p; a few need an override (verified against OpenRouter's live catalog, never assumed). */
   videoDuration?: number;
   videoResolution?: string;
+  /**
+   * Output shapes this model accepts, copied from OpenRouter's live catalog
+   * (`supported_parameters.aspect_ratio` on /images/models,
+   * `supported_aspect_ratios` on /videos/models — pulled 7 Sep 2026) and cut
+   * down to the ratios the product names (see lib/playground/aspect.ts). The
+   * composer draws only these chips and the route sends only these values:
+   * a model handed a ratio it does not support answers 400, which is not a
+   * thing a student should ever see. Absent on text and audio tools, and on
+   * anything not wired live.
+   */
+  aspectRatios?: readonly AspectRatio[];
   /**
    * How many images a student may attach to one message. Absent/0 means the
    * model is text-only and the composer hides its attach button entirely.
@@ -119,36 +135,15 @@ export interface PlaygroundTool {
 }
 
 /**
- * Extra ore per attached image, on top of the tool's base cost. Grounded in
- * measured cost at the catalog's ~$0.04/cevher ratio:
- *  - text: a 1024px image is ~1600 prompt tokens, worst case Claude Sonnet 5
- *    at $2/M ≈ $0.0032 → 0.1 cevher. (Gemini Flash is ~8x cheaper; like the
- *    flat 0.05 base cost, we don't price per-model.)
- *  - image: OpenRouter bills a flat $0.01 per input image (verified live on
- *    grok-imagine: $0.05 output + $0.01 input = $0.06) → 0.25 cevher.
- *  - video: free. A first frame is either itemised at a rounding error
- *    (grok-imagine-video prices `cents_per_image_input` at 0.2¢ = 0.05 cevher
- *    against a 7-cevher clip) or folded into the per-second rate outright
- *    (Kling charges image_to_video and text_to_video identically). Charging
- *    for it would cost a student more in surprise than it saves us.
+ * Ore pricing moved to `lib/playground/params.ts`.
+ *
+ * It stopped being a property of the tool the moment the studio let a student
+ * change resolution, duration or whether a clip has sound: the price is now a
+ * function of the tool AND the dials, and it is computed in one place that
+ * both the composer and the generate route call. `oreCost` below is still the
+ * catalogued base — what one generation costs at the tool's default settings
+ * — and `generationCost()` scales from it.
  */
-const IMAGE_INPUT_ORE = { text: 0.1, image: 0.25, video: 0 } as const;
-
-/**
- * Authoritative ore price for one generation. The server charges with this;
- * the client calls it too, purely so the balance gate and the composer hint
- * agree with what's about to be billed.
- */
-export function generationOreCost(tool: PlaygroundTool, imageCount: number): number {
-  if (imageCount <= 0) return tool.oreCost;
-  const perImage =
-    tool.modality === "image"
-      ? IMAGE_INPUT_ORE.image
-      : tool.modality === "video"
-        ? IMAGE_INPUT_ORE.video
-        : IMAGE_INPUT_ORE.text;
-  return Math.round((tool.oreCost + imageCount * perImage) * 100) / 100;
-}
 
 export interface PlaygroundCategory {
   id: string;
@@ -284,6 +279,84 @@ export const CATEGORIES: PlaygroundCategory[] = [
         maxImageInputs: 3,
       },
       {
+        id: "kimi-k3",
+        name: "Kimi K3",
+        description: "Moonshot AI'ın Çin'de çok konuşulan modeli — uzun metinleri okuyup özetlemekte ve kod yazmakta güçlü.",
+        icon: MessageSquareText,
+        status: "live",
+        modality: "text",
+        provider: "moonshot",
+        providerModel: "moonshotai/kimi-k3",
+        oreCost: 0.05,
+      },
+      {
+        id: "glm-5-3",
+        name: "GLM-5.3",
+        description: "Zhipu AI'ın (Pekin) modeli — Çin'in en büyük açık kaynak yapay zeka laboratuvarlarından birinin amiral gemisi.",
+        icon: MessageSquareText,
+        status: "live",
+        modality: "text",
+        provider: "zhipu",
+        providerModel: "z-ai/glm-5.3",
+        oreCost: 0.05,
+      },
+      {
+        id: "minimax-m3",
+        name: "MiniMax M3",
+        description: "MiniMax'ın sohbet modeli — Şanghay merkezli, video ve ses modelleriyle de tanınan bir laboratuvar.",
+        icon: MessageSquareText,
+        status: "live",
+        modality: "text",
+        provider: "minimax",
+        providerModel: "minimax/minimax-m3",
+        oreCost: 0.05,
+      },
+      {
+        id: "command-a",
+        name: "Cohere Command A",
+        description: "Kanadalı Cohere'in modeli — kurumsal metin işlerinde ve çok dilli görevlerde iddialı.",
+        icon: MessageSquareText,
+        status: "live",
+        modality: "text",
+        provider: "cohere",
+        providerModel: "cohere/command-a",
+        oreCost: 0.05,
+      },
+      {
+        id: "hunyuan-3",
+        name: "Tencent Hunyuan 3",
+        description: "Tencent'in modeli — dünyanın en büyük oyun şirketinin kendi yapay zekası.",
+        icon: MessageSquareText,
+        status: "live",
+        modality: "text",
+        provider: "tencent",
+        providerModel: "tencent/hy3",
+        oreCost: 0.05,
+      },
+      {
+        id: "ernie-4-5",
+        name: "Baidu ERNIE 4.5",
+        description: "Baidu'nun modeli — Çin'in en büyük arama motorunun yapay zekası, görsel de okuyabiliyor.",
+        icon: MessageSquareText,
+        status: "live",
+        modality: "text",
+        provider: "baidu",
+        providerModel: "baidu/ernie-4.5-vl-424b-a47b",
+        oreCost: 0.05,
+        maxImageInputs: 3,
+      },
+      {
+        id: "gemma-4",
+        name: "Gemma 4",
+        description: "Google'ın herkese açık, ücretsiz küçük modeli — bilgisayarına indirip çalıştırabileceğin türden.",
+        icon: MessageSquareText,
+        status: "live",
+        modality: "text",
+        provider: "google",
+        providerModel: "google/gemma-4-31b-it:free",
+        oreCost: 0,
+      },
+      {
         id: "perplexity-sonar",
         name: "Perplexity Sonar",
         description: "Sohbet etmez — gerçek zamanlı internet araması yapıp kaynak gösterir, sorularına güncel ve doğrulanmış cevaplar bulur.",
@@ -311,6 +384,7 @@ export const CATEGORIES: PlaygroundCategory[] = [
         modality: "image",
         provider: "gemini",
         providerModel: "google/gemini-2.5-flash-image",
+        aspectRatios: ["1:1", "16:9", "9:16", "4:3", "3:2", "3:4", "2:3"],
         oreCost: 1,
         maxImageInputs: 3,
       },
@@ -323,6 +397,7 @@ export const CATEGORIES: PlaygroundCategory[] = [
         modality: "image",
         provider: "openai",
         providerModel: "openai/gpt-image-1",
+        aspectRatios: ["1:1", "3:2", "2:3"],
         oreCost: 1,
         maxImageInputs: 3,
       },
@@ -335,6 +410,7 @@ export const CATEGORIES: PlaygroundCategory[] = [
         modality: "image",
         provider: "bytedance",
         providerModel: "bytedance-seed/seedream-4.5",
+        aspectRatios: ["1:1", "16:9", "9:16", "4:3", "3:2", "3:4", "2:3"],
         oreCost: 1,
         maxImageInputs: 3,
       },
@@ -347,6 +423,7 @@ export const CATEGORIES: PlaygroundCategory[] = [
         modality: "image",
         provider: "blackforest",
         providerModel: "black-forest-labs/flux.2-pro",
+        aspectRatios: ["1:1", "16:9", "9:16", "4:3", "3:2", "3:4", "2:3"],
         oreCost: 1,
         maxImageInputs: 3,
       },
@@ -359,6 +436,7 @@ export const CATEGORIES: PlaygroundCategory[] = [
         modality: "image",
         provider: "recraft",
         providerModel: "recraft/recraft-v4",
+        aspectRatios: ["1:1", "16:9", "9:16", "4:3", "3:4"],
         oreCost: 1,
         maxImageInputs: 1,
       },
@@ -371,6 +449,7 @@ export const CATEGORIES: PlaygroundCategory[] = [
         modality: "image",
         provider: "xai",
         providerModel: "x-ai/grok-imagine-image-quality",
+        aspectRatios: ["1:1", "16:9", "9:16", "4:3", "3:2", "3:4", "2:3"],
         oreCost: 1,
         maxImageInputs: 3,
       },
@@ -383,6 +462,7 @@ export const CATEGORIES: PlaygroundCategory[] = [
         modality: "image",
         provider: "gemini",
         providerModel: "google/gemini-3.1-flash-image",
+        aspectRatios: ["1:1", "16:9", "9:16", "4:3", "3:2", "3:4", "2:3"],
         oreCost: 2,
         maxImageInputs: 3,
       },
@@ -395,6 +475,7 @@ export const CATEGORIES: PlaygroundCategory[] = [
         modality: "image",
         provider: "openai",
         providerModel: "openai/gpt-image-2",
+        aspectRatios: ["1:1", "16:9", "9:16", "4:3", "3:2", "3:4", "2:3"],
         oreCost: 1,
         maxImageInputs: 3,
       },
@@ -407,6 +488,7 @@ export const CATEGORIES: PlaygroundCategory[] = [
         modality: "image",
         provider: "gemini",
         providerModel: "google/gemini-3-pro-image",
+        aspectRatios: ["1:1", "16:9", "9:16", "4:3", "3:2", "3:4", "2:3"],
         oreCost: 3,
         maxImageInputs: 3,
       },
@@ -419,6 +501,7 @@ export const CATEGORIES: PlaygroundCategory[] = [
         modality: "image",
         provider: "microsoft",
         providerModel: "microsoft/mai-image-2.5-pro",
+        aspectRatios: ["1:1", "16:9", "9:16", "4:3", "3:2", "3:4", "2:3"],
         oreCost: 3,
         maxImageInputs: 1,
       },
@@ -431,8 +514,72 @@ export const CATEGORIES: PlaygroundCategory[] = [
         modality: "image",
         provider: "krea",
         providerModel: "krea/krea-2-large",
+        aspectRatios: ["1:1", "16:9", "9:16", "4:3", "3:2", "2:3"],
         oreCost: 2,
         maxImageInputs: 1,
+      },
+      {
+        id: "gpt-image-1-mini",
+        name: "GPT Image 1 Mini",
+        description: "GPT Image'in küçük kardeşi — en ucuz görsel modeli, denemekten korkmadan bol bol üretebilirsin.",
+        icon: Box,
+        status: "live",
+        modality: "image",
+        provider: "openai",
+        providerModel: "openai/gpt-image-1-mini",
+        aspectRatios: ["1:1", "3:2", "2:3"],
+        oreCost: 0.5,
+        maxImageInputs: 3,
+      },
+      {
+        id: "riverflow",
+        name: "Riverflow 2.5 Pro",
+        description: "Şeffaf arka planı ve 4K çıktıyı birlikte veren tek model — sticker ve logo işlerinin en güçlü seçeneği.",
+        icon: Box,
+        status: "live",
+        modality: "image",
+        provider: "sourceful",
+        providerModel: "sourceful/riverflow-v2.5-pro",
+        aspectRatios: ["1:1", "16:9", "9:16", "4:3", "3:2", "3:4", "2:3"],
+        oreCost: 2,
+        maxImageInputs: 3,
+      },
+      {
+        id: "qwen-image-3",
+        name: "Qwen Image 3",
+        description: "Alibaba'nın görsel modeli — Çince ve İngilizce yazıyı görselin içine düzgün yerleştirmesiyle tanınıyor.",
+        icon: Box,
+        status: "live",
+        modality: "image",
+        provider: "alibaba",
+        providerModel: "qwen/qwen-image-3",
+        aspectRatios: ["1:1", "16:9", "9:16", "4:3", "3:2", "3:4", "2:3"],
+        oreCost: 1,
+        maxImageInputs: 3,
+      },
+      {
+        id: "flux-2-max",
+        name: "FLUX.2 Max",
+        description: "Black Forest Labs'ın en güçlü modeli — FLUX.2 Pro'nun bir üst basamağı, ince detayda fark yaratır.",
+        icon: Box,
+        status: "live",
+        modality: "image",
+        provider: "blackforest",
+        providerModel: "black-forest-labs/flux.2-max",
+        aspectRatios: ["1:1", "16:9", "9:16", "4:3", "3:2", "3:4", "2:3"],
+        oreCost: 2,
+        maxImageInputs: 3,
+      },
+      {
+        id: "muse-image",
+        name: "Meta Muse",
+        description: "Meta'nın (Instagram ve WhatsApp'ın sahibi) görsel modeli — kendi uygulamalarındaki üretimlerin arkasındaki aile.",
+        icon: Box,
+        status: "live",
+        modality: "image",
+        provider: "meta",
+        providerModel: "meta/muse-image",
+        oreCost: 1,
       },
       {
         id: "ideogram",
@@ -461,6 +608,7 @@ export const CATEGORIES: PlaygroundCategory[] = [
         modality: "video",
         provider: "openai",
         providerModel: "openai/sora-2-pro",
+        aspectRatios: ["16:9", "9:16"],
         oreCost: 30,
       },
       {
@@ -472,6 +620,7 @@ export const CATEGORIES: PlaygroundCategory[] = [
         modality: "video",
         provider: "google",
         providerModel: "google/veo-3.1-fast",
+        aspectRatios: ["16:9", "9:16"],
         oreCost: 10,
         maxImageInputs: 1,
       },
@@ -484,6 +633,7 @@ export const CATEGORIES: PlaygroundCategory[] = [
         modality: "video",
         provider: "kuaishou",
         providerModel: "kwaivgi/kling-v3.0-std",
+        aspectRatios: ["1:1", "16:9", "9:16"],
         oreCost: 9,
         maxImageInputs: 1,
       },
@@ -496,6 +646,7 @@ export const CATEGORIES: PlaygroundCategory[] = [
         modality: "video",
         provider: "alibaba",
         providerModel: "alibaba/wan-2.7",
+        aspectRatios: ["1:1", "16:9", "9:16", "4:3", "3:4"],
         oreCost: 10,
         maxImageInputs: 1,
       },
@@ -508,6 +659,7 @@ export const CATEGORIES: PlaygroundCategory[] = [
         modality: "video",
         provider: "xai",
         providerModel: "x-ai/grok-imagine-video",
+        aspectRatios: ["1:1", "16:9", "9:16", "4:3", "3:2", "3:4", "2:3"],
         oreCost: 7,
         maxImageInputs: 1,
       },
@@ -520,6 +672,7 @@ export const CATEGORIES: PlaygroundCategory[] = [
         modality: "video",
         provider: "minimax",
         providerModel: "minimax/hailuo-2.3",
+        aspectRatios: ["16:9"],
         oreCost: 12,
         videoDuration: 6,
         videoResolution: "1080p",
@@ -534,6 +687,7 @@ export const CATEGORIES: PlaygroundCategory[] = [
         modality: "video",
         provider: "bytedance",
         providerModel: "bytedance/seedance-2.0",
+        aspectRatios: ["1:1", "16:9", "9:16", "4:3", "3:4"],
         oreCost: 15,
         maxImageInputs: 1,
       },
@@ -546,6 +700,7 @@ export const CATEGORIES: PlaygroundCategory[] = [
         modality: "video",
         provider: "alibaba",
         providerModel: "alibaba/happyhorse-1.1",
+        aspectRatios: ["1:1", "16:9", "9:16", "4:3", "3:4"],
         oreCost: 12,
         maxImageInputs: 1,
       },
@@ -558,19 +713,90 @@ export const CATEGORIES: PlaygroundCategory[] = [
         modality: "video",
         provider: "google",
         providerModel: "google/veo-3.1-lite",
+        aspectRatios: ["16:9", "9:16"],
         oreCost: 5,
         maxImageInputs: 1,
       },
       {
-        id: "runway",
-        name: "Runway",
-        description: "Sinematik video üretiminin öncülerinden — metinden ve görselden kısa film sahneleri üretir.",
+        id: "veo-3-1",
+        name: "Veo 3.1",
+        description: "Google'ın amiral gemisi video modeli — sesli, sinematik ve 4K'ya kadar çıkabilen en yüksek kaliteli seçenek.",
         icon: Clapperboard,
-        status: "soon",
+        status: "live",
+        modality: "video",
+        provider: "google",
+        providerModel: "google/veo-3.1",
+        aspectRatios: ["16:9", "9:16"],
+        oreCost: 40,
+        maxImageInputs: 1,
+      },
+      {
+        id: "kling-3-pro",
+        name: "Kling 3.0 Pro",
+        description: "Kling Standard'ın üst sürümü — daha temiz hareket ve daha az bozulma, 15 saniyeye kadar sahne.",
+        icon: Clapperboard,
+        status: "live",
+        modality: "video",
+        provider: "kuaishou",
+        providerModel: "kwaivgi/kling-v3.0-pro",
+        aspectRatios: ["1:1", "16:9", "9:16"],
+        videoDuration: 5,
+        oreCost: 21,
+        maxImageInputs: 1,
+      },
+      {
+        id: "wan-3-0",
+        name: "Wan 3.0",
+        description: "Alibaba'nın yeni video modeli — 30 saniyeye kadar tek parça sahne üretebilen tek seçenek.",
+        icon: Clapperboard,
+        status: "live",
+        modality: "video",
+        provider: "alibaba",
+        providerModel: "alibaba/wan-3.0",
+        aspectRatios: ["1:1", "16:9", "9:16", "4:3", "3:4"],
+        oreCost: 10,
+        maxImageInputs: 1,
+      },
+      {
+        id: "hailuo-3",
+        name: "Hailuo 3",
+        description: "MiniMax'ın video modeli — 2K çözünürlükte üretir, karakter hareketlerinde akıcı.",
+        icon: Clapperboard,
+        status: "live",
+        modality: "video",
+        provider: "minimax",
+        providerModel: "minimax/hailuo-3",
+        aspectRatios: ["1:1", "16:9", "9:16", "4:3", "3:4"],
+        videoDuration: 5,
+        videoResolution: "2K",
+        oreCost: 16,
+        maxImageInputs: 1,
+      },
+      {
+        id: "seedance-2-5",
+        name: "Seedance 2.5",
+        description: "Seedance 2.0'ın yeni sürümü — 30 saniyeye kadar sahne ve daha kararlı kamera hareketi.",
+        icon: Clapperboard,
+        status: "live",
+        modality: "video",
+        provider: "bytedance",
+        providerModel: "bytedance/seedance-2.5",
+        aspectRatios: ["1:1", "16:9", "9:16", "4:3", "3:4"],
+        oreCost: 15,
+        maxImageInputs: 1,
+      },
+      {
+        id: "runway-gen-4-5",
+        name: "Runway Gen-4.5",
+        description: "Sinematik video üretiminin öncülerinden — metinden ve görselden kısa film sahneleri üretir. Sessiz çalışır.",
+        icon: Clapperboard,
+        status: "live",
         modality: "video",
         provider: "runway",
-        providerModel: "",
-        oreCost: 0,
+        providerModel: "runway/gen-4.5",
+        aspectRatios: ["16:9", "9:16"],
+        oreCost: 12,
+        maxImageInputs: 1,
       },
     ],
   },

@@ -20,10 +20,9 @@ export interface RailRow {
 /**
  * Bir öğrenci satırı.
  *
- * Kolon ritmi: nokta (6) → isim (esner) → okunmamış sayaç (16) → saat (mono).
- * Sayaç sıfırken de DÜĞÜM KALIR, yalnızca opaklığı 0 olur — düğümü tamamen
- * kaldırmak saatin sağa kaymasına ve satırdan satıra hizanın bozulmasına yol
- * açar. Bir listede gözün takip ettiği tek şey o dikey hizadır.
+ * Kolon ritmi: nokta (6) → isim (esner) → [okunmamış sayaç] → saat (mono).
+ * Saat sağa yaslı son öğe olduğu için sayaç yokken de yeri değişmez; sayaç
+ * yalnızca gerçekten bir şey söyleyecekse çizilir.
  *
  * memo: 20 satırlık bir listede arama kutusuna her harf girildiğinde
  * değişmeyen satırlar yeniden render edilmez.
@@ -63,17 +62,15 @@ const Row = memo(function Row({
         style={{ background: tone }}
       />
       <span className="min-w-0 flex-1 truncate text-[13px] font-semibold text-on-surface">{row.name}</span>
-      <span
-        aria-hidden={row.unread === 0}
-        className={cn(
-          "grid h-4 min-w-4 shrink-0 place-items-center rounded-full border-[1.5px] px-1 font-mono text-[9px] font-semibold leading-none",
-          row.unread > 0
-            ? "border-[color:var(--pn-pink-ink)] bg-[color:var(--pn-pink)] text-[color:var(--pn-pink-ink-strong)] opacity-100"
-            : "border-transparent opacity-0",
-        )}
-      >
-        {row.unread > 0 ? (row.unread > 9 ? "9+" : row.unread) : "0"}
-      </span>
+      {/* Sayaç sıfırken hiç çizilmez. Eskiden görünmez bir düğüm olarak yer
+          tutuyordu ("saat kaymasın" diye) — ama saat zaten satırın SON öğesi
+          ve sağa yaslı, düğüm yalnızca adın alanından çalıyordu: 195px'lik
+          kolonda "Kerem Aydın" bile "Kerem A…" olarak kırpılıyordu. */}
+      {row.unread > 0 && (
+        <span className="grid h-4 min-w-4 shrink-0 place-items-center rounded-full border-[1.5px] border-[color:var(--pn-pink-ink)] bg-[color:var(--pn-pink)] px-1 font-mono text-[9px] font-semibold leading-none text-[color:var(--pn-pink-ink-strong)]">
+          {row.unread > 9 ? "9+" : row.unread}
+        </span>
+      )}
       <span
         className="shrink-0 whitespace-nowrap font-mono text-[10px] font-semibold tabular-nums"
         style={{ color: row.isToday ? tone : "var(--color-on-surface-variant)" }}
@@ -122,7 +119,7 @@ export function StudentRail({ rows, total, selectedKey, onSelect, query, onQuery
 
   return (
     <section className="pn-card min-h-0" aria-label="Öğrencilerim">
-      <div className="pn-band pn-band--mint relative gap-2 px-3 py-2.5">
+      <div className="pn-band pn-band--mint relative gap-2">
         <h2 className="pn-card-title whitespace-nowrap">Öğrencilerim</h2>
         <span className="pn-chip pn-chip--mint">{total}</span>
         <span className="flex-1" />
@@ -131,7 +128,7 @@ export function StudentRail({ rows, total, selectedKey, onSelect, query, onQuery
             sayacı örter — üstlerinde okunaksız bir katman oluşmaz. */}
         <input
           type="search"
-          className="pn-search bg-[color:var(--pn-mint-tint)] focus:bg-surface-container"
+          className="pn-search"
           placeholder="Ara"
           aria-label="Öğrenci ara"
           value={query}
@@ -164,7 +161,7 @@ export function StudentRail({ rows, total, selectedKey, onSelect, query, onQuery
 
         {week.length > 0 && (
           <p
-            className={cn("pn-divider", today.length > 0 && "mt-1.5", isExtra(today.length) && "pn-rail-extra-label")}
+            className={cn("pn-divider", today.length > 0 && "mt-1.5")}
             data-extra={isExtra(today.length)}
             style={{ ["--pn-divider-ink" as string]: "var(--pn-violet-ink)" }}
           >

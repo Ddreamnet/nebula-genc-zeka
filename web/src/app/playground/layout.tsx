@@ -1,17 +1,19 @@
 import type { Metadata } from "next";
-import { SkyBackground } from "@/components/playground/sky-background";
+import { PanelThemeScope } from "@/components/site/panel-theme-scope";
 import { landingFontClass } from "@/lib/landing-fonts";
 
 /**
- * Playground runs on "Kâğıt Uzay" like the rest of the product — and now on
- * its paper side, not the space side: a light blue dotted sheet (.pg-theme in
- * globals.css) rather than the navy star field it opened on.
+ * The Playground is a room in the same building as the panels: it wears
+ * `.panel-theme` — the cream-card, navy-bar "Kâğıt Uzay v2" language the
+ * dashboards use — and the same two faces (Fredoka + Nunito, via the shared
+ * landing-fonts module so next/font dedupes them). Nothing here is loaded
+ * that the dashboard has not already loaded, which is most of why moving
+ * between the two feels instant: same CSS, same fonts, only the route chunk
+ * changes hands.
  *
- * Space Grotesk / Manrope / JetBrains Mono used to be loaded here for the old
- * "Cosmic Intellectual Horizon" theme — three faces this route was the only
- * consumer of. They are gone: the type is Fredoka + Nunito + Plex Mono, the
- * same pair every other surface uses, and the first two come from the shared
- * landing-fonts module so next/font dedupes them across the app.
+ * It used to be its own theme (`.pg-theme`, a cut-paper sheet on a dotted
+ * sky) with its own fixed background layer. That is gone: one design system,
+ * one flat ground, no extra layer to paint on every scroll.
  */
 /**
  * Belt-and-braces noindex for everything behind the login.
@@ -28,10 +30,11 @@ export const metadata: Metadata = {
 
 export default function PlaygroundLayout({ children }: { children: React.ReactNode }) {
   return (
-    // display: contents — this only needs to expose the theme and the font CSS
-    // variables to descendants, not introduce a box in the layout tree.
-    <div className={`${landingFontClass} pg-theme contents`}>
-      <SkyBackground />
+    <div className={`panel-theme panel-grid-bg bg-surface font-sans text-on-surface ${landingFontClass}`}>
+      {/* Portals (the model picker, the viewer, the avatar menu) render as
+          children of <body>, outside this div — the scope puts the same
+          classes on <body> so they inherit the theme too. */}
+      <PanelThemeScope />
       {children}
     </div>
   );

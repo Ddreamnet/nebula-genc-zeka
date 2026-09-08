@@ -29,6 +29,15 @@ interface Props {
  *
  * "24 dk kaldı" ve ilerleme oranı SAATTEN türetilir, ayrı bir alanda
  * tutulmaz — tutulsaydı iki kaynak ilk dakikada birbirinden ayrı düşerdi.
+ *
+ * Şerit bir kez daha sıkıştırıldı. Kaldırılan üç şey, üçü de aynı sebeple:
+ * ekranda ikinci kez söylendikleri için.
+ *   · "Salı 17:00 – 18:25" — hemen altındaki zincir zaten her dersin kendi
+ *     gününü ve saatini satır satır yazıyor.
+ *   · Ayrı ilerleme çubuğu satırı — dolgusu artık canlı dersin satırının
+ *     alt kenarında, kendi yüksekliği olmadan.
+ *   · "24 dk kaldı" — rozette zaten "Derste · 24 dk" yazıyor.
+ * Kalan meta satırı yalnızca zincirin söylemediğini söyler: paket ve hak.
  */
 export function NowStrip({
   studentId,
@@ -58,12 +67,16 @@ export function NowStrip({
 
   return (
     <section
-      className="flex flex-col gap-2.5 rounded-[16px] border border-[color:var(--pn-blue-line)] bg-[color:var(--pn-blue)] p-3.5 sm:p-4"
+      className="flex flex-col gap-2 rounded-[16px] border border-[color:var(--pn-blue-line)] bg-[color:var(--pn-blue)] p-3"
       style={{ boxShadow: "0 1px 2px rgba(36,55,166,.06), 0 8px 20px -12px rgba(36,55,166,.24)" }}
       aria-label={`${studentName} — ders durumu`}
     >
-      <div className="flex flex-wrap items-center gap-3">
-        <div className="flex min-w-[180px] flex-1 flex-col gap-0.5">
+      {/* items-start: mobilde başlık bloğu üç satıra sarıyor (ad · rozet ·
+          künye) ve `items-center` düğmeleri o üç satırın ortasına, yani
+          rozetin hizasına indiriyordu. Düğmeler adın hizasında durmalı —
+          eylemin sahibi ad. */}
+      <div className="flex flex-wrap items-start gap-2.5">
+        <div className="flex min-w-[180px] flex-1 flex-col gap-1">
           <div className="flex flex-wrap items-center gap-2">
             <h2 className="font-display text-[18px] font-semibold leading-tight text-on-surface">{studentName}</h2>
             {live ? (
@@ -79,11 +92,14 @@ export function NowStrip({
               )
             )}
           </div>
-          <p className="truncate text-[12px] text-[color:var(--pn-blue-ink-strong)]">
-            {slot
-              ? `${getDayName(slot.dayOfWeek)} ${formatTime(slot.startTime)} – ${formatTime(slot.endTime)}`
-              : "Haftalık ders saati tanımlı değil"}
-            {rights ? ` · paket ${rights.cycle} · ${rights.remaining}/${rights.total} hak kaldı` : ""}
+          {/* Kırpılmaz, sarar: bu satır paket ve kalan hak bilgisini taşıyor
+              ve dar bir ekranda kırpılırsa öğretmen kaç hakkı kaldığını
+              göremez — üç nokta bir bilgi değil, bilginin yokluğudur.
+              Mono ve versal, çünkü bu bir cümle değil bir künye: barın alt
+              satırıyla aynı dil. */}
+          <p className="font-mono text-[10px] font-semibold uppercase leading-tight tracking-[.1em] text-[color:var(--pn-blue-ink-strong)]">
+            {rights ? `Paket ${rights.cycle} · ${rights.remaining}/${rights.total} ders hakkı` : "Paket bilgisi yükleniyor"}
+            {!slot && " · saat tanımsız"}
           </p>
         </div>
 
@@ -113,27 +129,13 @@ export function NowStrip({
         </div>
       </div>
 
-      {/* İlerleme çubuğu: canlı derste dolan, boşta gizlenen tek çizgi. */}
-      {live && (
-        <div className="flex items-center gap-2.5">
-          <div className="h-[7px] flex-1 overflow-hidden rounded-full bg-[color:rgba(21,35,67,.14)]">
-            <div
-              className="h-full rounded-full bg-[color:var(--pn-blue-ink)] transition-[width] duration-1000 ease-linear"
-              style={{ width: `${Math.round(live.progress * 100)}%` }}
-            />
-          </div>
-          <span className="shrink-0 font-mono text-[10px] font-semibold tabular-nums text-[color:var(--pn-blue-ink)]">
-            {live.minutesLeft} dk kaldı
-          </span>
-        </div>
-      )}
-
       <LessonChain
         key={studentId}
         studentId={studentId}
         studentName={studentName}
         teacherId={teacherId}
         activeRange={live ? { start: live.slot.startTime.slice(0, 5), end: live.slot.endTime.slice(0, 5) } : null}
+        activeProgress={live?.progress ?? 0}
         onChanged={loadRights}
       />
     </section>

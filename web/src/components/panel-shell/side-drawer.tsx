@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
+import { SHEET_CLOSED_TRANSFORM, useDragToDismiss } from "@/components/panel-ui/sheet";
 import { X } from "lucide-react";
 import { cn } from "@/lib/cn";
 import type { NavTone } from "./panel-shell";
@@ -51,6 +52,30 @@ export interface SideDrawerProps {
  * bir modal olur: arkasında perde, sayfa kaydırması kilitli, Escape kapatır.
  */
 export function SideDrawer({ open, onClose, title, subtitle, tone = "peach", meta, footer, wide, children }: SideDrawerProps) {
+  /**
+   * Stays mounted for one exit animation after `open` flips to false.
+   *
+   * `closing` is set from a timer callback, not synchronously in the effect:
+   * the panel had no exit motion at all before — it vanished on the frame it
+   * was closed, which on a phone reads as a crash rather than a dismissal.
+   */
+  const [closing, setClosing] = useState(false);
+  const wasOpen = useRef(open);
+  useEffect(() => {
+    if (wasOpen.current && !open) {
+      const start = window.setTimeout(() => setClosing(true), 0);
+      const end = window.setTimeout(() => setClosing(false), 260);
+      wasOpen.current = false;
+      return () => {
+        window.clearTimeout(start);
+        window.clearTimeout(end);
+      };
+    }
+    if (open) wasOpen.current = true;
+  }, [open]);
+
+  const panelRef = useRef<HTMLElement>(null);
+  const drag = useDragToDismiss(panelRef, onClose, { closedTransform: SHEET_CLOSED_TRANSFORM });
   // Escape her iki modda da kapatır. Mobilde ayrıca sayfa kaydırması
   // kilitlenir; masaüstünde kilitlenmez — panel orada sayfanın bir parçası,
   // arkasındaki listeyi kaydırmak meşru bir iş.
@@ -71,23 +96,25 @@ export function SideDrawer({ open, onClose, title, subtitle, tone = "peach", met
     };
   }, [open, onClose]);
 
-  if (!open) return null;
+  if (!open && !closing) return null;
 
   return (
     <>
       {/* Perde yalnızca mobilde görünür (lg:hidden). Masaüstünde arkadaki
           içerik hâlâ kullanılabilir olmalı — panel bir kesinti değil, ikinci
           bir kolon. */}
-      <div className="pn-drawer-scrim lg:hidden" onClick={onClose} aria-hidden />
+      <div className="pn-drawer-scrim lg:hidden" data-state={open ? "open" : "closed"} onClick={onClose} aria-hidden />
 
       <aside
+        ref={panelRef}
         role="dialog"
         aria-modal="false"
         aria-label={title}
+        data-state={open ? "open" : "closed"}
         className={cn("pn-drawer pn-enter-right", wide && "lg:w-auto lg:min-w-0 lg:flex-1")}
         style={{ ["--pn-drawer-line" as string]: LINE[tone] }}
       >
-        <div className={cn("pn-band items-start", BAND[tone])}>
+        <div className={cn("pn-band pn-drawer-handle items-start", BAND[tone])} {...drag}>
           <div className="flex min-w-0 flex-1 flex-col gap-1.5">
             <div className="flex items-baseline gap-2">
               <h2 className="font-display text-[17px] font-semibold leading-tight text-on-surface">{title}</h2>
