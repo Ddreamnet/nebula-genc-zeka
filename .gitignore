@@ -17,3 +17,7 @@ build/
 # Supabase CLI local state (linked project ref, pooler URL, server versions).
 # Machine-specific and re-created by `supabase link` — never committed.
 supabase/.temp/
+
+# Arşiv paketleri. Projeden çıkarılan kopya/tasarım-teslimi/üretim
+# malzemesi bu zip'lerde yedekleniyor — yerel yedek, repoya girmez.
+nebula-arsiv-*.zip
