@@ -55,27 +55,28 @@ export function SideDrawer({ open, onClose, title, subtitle, tone = "peach", met
   /**
    * Stays mounted for one exit animation after `open` flips to false.
    *
-   * `closing` is set from a timer callback, not synchronously in the effect:
-   * the panel had no exit motion at all before — it vanished on the frame it
-   * was closed, which on a phone reads as a crash rather than a dismissal.
+   * The phase is derived DURING render (React's "adjust state on prop
+   * change" pattern), not from an effect or a timer: an effect fires after
+   * the render that already has `open=false`, and if that render returned
+   * null the panel would unmount for a frame and then re-mount to play its
+   * exit — visibly, as a card that vanishes, pops back up at the top and
+   * slides down a second time. Now there is no such frame: the same node
+   * goes from "open" straight to "closing".
    */
-  const [closing, setClosing] = useState(false);
-  const wasOpen = useRef(open);
+  const [phase, setPhase] = useState<"open" | "closing" | "closed">(open ? "open" : "closed");
+  if (open && phase !== "open") setPhase("open");
+  if (!open && phase === "open") setPhase("closing");
   useEffect(() => {
-    if (wasOpen.current && !open) {
-      const start = window.setTimeout(() => setClosing(true), 0);
-      const end = window.setTimeout(() => setClosing(false), 260);
-      wasOpen.current = false;
-      return () => {
-        window.clearTimeout(start);
-        window.clearTimeout(end);
-      };
-    }
-    if (open) wasOpen.current = true;
-  }, [open]);
+    if (phase !== "closing") return;
+    const end = window.setTimeout(() => setPhase("closed"), 260);
+    return () => window.clearTimeout(end);
+  }, [phase]);
 
   const panelRef = useRef<HTMLElement>(null);
-  const drag = useDragToDismiss(panelRef, onClose, { closedTransform: SHEET_CLOSED_TRANSFORM });
+  const scrimRef = useRef<HTMLDivElement>(null);
+  // Mobilde kart her yerinden — ve üstündeki perdeden — aşağı çekilerek
+  // kapanır (useDragToDismiss).
+  useDragToDismiss(panelRef, onClose, { open, closedTransform: SHEET_CLOSED_TRANSFORM, scrim: scrimRef });
   // Escape her iki modda da kapatır. Mobilde ayrıca sayfa kaydırması
   // kilitlenir; masaüstünde kilitlenmez — panel orada sayfanın bir parçası,
   // arkasındaki listeyi kaydırmak meşru bir iş.
@@ -96,14 +97,14 @@ export function SideDrawer({ open, onClose, title, subtitle, tone = "peach", met
     };
   }, [open, onClose]);
 
-  if (!open && !closing) return null;
+  if (phase === "closed") return null;
 
   return (
     <>
       {/* Perde yalnızca mobilde görünür (lg:hidden). Masaüstünde arkadaki
           içerik hâlâ kullanılabilir olmalı — panel bir kesinti değil, ikinci
           bir kolon. */}
-      <div className="pn-drawer-scrim lg:hidden" data-state={open ? "open" : "closed"} onClick={onClose} aria-hidden />
+      <div ref={scrimRef} className="pn-drawer-scrim lg:hidden" data-state={open ? "open" : "closed"} onClick={onClose} aria-hidden />
 
       <aside
         ref={panelRef}
@@ -114,7 +115,7 @@ export function SideDrawer({ open, onClose, title, subtitle, tone = "peach", met
         className={cn("pn-drawer pn-enter-right", wide && "lg:w-auto lg:min-w-0 lg:flex-1")}
         style={{ ["--pn-drawer-line" as string]: LINE[tone] }}
       >
-        <div className={cn("pn-band pn-drawer-handle items-start", BAND[tone])} {...drag}>
+        <div className={cn("pn-band pn-drawer-handle items-start", BAND[tone])}>
           <div className="flex min-w-0 flex-1 flex-col gap-1.5">
             <div className="flex items-baseline gap-2">
               <h2 className="font-display text-[17px] font-semibold leading-tight text-on-surface">{title}</h2>
@@ -122,11 +123,12 @@ export function SideDrawer({ open, onClose, title, subtitle, tone = "peach", met
             </div>
             {meta && <div className="flex flex-wrap items-center gap-1.5">{meta}</div>}
           </div>
+          {/* Yalnız masaüstü: telefonda kart aşağı çekilerek kapanır. */}
           <button
             type="button"
             aria-label="Paneli kapat"
             onClick={onClose}
-            className="grid size-9 shrink-0 place-items-center rounded-[10px] border border-[color:var(--pn-hair-strong)] bg-surface-container text-on-surface-variant transition-colors duration-[.18s] hover:bg-surface-low pointer-fine:size-8"
+            className="hidden size-8 shrink-0 place-items-center rounded-[10px] border border-[color:var(--pn-hair-strong)] bg-surface-container text-on-surface-variant transition-colors duration-[.18s] hover:bg-surface-low lg:grid"
           >
             <X className="size-4" strokeWidth={2} aria-hidden />
           </button>

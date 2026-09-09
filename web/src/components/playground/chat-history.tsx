@@ -60,7 +60,8 @@ export function ChatHistory({
   onClose: () => void;
 }) {
   const panelRef = useRef<HTMLElement>(null);
-  const drag = useDragToDismiss(panelRef, onClose, { closedTransform: SHEET_CLOSED_TRANSFORM });
+  // Phone: a bottom sheet, pulled shut from anywhere on it or on the scrim.
+  useDragToDismiss(panelRef, onClose, { open, closedTransform: SHEET_CLOSED_TRANSFORM, scrim: "[data-pg-scrim]" });
 
   const grouped = BUCKET_ORDER.map((label) => ({
     label,
@@ -82,7 +83,7 @@ export function ChatHistory({
   // without it Tab would walk into buttons nobody can see.
   return (
     <aside ref={panelRef} className="pg-panel pg-panel--left" data-open={open} aria-hidden={!open} inert={!open} aria-label="Sohbet geçmişi">
-      <header className="pg-panel-head pg-panel-head--navy pg-panel-handle" {...drag}>
+      <header className="pg-panel-head pg-panel-head--navy pg-panel-handle">
         <History className="size-4 shrink-0 text-[color:var(--pn-peach)]" strokeWidth={1.9} aria-hidden />
         <span className="pg-panel-label">Geçmiş</span>
         <span className="flex-1" />
@@ -96,7 +97,8 @@ export function ChatHistory({
         >
           <Plus className="size-4" strokeWidth={2} aria-hidden />
         </button>
-        <button type="button" onClick={onClose} title="Paneli kapat" aria-label="Sohbet geçmişini kapat" className="pn-bar-btn">
+        {/* Desktop only: a phone closes by pulling the card down. */}
+        <button type="button" onClick={onClose} title="Paneli kapat" aria-label="Sohbet geçmişini kapat" className="pn-bar-btn max-lg:!hidden">
           <X className="size-4" strokeWidth={2} aria-hidden />
         </button>
       </header>

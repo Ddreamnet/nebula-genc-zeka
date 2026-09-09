@@ -20,6 +20,10 @@ import { paramDoc } from "@/lib/playground/param-docs";
  * Two layers, the same pattern the recipe cards already use: the four or five
  * settings that answer "what am I making" open with the panel, and the rest
  * sit behind "Daha fazla" so a ten-year-old is not handed twenty sliders.
+ *
+ * The section starts OPEN: a collapsed "Gelişmiş" row at the bottom of the
+ * panel read as a locked door, and the dials are the reason the panel exists.
+ * It can still be folded away for the session.
  */
 export function StudioPanel({
   tool,
@@ -45,7 +49,7 @@ export function StudioPanel({
   /** These dials are past the per-generation ceiling; the send is refused. */
   atCeiling: boolean;
 }) {
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(true);
   const [moreOpen, setMoreOpen] = useState(false);
 
   const fields = studioFields(tool, role);

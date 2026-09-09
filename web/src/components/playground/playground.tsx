@@ -1167,10 +1167,13 @@ export function Playground({ initial }: { initial: PlaygroundInitial }) {
         disabled={locked}
       />
 
-      {/* Scrim for the narrow-screen sheets (hidden by CSS from lg up). */}
+      {/* Scrim for the narrow-screen sheets (hidden by CSS from lg up). A
+          touch on it is handled by the open panel's drag hook — tap closes,
+          a downward pull drags the card; this onClick is for the mouse. */}
       {(historyOpen || toolsOpen) && (
         <div
           className="pg-scrim"
+          data-pg-scrim
           aria-hidden
           onClick={() => {
             if (historyOpen) toggleHistory();

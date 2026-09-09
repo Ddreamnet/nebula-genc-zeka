@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, type ReactNode } from "react";
-import { ArrowRight, ChevronDown, ClipboardList, ListOrdered, Lock, Palette, Smile } from "lucide-react";
+import { ArrowLeft, ArrowRight, ChevronDown, ClipboardList, ListOrdered, Lock, Palette, Smile } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/panel-ui/popover";
 import { Sheet, SheetContent, SheetTitle, SheetTrigger } from "@/components/panel-ui/sheet";
@@ -98,16 +98,16 @@ export function LessonTools({
       )}
       {cards.length > 0 && (
         <>
-          <SectionLabel>Tarif kartı — doldur, prompt kendi yazılsın</SectionLabel>
+          <SectionLabel>Tarif kartları</SectionLabel>
           {cards.map((c) => (
-            <Row key={c.id} icon={ClipboardList} title={c.name} detail={c.purpose} note={c.source} onClick={() => setCard(c)} />
+            <Row key={c.id} icon={ClipboardList} title={c.name} detail={c.purpose} onClick={() => setCard(c)} />
           ))}
         </>
       )}
 
       {showRuns && (
         <>
-          <SectionLabel>Tur — bir fikir, birkaç üretim, yan yana</SectionLabel>
+          <SectionLabel>Sınıf turları</SectionLabel>
           <Row
             icon={ListOrdered}
             title="Merdiven"
@@ -161,7 +161,10 @@ export function LessonTools({
     return (
       <Sheet open={open} onOpenChange={onOpenChange}>
         <SheetTrigger asChild>{trigger}</SheetTrigger>
-        <SheetContent size="lg" onDismiss={() => onOpenChange(false)}>
+        {/* Content height, not 92dvh: the list is four or five rows, and a
+            card that tall for it read as a page. The form is taller; the
+            sheet grows into it instead of jumping (animateHeight). */}
+        <SheetContent size="md" animateHeight onDismiss={() => onOpenChange(false)}>
           <SheetTitle className="sr-only">Prompt şablonları ve sınıf turları</SheetTitle>
           {body}
         </SheetContent>
@@ -203,7 +206,6 @@ function Row({
   icon: Icon,
   title,
   detail,
-  note,
   cost,
   balance,
   disabled,
@@ -212,7 +214,6 @@ function Row({
   icon: typeof ClipboardList;
   title: string;
   detail: string;
-  note?: string;
   cost?: number | null;
   balance?: number;
   disabled?: boolean;
@@ -242,7 +243,6 @@ function Row({
       <span className="min-w-0 flex-1">
         <span className="block text-[13px] font-bold leading-snug text-on-surface">{title}</span>
         <span className="block truncate text-[12px] leading-snug text-on-surface-variant">{detail}</span>
-        {note && <span className="block truncate font-mono text-[10px] leading-snug text-on-surface-variant/70">{note}</span>}
       </span>
       {cost != null &&
         (tooExpensive ? (
@@ -276,15 +276,19 @@ function PromptCardForm({ card, wide, onBack, onUse }: { card: PromptCard; wide:
 
   return (
     <div className={cn("flex flex-col", wide ? "max-h-[min(76vh,640px)]" : "min-h-0 flex-1")}>
-      <header className="pn-band pn-band--blue shrink-0">
-        <ClipboardList className="size-4 shrink-0 text-[color:var(--pn-blue-ink)]" strokeWidth={1.9} />
-        <span className="min-w-0 flex-1">
-          <span className="block truncate text-[13px] font-bold text-on-surface">{card.name}</span>
-          <span className="block truncate font-mono text-[10px] text-on-surface-variant">{card.source}</span>
-        </span>
-        <button type="button" onClick={onBack} className="pn-btn pn-btn--sm pn-btn--paper">
-          Geri
+      {/* Back is an arrow at the left, where a back control lives everywhere
+          else on a phone; the card's title follows it. No curriculum line
+          ("Hafta 2 · …") — it is the deck's bookkeeping, not the student's. */}
+      <header className="pn-band pn-band--blue shrink-0 !gap-2 !py-2">
+        <button
+          type="button"
+          onClick={onBack}
+          aria-label="Geri"
+          className="grid size-9 shrink-0 place-items-center rounded-[10px] text-on-surface-variant transition-colors duration-[.18s] hover:bg-[color:var(--pn-blue)] hover:text-on-surface"
+        >
+          <ArrowLeft className="size-[18px]" strokeWidth={2} aria-hidden />
         </button>
+        <span className="min-w-0 flex-1 truncate text-[14px] font-bold text-on-surface">{card.name}</span>
       </header>
 
       <div className="min-h-0 flex-1 overflow-y-auto px-3 py-2">
@@ -301,7 +305,6 @@ function PromptCardForm({ card, wide, onBack, onUse }: { card: PromptCard; wide:
                 >
                   <ChevronDown className={cn("size-3 shrink-0 transition-transform duration-200", isOpen && "rotate-180")} />
                   {group.label}
-                  <span className="font-sans normal-case tracking-normal opacity-70">({group.fields.length} isteğe bağlı)</span>
                 </button>
               ) : (
                 <h4 className="mb-1 font-mono text-[10px] font-semibold uppercase tracking-[0.14em] text-on-surface-variant">{group.label}</h4>

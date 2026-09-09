@@ -98,26 +98,7 @@ export const OUTPUT_CATEGORIES: OutputCategory[] = [
     span: "span-2",
     panel: "#FFE1C4",
     tone: "var(--amber-deep)",
-    works: [
-      {
-        slug: "yagmur-ormani",
-        title: "Yağmur Ormanı — kitap kapağı",
-        student: "Yamaç",
-        note: "Kendi yazdığı hikâyenin kapağını tasarladı: ormanı, hayvanları ve şelaleyi tek tek anlatarak çıkardı.",
-        image: {
-          src: "/eserler/yagmur-ormani.jpg",
-          width: 596,
-          height: 896,
-          alt: "Yamaç'ın tasarladığı Yağmur Ormanı kitap kapağı: yağmur ormanında jaguar, tukan, maymunlar ve bir şelale.",
-        },
-        lesson: {
-          src: "/eserler/yagmur-ormani-ders.jpg",
-          width: 562,
-          height: 144,
-          alt: "Kapağın yapıldığı canlı dersten bir kare; öğretmen ve öğrencinin yüzleri bulanıklaştırılmış.",
-        },
-      },
-    ],
+    works: [],
   },
   {
     slug: "muzik",

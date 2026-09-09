@@ -515,8 +515,12 @@
   --pn-dur-fast: 0.16s;
   --pn-dur: 0.18s;
   --pn-dur-panel: 0.26s;
-  --pn-dur-sheet: 0.42s;
+  --pn-dur-sheet: 0.48s;
   --pn-dur-sheet-out: 0.24s;
+  /* Alt kartın eğrisi (iOS'un sheet eğrisi, Ionic → Vaul yoluyla): kapıdan
+     hızlı çıkar, uzun uzun yerine oturur. Giriş, geri dönüş ve çıkış aynı
+     eğriyi paylaşır ki parmak bırakınca hareket kırılmasın. */
+  --pn-ease-sheet: cubic-bezier(0.32, 0.72, 0, 1);
 
   /* ---- Boşluk merdiveni ----------------------------------------------
      ≈√2 oranlı bir merdiven, 5px'e demirli ve piksel ızgarasına
@@ -1160,7 +1164,7 @@
    değişir — bir kart ekranın altından geliyorsa altından girmeli. */
 @media (max-width: 1023.98px) {
   .pn-drawer.pn-enter-right {
-    animation: pn-slide-up var(--pn-dur-sheet) var(--pn-ease-out) both;
+    animation: pn-slide-up var(--pn-dur-sheet) var(--pn-ease-sheet) both;
   }
 }
 
@@ -1650,7 +1654,15 @@
     border-bottom: 0;
     padding-bottom: env(safe-area-inset-bottom, 0px);
     /* Sürükleme geri dönüşü (useDragToDismiss). */
-    transition: transform 0.32s var(--pn-ease-out);
+    transition: transform 0.32s var(--pn-ease-sheet);
+    /* Kartın kendisi kaydırmaz, sürüklenir. İçindeki kaydırma alanları
+       (pn-scroll) touch-action zincirini keser, kendi kaydırmalarını korur. */
+    touch-action: none;
+  }
+  /* Sürükleme başlayınca giriş animasyonunun dolgusu kalkar: bir animasyonun
+     değeri inline transform'u ezer — kalsaydı kart parmağı izlemezdi. */
+  .pn-drawer[data-dragged] {
+    animation: none;
   }
   .pn-drawer::before {
     content: "";
@@ -1675,8 +1687,15 @@
   /* Çıkış: kapanırken bir kare boyunca aşağı kayar (bkz. SideDrawer'daki
      `closing`). Giriş animasyonu (.pn-enter-right → yukarı) korunur. */
   .pn-drawer[data-state="closed"] {
-    animation: pn-sheet-out-down var(--pn-dur-sheet-out) var(--pn-ease-in) both !important;
+    animation: pn-sheet-out-down var(--pn-dur-sheet-out) var(--pn-ease-sheet) both !important;
     pointer-events: none;
+  }
+  /* Sürüklenerek kapatıldıysa kayma zaten parmağın bıraktığı yerden başlayıp
+     bitti (useDragToDismiss); çıkış keyframe'i bir daha tepeden oynamaz,
+     düğüm kapalı konumda park eder. */
+  .pn-drawer[data-dragged][data-state="closed"] {
+    animation: none !important;
+    transform: translate3d(0, 100%, 0);
   }
   .pn-drawer-scrim[data-state="closed"] {
     animation: pn-fade-in var(--pn-dur-sheet-out) var(--pn-ease) reverse both;
@@ -1693,7 +1712,10 @@
   position: fixed;
   inset: 0;
   z-index: 44;
-  background: rgba(20, 31, 60, 0.38);
+  /* --scrim-p: sürüklerken kartla birlikte açılır (useDragToDismiss). */
+  background: rgb(20 31 60 / calc(0.38 * var(--scrim-p, 1)));
+  transition: background-color 0.32s var(--pn-ease-sheet);
+  touch-action: none;
   animation: pn-fade-in 0.2s var(--pn-ease) both;
 }
 @keyframes pn-fade-in {
@@ -1909,14 +1931,17 @@
     border-radius: 20px 20px 0 0;
     border-bottom: 0;
     padding-bottom: var(--safe-b);
-    transition: transform var(--pn-dur-sheet) var(--pn-ease-out), opacity var(--pn-dur-sheet-out) var(--pn-ease),
+    transition: transform var(--pn-dur-sheet) var(--pn-ease-sheet), opacity var(--pn-dur-sheet-out) var(--pn-ease),
       visibility var(--pn-dur-sheet);
+    /* Kart her yerinden sürüklenir (useDragToDismiss); kaydırma alanları
+       (pg-scroll) zinciri keser ve kendi kaydırmalarını korur. */
+    touch-action: none;
   }
   .pg-panel--left[data-open="false"],
   .pg-panel--right[data-open="false"] {
     transform: translate3d(0, 100%, 0);
     opacity: 1;
-    transition: transform var(--pn-dur-sheet-out) var(--pn-ease-in), visibility 0s linear var(--pn-dur-sheet-out);
+    transition: transform var(--pn-dur-sheet-out) var(--pn-ease-sheet), visibility 0s linear var(--pn-dur-sheet-out);
   }
   /* The grip: a phone's "this can be pulled down" affordance. */
   .pg-panel::before {
@@ -1963,7 +1988,11 @@
   position: fixed;
   inset: 0;
   z-index: 45;
-  background: rgba(20, 31, 60, 0.34);
+  /* --scrim-p: kart sürüklenirken perde de onunla açılır. Perdeye dokunmak
+     kapatır, perdeden aşağı çekmek kartı çeker (useDragToDismiss). */
+  background: rgb(20 31 60 / calc(0.34 * var(--scrim-p, 1)));
+  transition: background-color 0.32s var(--pn-ease-sheet);
+  touch-action: none;
   animation: pn-fade-in 0.2s var(--pn-ease) both;
 }
 @media (min-width: 1024px) {
@@ -2379,12 +2408,14 @@
 .pn-sheet-scrim {
   position: fixed;
   inset: 0;
+  /* --scrim-p: kart sürüklenirken perde onunla birlikte açılır. */
+  transition: background-color 0.32s var(--pn-ease-sheet);
   /* 48/49, altında değil ÜSTÜNDE değil: Radix Select ve Popover içerikleri
      z-50'de portal'lanır ve bir formun İÇİNDEKİ açılır liste sheet'in önünde
      durmak zorunda. Playground'un yüzen panelleri (46) ve yan panel (45)
      ise sheet'in altında kalır. */
   z-index: 48;
-  background: rgba(20, 31, 60, 0.38);
+  background: rgb(20 31 60 / calc(0.38 * var(--scrim-p, 1)));
 }
 .pn-sheet-scrim[data-state="open"] {
   animation: pn-fade-in var(--pn-dur-sheet-out) var(--pn-ease) both;
@@ -2396,7 +2427,7 @@
   /* Masaüstünde perde daha hafif: çekmece bir kolon gibi durur, arkadaki
      sayfa karartılmış bir fotoğraf değil, hâlâ "orada" olan bir çalışma. */
   .pn-sheet-scrim {
-    background: rgba(20, 31, 60, 0.22);
+    background: rgb(20 31 60 / calc(0.22 * var(--scrim-p, 1)));
   }
 }
 
@@ -2415,7 +2446,12 @@
   /* Sürükleme geri dönüşü (bkz. useDragToDismiss): parmak bırakılınca kart
      bu eğriyle yerine oturur. Animasyon karelerinde inline `transition:none`
      bunu bastırır. */
-  transition: transform 0.32s var(--pn-ease-out);
+  transition: transform 0.32s var(--pn-ease-sheet);
+}
+/* Yükseklik canlandırması (SheetContent animateHeight): liste forma dönünce
+   kart zıplamaz, büyür. */
+.pn-sheet[data-animate-height] {
+  transition: transform 0.32s var(--pn-ease-sheet), height 0.32s var(--pn-ease-sheet);
 }
 
 /* ---- Masaüstü: sağ çekmece ------------------------------------------- */
@@ -2485,6 +2521,9 @@
     border-radius: 20px 20px 0 0;
     border-bottom: 0;
     padding-bottom: env(safe-area-inset-bottom, 0px);
+    /* Kart her yerinden sürüklenir; perde de sürükleme yüzeyi. Kaydırma
+       alanları (pn-scroll) zinciri keser, kendi kaydırmalarını korur. */
+    touch-action: none;
   }
   .pn-sheet[data-size="lg"] {
     height: min(92dvh, 820px);
@@ -2494,10 +2533,18 @@
     max-height: 94dvh;
   }
   .pn-sheet[data-state="open"] {
-    animation: pn-sheet-in-up var(--pn-dur-sheet) var(--pn-ease-out) both;
+    animation: pn-sheet-in-up var(--pn-dur-sheet) var(--pn-ease-sheet) both;
   }
+  /* Sürükleme başlayınca giriş animasyonunun dolgusu kalkar: animasyon değeri
+     inline transform'u ezer — kalsaydı kart parmağı izlemez, bırakınca
+     birden kapanırdı ("kasıyor" hissinin kaynağı buydu). */
+  .pn-sheet[data-state="open"][data-dragged] {
+    animation: none;
+  }
+  /* Çıkış: sürüklendiği yerden (--sheet-drag) devam eder; süre kalan yola ve
+     bırakma hızına göre (--sheet-out-dur), düğmeyle kapanışta varsayılan. */
   .pn-sheet[data-state="closed"] {
-    animation: pn-sheet-out-down var(--pn-dur-sheet-out) var(--pn-ease-in) both;
+    animation: pn-sheet-out-down var(--sheet-out-dur, var(--pn-dur-sheet-out)) var(--pn-ease-sheet) both;
   }
   .pn-sheet-handle {
     display: flex;

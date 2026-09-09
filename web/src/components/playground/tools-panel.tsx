@@ -74,10 +74,11 @@ export function ToolsPanel({
   disabled: boolean;
 }) {
   const [payloadOpen, setPayloadOpen] = useState(false);
-  // On a phone the panel is a bottom sheet; its header is the handle that
-  // pulls it shut (see useDragToDismiss). Desktop pointers are ignored there.
+  // On a phone the panel is a bottom sheet, pulled shut from anywhere on it
+  // or on the dimmed page above it (see useDragToDismiss). Desktop pointers
+  // are ignored there.
   const panelRef = useRef<HTMLElement>(null);
-  const drag = useDragToDismiss(panelRef, onClose, { closedTransform: SHEET_CLOSED_TRANSFORM });
+  useDragToDismiss(panelRef, onClose, { open, closedTransform: SHEET_CLOSED_TRANSFORM, scrim: "[data-pg-scrim]" });
 
   // Escape closes the panel — it floats over the workspace, so the way out has
   // to be the one every overlay in the product already uses.
@@ -92,7 +93,7 @@ export function ToolsPanel({
 
   return (
     <aside ref={panelRef} className="pg-panel pg-panel--right" data-open={open} aria-hidden={!open} inert={!open} aria-label="Düzenleme araçları">
-      <header className="pg-panel-head pg-panel-handle" {...drag}>
+      <header className="pg-panel-head pg-panel-handle">
         <span className="pg-panel-label text-on-surface">Düzenleme araçları</span>
         <span className="flex-1" />
         {/* The teaching button: what does Gönder actually send? */}
@@ -105,7 +106,8 @@ export function ToolsPanel({
         >
           &lt;/&gt;
         </button>
-        <button type="button" onClick={onClose} aria-label="Paneli kapat" className="pn-btn pn-btn--icon pn-btn--paper !size-9 pointer-fine:!size-8">
+        {/* Desktop only: a phone closes by pulling the card down. */}
+        <button type="button" onClick={onClose} aria-label="Paneli kapat" className="pn-btn pn-btn--icon pn-btn--paper !size-9 pointer-fine:!size-8 max-lg:!hidden">
           <X className="size-4" strokeWidth={2} aria-hidden />
         </button>
       </header>
