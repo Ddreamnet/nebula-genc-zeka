@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { Eye, EyeOff, ArrowRight } from "lucide-react";
 import { NovaAuth, type MascotState } from "./nova-auth";
 import { useAuth } from "@/contexts/auth-context";
@@ -28,7 +27,6 @@ function Field({
 }
 
 export function AuthForm() {
-  const router = useRouter();
   const { signIn } = useAuth();
   const [pwFocused, setPwFocused] = useState(false);
   const [showPw, setShowPw] = useState(false);
@@ -49,15 +47,6 @@ export function AuthForm() {
     });
     return () => cancelAnimationFrame(raf);
   }, []);
-
-  // The dashboard's JS is fetched while the student is still typing their
-  // password, so the push after a successful sign-in is a render, not a
-  // download. The route itself is dynamic (it reads the session), so what
-  // this warms is the code and the loading boundary — the part that used to
-  // be the visible pause after "Giriş Yap".
-  useEffect(() => {
-    router.prefetch("/dashboard");
-  }, [router]);
 
   const mascotState: MascotState = pwFocused
     ? showPw
@@ -90,13 +79,31 @@ export function AuthForm() {
     setSubmitting(true);
 
     const { error: signInError } = await signIn(email, password);
-    setSubmitting(false);
     if (signInError) {
+      setSubmitting(false);
       setError(mapSupabaseError(signInError));
       setShakeSignal((n) => n + 1);
       return;
     }
-    router.push("/dashboard");
+    // Hard navigation, not router.push — the same reasoning as signOut() in
+    // auth-context.tsx, in the other direction.
+    //
+    // /dashboard is gated twice (proxy.ts, then dashboard/page.tsx), and both
+    // gates read the session cookie the browser Supabase client has only just
+    // written. A soft nav asks the App Router for that route's RSC payload,
+    // and the router is allowed to answer from its own cache — including the
+    // entry a prefetch of /dashboard filled in while we were still signed out,
+    // which is a redirect back to /giris. Pressing "Giriş Yap" then replayed
+    // that cached redirect: sign-in succeeded, the URL never moved, and only a
+    // manual reload — a real document request carrying the new cookies — got
+    // the student in. (A prefetch of /dashboard from the login page used to
+    // live here for warm-up; it never warmed anything, because signed-out it
+    // could only ever fetch /giris's payload.)
+    //
+    // A full load has no cache to be wrong about and re-enters through the
+    // proxy with the cookies as they actually are. `submitting` deliberately
+    // stays true so the button reads "Giriş yapılıyor..." until the swap.
+    window.location.assign("/dashboard");
   }
 
   return (

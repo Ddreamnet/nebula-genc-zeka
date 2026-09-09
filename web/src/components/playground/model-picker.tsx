@@ -1,6 +1,6 @@
 "use client";
 
-import {useMemo, useState, type ReactNode } from "react";
+import { startTransition, useEffect, useMemo, useState, type ReactNode } from "react";
 import {
   Box,
   CalendarDays,
@@ -72,7 +72,7 @@ function ToolRow({ tool, active, onSelect }: { tool: PlaygroundTool; active: boo
       aria-current={active ? "true" : undefined}
       title={isSoon ? `${tool.name} — yakında` : `${tool.name} · ${tool.description}`}
       className={cn(
-        "flex w-full items-start gap-3 rounded-[12px] border p-3 text-left transition-[background-color,border-color,transform] duration-[.16s]",
+        "pg-tool-card flex w-full items-start gap-3 rounded-[12px] border p-3 text-left transition-[background-color,border-color,transform] duration-[.16s]",
         active
           ? "border-[color:var(--pn-blue-ink)] bg-[color:var(--pn-blue-sel)]"
           : "border-[color:var(--pn-hair)] bg-surface-container hover:-translate-y-px hover:border-[color:var(--pn-blue-line)] hover:bg-[color:var(--pn-blue-tint)]",
@@ -99,6 +99,53 @@ function ToolRow({ tool, active, onSelect }: { tool: PlaygroundTool; active: boo
         </span>
       </span>
     </button>
+  );
+}
+
+/**
+ * How many cards go up in the first pass. Eight is two rows of the desktop
+ * grid — everything above the fold, and nothing that has to be laid out
+ * before the popover has finished opening.
+ */
+const FIRST_BATCH = 8;
+
+/**
+ * The card grid, filled in two passes.
+ *
+ * "Tümü" is 72 models, each card carrying an SVG brand mark. Building all of
+ * them in the frame the popover opens in cost a single 1066ms task on a 4x
+ * throttled CPU — the open animation never played, the panel just appeared,
+ * frozen. Now the first eight go up with the popover and the rest arrive on
+ * the next frame inside a transition, so React can yield to the browser while
+ * it works. Off-screen cards are skipped by `content-visibility` on top of
+ * that (see .pg-tool-card).
+ */
+function ToolGrid({ tools, activeId, onPick, wide }: { tools: PlaygroundTool[]; activeId: string; onPick: (tool: PlaygroundTool) => void; wide: boolean }) {
+  const [full, setFull] = useState(tools.length <= FIRST_BATCH);
+  useEffect(() => {
+    if (full) return;
+    // Two frames, not one: a rAF callback still runs BEFORE the paint it was
+    // scheduled for, so setting state in the first one would put the heavy
+    // render back into the frame we are trying to keep free.
+    let second = 0;
+    const first = requestAnimationFrame(() => {
+      second = requestAnimationFrame(() => startTransition(() => setFull(true)));
+    });
+    return () => {
+      cancelAnimationFrame(first);
+      cancelAnimationFrame(second);
+    };
+  }, [full]);
+
+  const shown = full ? tools : tools.slice(0, FIRST_BATCH);
+  return (
+    // Two columns, never three: at popover width a third column leaves ~170px
+    // per card and every description wraps to five lines.
+    <div className={wide ? "grid gap-2.5 sm:grid-cols-2" : "flex flex-col gap-2"}>
+      {shown.map((tool) => (
+        <ToolRow key={tool.id} tool={tool} active={tool.id === activeId} onSelect={() => onPick(tool)} />
+      ))}
+    </div>
   );
 }
 
@@ -154,10 +201,6 @@ function ModelBrowser({
   const results = useMemo(() => (searching ? ALL_TOOLS_FLAT.filter((t) => matches(t, needle)) : []), [needle, searching]);
   const shownCategory = CATEGORY_MENU_ENTRIES.find((e) => e.id === category) ?? CATEGORY_MENU_ENTRIES[0];
 
-  // Two columns, never three: at popover width a third column leaves ~170px
-  // per card and every description wraps to five lines.
-  const grid = wide ? "grid gap-2.5 sm:grid-cols-2" : "flex flex-col gap-2";
-
   return (
     <div className="flex min-h-0 flex-1 flex-col">
       {/* Search first: it is the fastest path once someone knows the name. */}
@@ -191,11 +234,7 @@ function ModelBrowser({
           {results.length === 0 ? (
             <p className="py-10 text-center text-[13px] text-on-surface-variant">“{query}” için model bulunamadı.</p>
           ) : (
-            <div className={grid}>
-              {results.map((tool) => (
-                <ToolRow key={tool.id} tool={tool} active={tool.id === activeTool.id} onSelect={() => onPick(tool)} />
-              ))}
-            </div>
+            <ToolGrid tools={results} activeId={activeTool.id} onPick={onPick} wide={wide} />
           )}
         </div>
       ) : mode === "category" ? (
@@ -240,11 +279,7 @@ function ModelBrowser({
           )}
 
           <div key={shownCategory.id} className="pg-scroll min-h-0 flex-1 p-4 duration-150 animate-in fade-in-0">
-            <div className={grid}>
-              {shownCategory.tools.map((tool) => (
-                <ToolRow key={tool.id} tool={tool} active={tool.id === activeTool.id} onSelect={() => onPick(tool)} />
-              ))}
-            </div>
+            <ToolGrid tools={shownCategory.tools} activeId={activeTool.id} onPick={onPick} wide={wide} />
           </div>
         </div>
       ) : (
@@ -291,11 +326,7 @@ function ModelBrowser({
                   </span>
                   <span className="truncate text-[12px] font-semibold text-on-surface">{week.title}</span>
                 </div>
-                <div className={grid}>
-                  {resolveWeekTools(week).map((tool) => (
-                    <ToolRow key={tool.id} tool={tool} active={tool.id === activeTool.id} onSelect={() => onPick(tool)} />
-                  ))}
-                </div>
+                <ToolGrid tools={resolveWeekTools(week)} activeId={activeTool.id} onPick={onPick} wide={wide} />
               </div>
             ))}
           </div>
@@ -363,21 +394,26 @@ export function ModelPicker({
   );
 }
 
-/** The composer's model chip — logo, name, chevron. */
+/**
+ * The bar's model chip — logo, name, chevron.
+ *
+ * Wears the bar's own control box rather than the composer's paper chip: it
+ * sits on navy now, and a light chip up there read as a stray sticker. It is
+ * the one box in the bar allowed to shrink, so a long model name gives way to
+ * the buttons on the right instead of pushing them off the edge.
+ */
 export function ModelChip({ tool, className, ...props }: { tool: PlaygroundTool; className?: string } & React.ButtonHTMLAttributes<HTMLButtonElement>) {
   return (
     <button
       type="button"
       title={`${tool.name} — ${tool.description}`}
-      className={cn(
-        "pg-chip !gap-2 !border-[color:var(--pn-blue-line)] !bg-[color:var(--pn-blue-tint)] !pl-1.5 !pr-2.5 !text-[color:var(--pn-blue-ink-strong)]",
-        className,
-      )}
+      aria-label={`Model: ${tool.name}. Değiştirmek için aç`}
+      className={cn("pn-bar-btn pn-bar-btn--text min-w-0 !shrink !gap-2 !pl-1 !pr-2", className)}
       {...props}
     >
-      <ToolAvatar tool={tool} className="size-6" iconClassName="size-3" />
-      <span className="max-w-[9rem] truncate">{tool.name}</span>
-      <ChevronDown className="size-3.5 shrink-0 opacity-70" />
+      <ToolAvatar tool={tool} className="size-[26px]" iconClassName="size-3.5" />
+      <span className="min-w-0 truncate">{tool.name}</span>
+      <ChevronDown className="size-3.5 shrink-0 opacity-70" aria-hidden />
     </button>
   );
 }

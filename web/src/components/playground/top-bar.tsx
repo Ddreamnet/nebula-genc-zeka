@@ -3,10 +3,11 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useState } from "react";
-import { History, LayoutGrid, LogOut, Plus, Gem } from "lucide-react";
+import { History, LayoutGrid, LogOut, Menu, Plus, Gem } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/panel-ui/popover";
 import { createClient } from "@/lib/supabase/client";
-import { cn } from "@/lib/cn";
+import type { PlaygroundTool } from "@/lib/playground/tools";
+import { ModelChip, ModelPicker } from "./model-picker";
 
 function formatOre(n: number): string {
   return (Math.round(n * 100) / 100).toString();
@@ -25,14 +26,23 @@ function initialsOf(name: string): string {
 
 /**
  * The Playground's bar — the same navy strip the panels wear, with the same
- * 34px control boxes. Left: brand (a link back to the panel), the open chat's
- * title and a mono context line. Right: new chat, history, cevher, avatar.
+ * 34px control boxes.
+ *
+ * Left is what you are working with: the brand, the model (the catalog hangs
+ * off it), and the open chat's title. Right is what you can do about it: start
+ * a new chat, or open the one menu. Cevher, history and the account all sit
+ * inside that menu — a bar that spells out five things at once is read as
+ * decoration, and only "which model" and "new chat" are touched often enough
+ * to earn a permanent box.
  */
 export function TopBar({
   title,
   subline,
   name,
   role,
+  tool,
+  onSelectTool,
+  pickerLocked,
   remaining,
   unlimited,
   historyOpen,
@@ -44,6 +54,10 @@ export function TopBar({
   subline: string;
   name: string;
   role: "admin" | "teacher" | "student";
+  tool: PlaygroundTool;
+  onSelectTool: (tool: PlaygroundTool) => void;
+  /** A generation or a lesson run is walking — the model must not change under it. */
+  pickerLocked: boolean;
   remaining: number;
   unlimited: boolean;
   historyOpen: boolean;
@@ -76,26 +90,26 @@ export function TopBar({
           way back is the labelled button on the right, and only there. */}
       <Image src="/landing/logo-white-tight.png" alt="Nebula Genç Zeka" width={1010} height={343} preload className="h-8 w-auto shrink-0 lg:h-10" />
 
-      <span aria-hidden className="hidden h-7 w-px shrink-0 bg-[color:var(--pn-on-navy-edge)] md:block" />
+      <span aria-hidden className="hidden h-7 w-px shrink-0 bg-[color:var(--pn-on-navy-edge)] sm:block" />
 
-      <div className="hidden min-w-0 flex-col gap-px md:flex">
+      {/* Which model — the bar's job, not the composer's. It belongs with the
+          chat's identity, up here, where it stays legible while you type. */}
+      <ModelPicker activeTool={tool} onSelect={onSelectTool}>
+        <ModelChip tool={tool} disabled={pickerLocked} />
+      </ModelPicker>
+
+      <span aria-hidden className="hidden h-7 w-px shrink-0 bg-[color:var(--pn-on-navy-edge)] lg:block" />
+
+      <div className="hidden min-w-0 flex-col gap-px lg:flex">
         <span className="truncate font-display text-[13px] font-semibold leading-tight text-[color:var(--pn-on-navy)]">{title}</span>
         {/* leading-tight, not leading-none: a 10px line box clips the dots off
             İ and Ü under `truncate`. */}
-        <span className="truncate font-mono text-[10px] leading-tight tracking-wide text-[color:var(--pn-on-navy-dim)]">{subline}</span>
+        {subline && <span className="truncate font-mono text-[10px] leading-tight tracking-wide text-[color:var(--pn-on-navy-dim)]">{subline}</span>}
       </div>
 
       <span className="flex-1" />
 
       <div className="flex items-center gap-[5px] sm:gap-[7px]">
-        {/* On a phone this folds into the account menu: five boxes plus the
-            logo do not fit a 360px bar, and "back to the panel" is the one
-            action that is not about the chat in front of you. */}
-        <Link href="/dashboard" aria-label="Panele dön" title="Panele dön" className="pn-bar-btn pn-bar-btn--text hidden sm:inline-flex" prefetch>
-          <LayoutGrid className="size-4" strokeWidth={1.9} aria-hidden />
-          <span className="hidden lg:inline">Panel</span>
-        </Link>
-
         <button
           type="button"
           onClick={onNewChat}
@@ -108,62 +122,64 @@ export function TopBar({
           <span className="hidden sm:inline">Yeni</span>
         </button>
 
-        <button
-          type="button"
-          onClick={onToggleHistory}
-          aria-pressed={historyOpen}
-          data-active={historyOpen}
-          title={historyOpen ? "Geçmişi kapat" : "Geçmiş"}
-          aria-label="Sohbet geçmişi"
-          className="pn-bar-btn pn-bar-btn--text"
-        >
-          <History className="size-4" strokeWidth={1.9} aria-hidden />
-          <span className="hidden sm:inline">Geçmiş</span>
-        </button>
-
-        {/* Cevher. Mint for the number — the one figure on the bar that is
-            the student's own to spend. ∞ for a teacher: no allowance, no
-            countdown they could act on. */}
-        <span
-          className="pn-bar-btn pn-bar-btn--num"
-          title={
-            unlimited
-              ? "Öğretmen hesabında cevher sınırı yok — üretimler kurum bakiyesinden karşılanıyor."
-              : `${formatOre(remaining)} cevher kaldı`
-          }
-        >
-          <Gem className="size-3.5 text-[color:var(--pn-mint)] sm:hidden" strokeWidth={2} aria-hidden />
-          <span key={unlimited ? "inf" : remaining} className="text-[13px] text-[color:var(--pn-mint)] duration-300 animate-in fade-in-0 zoom-in-95">
-            {unlimited ? "∞" : formatOre(remaining)}
-          </span>
-          <span className="hidden text-[10px] font-normal tracking-wide text-[color:var(--pn-on-navy-dim)] sm:inline">CEVHER</span>
-        </span>
-
         <Popover open={menuOpen} onOpenChange={setMenuOpen}>
           <PopoverTrigger asChild>
-            <button
-              type="button"
-              aria-label="Hesap menüsü"
-              title={name || "Hesap"}
-              className={cn(
-                "grid size-[34px] shrink-0 place-items-center rounded-full bg-[color:var(--pn-violet)] font-display text-[13px] font-semibold text-[color:var(--pn-violet-ink-strong)] shadow-[0_0_0_1px_rgba(220,210,255,.4)] transition-transform duration-[.18s] hover:scale-105",
-              )}
-            >
-              {initialsOf(name)}
+            <button type="button" aria-label="Menü" title={name || "Menü"} data-active={menuOpen} className="pn-bar-btn">
+              <Menu className="size-4" strokeWidth={2} aria-hidden />
             </button>
           </PopoverTrigger>
-          {/* Account only. "Panele dön" lives in exactly one place — the button
-              in the bar (and the logo, which is the same link) — because the
-              same action offered three times is three things to read. */}
-          <PopoverContent align="end" sideOffset={8} className="w-56 gap-2 p-2">
-            <div className="px-2 pb-1 pt-1">
-              <p className="truncate font-display text-[13px] font-semibold text-on-surface">{name || "Hesap"}</p>
-              <p className="font-mono text-[10px] uppercase tracking-wide text-on-surface-variant">{roleLabel}</p>
+          {/* Everything that is read rather than pressed: who you are, what
+              you have left to spend, the chats behind this one, the way out. */}
+          <PopoverContent align="end" sideOffset={8} className="w-60 gap-2 p-2">
+            <div className="flex items-center gap-2.5 px-1 pt-1">
+              <span className="grid size-9 shrink-0 place-items-center rounded-full bg-[color:var(--pn-violet)] font-display text-[13px] font-semibold text-[color:var(--pn-violet-ink-strong)]">
+                {initialsOf(name)}
+              </span>
+              <span className="min-w-0 flex-1">
+                <span className="block truncate font-display text-[13px] font-semibold text-on-surface">{name || "Hesap"}</span>
+                <span className="block font-mono text-[10px] uppercase tracking-wide text-on-surface-variant">{roleLabel}</span>
+              </span>
             </div>
-            <Link href="/dashboard" className="pn-btn pn-btn--sm pn-btn--paper w-full sm:hidden" prefetch onClick={() => setMenuOpen(false)}>
+
+            {/* Cevher. Read-only, so it is a line and not a button — mint for
+                the number, the one figure here that is the student's own to
+                spend. ∞ for a teacher: no allowance, no countdown to act on. */}
+            <div
+              className="flex items-center gap-2 rounded-[10px] border border-[color:var(--pn-mint-line)] bg-[color:var(--pn-mint-tint)] px-2.5 py-2"
+              title={
+                unlimited
+                  ? "Öğretmen hesabında cevher sınırı yok — üretimler kurum bakiyesinden karşılanıyor."
+                  : `${formatOre(remaining)} cevher kaldı`
+              }
+            >
+              <Gem className="size-4 shrink-0 text-[color:var(--pn-mint-ink-strong)]" strokeWidth={1.9} aria-hidden />
+              <span className="flex-1 text-[12px] font-semibold text-[color:var(--pn-mint-ink-strong)]">Cevher</span>
+              <span
+                key={unlimited ? "inf" : remaining}
+                className="font-mono text-[14px] font-bold tabular-nums text-[color:var(--pn-mint-ink-strong)] duration-300 animate-in fade-in-0 zoom-in-95"
+              >
+                {unlimited ? "∞" : formatOre(remaining)}
+              </span>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => {
+                setMenuOpen(false);
+                onToggleHistory();
+              }}
+              aria-pressed={historyOpen}
+              className="pn-btn pn-btn--sm pn-btn--paper w-full"
+            >
+              <History className="size-4" strokeWidth={1.9} aria-hidden />
+              {historyOpen ? "Geçmişi kapat" : "Sohbet geçmişi"}
+            </button>
+
+            <Link href="/dashboard" className="pn-btn pn-btn--sm pn-btn--paper w-full" prefetch onClick={() => setMenuOpen(false)}>
               <LayoutGrid className="size-4" strokeWidth={1.9} aria-hidden />
               Panele dön
             </Link>
+
             <button type="button" className="pn-btn pn-btn--pink pn-btn--sm w-full" disabled={signingOut} onClick={signOut}>
               <LogOut className="size-4" strokeWidth={1.9} aria-hidden />
               {signingOut ? "Çıkış yapılıyor…" : "Çıkış yap"}

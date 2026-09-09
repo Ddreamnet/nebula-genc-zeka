@@ -1,12 +1,9 @@
 "use client";
 
 import { useEffect, useRef, useState, type ReactNode, type RefObject } from "react";
-import { Brain, ChevronDown, GraduationCap, Paperclip, Plus, SlidersHorizontal, Square, X } from "lucide-react";
+import { GraduationCap, Paperclip, SendHorizontal, SlidersHorizontal, Square, X } from "lucide-react";
 import { cn } from "@/lib/cn";
-import type { PlaygroundTool } from "@/lib/playground/tools";
-import type { AspectRatio, ASPECT_RATIOS } from "@/lib/playground/aspect";
-import { hasTag, toggleTag } from "@/lib/playground/prompt-tags";
-import { ModelChip, ModelPicker } from "./model-picker";
+import type { ASPECT_RATIOS } from "@/lib/playground/aspect";
 import type { RunState } from "./types";
 
 // Attached images are downscaled here, in the browser, before they ever hit
@@ -71,16 +68,15 @@ function formatOre(n: number): string {
 }
 
 /**
- * The composer: which model, what shape, the prompt, and send.
+ * The composer: the prompt, and send.
  *
- * Row one answers "what happens when I press Gönder" — model, ratio, memory —
- * so a student reads the consequences before the press, not after. Row three
- * holds the prompt vocabulary (tags that drop a clause in with one tap), the
- * attach button, and the one green button on the screen.
+ * Two rows and nothing else. Everything that answers "what am I talking to and
+ * with which dials" moved out — the model to the bar, the shape and the memory
+ * switch to the tools panel — because those are set once and then read, while
+ * this box is typed in all day. What stays is what changes with every press:
+ * the sentence, what it will cost, the picture you attached, and the button.
  */
 export function Composer({
-  tool,
-  onSelectTool,
   input,
   setInput,
   textareaRef,
@@ -94,8 +90,6 @@ export function Composer({
   setAttachments,
   maxImages,
   firstFrameMode,
-  aspect,
-  memory,
   run,
   onCancelRun,
   toolsOpen,
@@ -103,12 +97,9 @@ export function Composer({
   studioCount,
   compareOn,
   pendingCost,
-  tags,
   placeholder,
   quick,
 }: {
-  tool: PlaygroundTool;
-  onSelectTool: (tool: PlaygroundTool) => void;
   input: string;
   setInput: (v: string) => void;
   textareaRef: RefObject<HTMLTextAreaElement | null>;
@@ -125,10 +116,6 @@ export function Composer({
   maxImages: number;
   /** Video tools: the attached picture is the clip's first frame, not context. */
   firstFrameMode: boolean;
-  /** Output shape picker, for the modalities that have one. */
-  aspect: { options: AspectOption[]; value: AspectRatio | null; onChange: (value: AspectRatio) => void } | null;
-  /** The memory switch; null hides it (audio, a video model with no frame input). */
-  memory: MemoryControl | null;
   /** A lesson run in flight — takes the composer over while it walks. */
   run: RunState | null;
   onCancelRun: () => void;
@@ -138,7 +125,6 @@ export function Composer({
   studioCount: number;
   compareOn: boolean;
   pendingCost: number;
-  tags: readonly string[];
   placeholder: string;
   /** The quick-action row, rendered just above the composer. */
   quick: ReactNode;
@@ -238,86 +224,6 @@ export function Composer({
           dragging && "border-[color:var(--pn-blue-ink)] bg-[color:var(--pn-blue-sel)]",
         )}
       >
-        {/* Row 1 — what will happen. */}
-        <div className="flex min-w-0 items-center gap-1.5 px-3 pt-3 sm:flex-wrap">
-          <ModelPicker activeTool={tool} onSelect={onSelectTool}>
-            <ModelChip tool={tool} disabled={!!run} />
-          </ModelPicker>
-
-          {aspect && aspect.options.length > 1 && (
-            <>
-              {/* Desk: every ratio as a chip. Phone: seven chips turned the
-                  row into a scroll strip that hid the settings button off
-                  the right edge; one chip states the shape, and tapping it
-                  opens the tools panel where the full grid lives. */}
-              <div role="radiogroup" aria-label="Görselin şekli" className="hidden items-center gap-1 sm:flex">
-                {aspect.options.map((r) => (
-                  <button
-                    key={r.value}
-                    type="button"
-                    role="radio"
-                    aria-checked={r.value === aspect.value}
-                    title={`${r.label} — ${r.hint}`}
-                    disabled={locked}
-                    onClick={() => aspect.onChange(r.value)}
-                    className="pg-chip pg-chip--mono"
-                  >
-                    {r.value}
-                  </button>
-                ))}
-              </div>
-              <button
-                type="button"
-                onClick={onToggleTools}
-                disabled={locked}
-                title="Görselin şekli — değiştirmek için dokun"
-                aria-label={`Görselin şekli: ${aspect.value ?? ""}. Değiştirmek için dokun`}
-                className="pg-chip pg-chip--mono sm:hidden"
-              >
-                {aspect.value}
-                <ChevronDown className="size-3 opacity-60" aria-hidden />
-              </button>
-            </>
-          )}
-
-          {/* The switch reads itself: mint and filled is on, plain paper is
-              off. Spelling "AÇIK"/"KAPALI" next to it said the same thing a
-              second time in a row that has no spare width. */}
-          {memory && !compareOn && (
-            <button
-              type="button"
-              role="switch"
-              aria-checked={memory.on}
-              onClick={memory.onToggle}
-              title={memoryHelp(memory)}
-              className={cn("pg-chip", memory.on && "!border-[color:var(--pn-mint-line)] !bg-[color:var(--pn-mint)] !text-[color:var(--pn-mint-ink-strong)]")}
-            >
-              <Brain className="size-3.5 shrink-0" strokeWidth={1.9} aria-hidden />
-              Hafıza
-            </button>
-          )}
-
-          <span className="flex-1" />
-
-          <button
-            type="button"
-            onClick={onToggleTools}
-            aria-pressed={toolsOpen}
-            title={studioCount > 0 ? `Düzenleme araçları — ${studioCount} ayar değiştirildi` : "Düzenleme araçları"}
-            className="pg-chip shrink-0 !font-semibold"
-          >
-            <SlidersHorizontal className="size-3.5 shrink-0" strokeWidth={1.9} aria-hidden />
-            <span className="hidden sm:inline">Gelişmiş ayarlar</span>
-            {/* The count is the memory aid: a student who set four dials three
-                prompts ago should not have to open the panel to remember. */}
-            {studioCount > 0 && (
-              <span className="grid size-4 shrink-0 place-items-center rounded-full bg-[color:var(--pn-peach)] font-mono text-[9px] font-bold text-[color:var(--pn-peach-ink)]">
-                {studioCount}
-              </span>
-            )}
-          </button>
-        </div>
-
         {attachments.length > 0 && (
           <div className="flex flex-wrap items-center gap-2 px-4 pt-3">
             {attachments.map((src, i) => {
@@ -353,7 +259,7 @@ export function Composer({
           </div>
         )}
 
-        {/* Row 2 — the prompt. */}
+        {/* The prompt. */}
         <textarea
           ref={textareaRef}
           value={input}
@@ -376,76 +282,83 @@ export function Composer({
           rows={2}
           placeholder={placeholder}
           disabled={!!run}
-          className="pg-prompt pn-bare mt-2 max-h-44 min-h-[3.25rem]"
+          className="pg-prompt pn-bare mt-1 max-h-44 min-h-[3.25rem]"
         />
 
-        {/* Row 3 — vocabulary, attach, send.
-
-            On a phone the tag strip gets its own line: side by side, the last
-            visible chip ended up sliced in half under the send button, which
-            reads as broken rather than as "scroll me". */}
-        <div className="flex min-w-0 flex-col gap-2 px-3 pb-3 sm:flex-row sm:items-center">
-          <div className="flex min-w-0 flex-1 items-center gap-1 max-sm:overflow-x-auto max-sm:[scrollbar-width:none] sm:flex-wrap">
-            {tags.map((tag) => (
-              <button key={tag} type="button" aria-pressed={hasTag(input, tag)} onClick={() => setInput(toggleTag(input, tag))} disabled={!!run} className="pg-chip pg-chip--tag">
-                <Plus className="size-3 shrink-0 opacity-60" aria-hidden />
-                {tag}
-              </button>
-            ))}
-          </div>
-
-          <div className="flex shrink-0 items-center gap-2 max-sm:justify-end">
-            {costHint && <span className="font-mono text-[10px] font-semibold text-[color:var(--pn-peach-ink)] max-sm:mr-auto">{costHint}</span>}
-            {canAttach && (
-              <>
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  accept="image/png,image/jpeg,image/webp"
-                  multiple={maxImages > 1}
-                  className="hidden"
-                  onChange={(e) => {
-                    if (e.target.files) void addFiles(e.target.files);
-                    // Reset so picking the same file twice in a row still fires onChange.
-                    e.target.value = "";
-                  }}
-                />
-                <button
-                  type="button"
-                  onClick={() => fileInputRef.current?.click()}
-                  disabled={full || locked}
-                  aria-label={firstFrameMode ? (attachments.length === 0 ? "İlk kareyi seç" : "Son kareyi seç") : "Görsel ekle"}
-                  title={
-                    firstFrameMode
-                      ? attachments.length === 0
-                        ? "İlk kareyi seç — video bu görselden başlar"
-                        : "Son kareyi seç — video burada biter"
-                      : full
-                        ? `En fazla ${maxImages} görsel`
-                        : "Görsel ekle"
-                  }
-                  className="pn-btn pn-btn--icon pn-btn--paper"
-                >
-                  <Paperclip className="size-4" strokeWidth={1.9} aria-hidden />
-                </button>
-              </>
+        {/* The one row under the prompt: what it costs, and the three
+            buttons that act on what was typed. */}
+        <div className="flex min-w-0 items-center justify-end gap-2 px-3 pb-3">
+          {/* Kept next to the buttons rather than pushed to the far left: the
+              left edge of the composer is where Nova's bubble sits, and the
+              price is about the press anyway. */}
+          {costHint && <span className="mr-1 font-mono text-[10px] font-semibold text-[color:var(--pn-peach-ink)]">{costHint}</span>}
+          {/* The dials live behind this one button. The count is the memory
+              aid: a student who set four of them three prompts ago should not
+              have to open the panel to remember that. */}
+          <button
+            type="button"
+            onClick={onToggleTools}
+            aria-pressed={toolsOpen}
+            aria-label={studioCount > 0 ? `Gelişmiş ayarlar — ${studioCount} ayar değiştirildi` : "Gelişmiş ayarlar"}
+            title={studioCount > 0 ? `Gelişmiş ayarlar — ${studioCount} ayar değiştirildi` : "Gelişmiş ayarlar"}
+            className="pn-btn pn-btn--icon pn-btn--paper relative"
+          >
+            <SlidersHorizontal className="size-4" strokeWidth={1.9} aria-hidden />
+            {studioCount > 0 && (
+              <span className="absolute -right-1 -top-1 grid size-4 place-items-center rounded-full bg-[color:var(--pn-peach)] font-mono text-[9px] font-bold text-[color:var(--pn-peach-ink)]">
+                {studioCount}
+              </span>
             )}
-            {busy && canStop ? (
-              <button type="button" onClick={onStop} aria-label="Durdur" title="Durdur" className="pn-btn pn-btn--pink">
-                <Square className="size-3.5 fill-current" />
-                Durdur
-              </button>
-            ) : (
+          </button>
+          {canAttach && (
+            <>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/png,image/jpeg,image/webp"
+                multiple={maxImages > 1}
+                className="hidden"
+                onChange={(e) => {
+                  if (e.target.files) void addFiles(e.target.files);
+                  // Reset so picking the same file twice in a row still fires onChange.
+                  e.target.value = "";
+                }}
+              />
               <button
-                type="submit"
-                disabled={!input.trim() || locked || gated}
-                title={gatedHint ?? undefined}
-                className="pn-btn pn-btn--mint"
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={full || locked}
+                aria-label={firstFrameMode ? (attachments.length === 0 ? "İlk kareyi seç" : "Son kareyi seç") : "Görsel ekle"}
+                title={
+                  firstFrameMode
+                    ? attachments.length === 0
+                      ? "İlk kareyi seç — video bu görselden başlar"
+                      : "Son kareyi seç — video burada biter"
+                    : full
+                      ? `En fazla ${maxImages} görsel`
+                      : "Görsel ekle"
+                }
+                className="pn-btn pn-btn--icon pn-btn--paper"
               >
-                Gönder
+                <Paperclip className="size-4" strokeWidth={1.9} aria-hidden />
               </button>
-            )}
-          </div>
+            </>
+          )}
+          {busy && canStop ? (
+            <button type="button" onClick={onStop} aria-label="Durdur" title="Durdur" className="pn-btn pn-btn--icon pn-btn--pink">
+              <Square className="size-3.5 fill-current" aria-hidden />
+            </button>
+          ) : (
+            <button
+              type="submit"
+              disabled={!input.trim() || locked || gated}
+              aria-label="Gönder"
+              title={gatedHint ?? "Gönder"}
+              className="pn-btn pn-btn--icon pn-btn--mint"
+            >
+              <SendHorizontal className="size-4" strokeWidth={2} aria-hidden />
+            </button>
+          )}
         </div>
       </form>
     </div>

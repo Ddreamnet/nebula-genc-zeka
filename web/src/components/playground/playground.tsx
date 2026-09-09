@@ -11,7 +11,6 @@ import { buildRows } from "@/lib/playground/transcript";
 import { readEventStream } from "@/lib/playground/event-stream";
 import { aspectRatiosFor, defaultAspectFor, type AspectRatio } from "@/lib/playground/aspect";
 import { buildExpressionRun, buildLadder, LESSON_EXPRESSIONS, type LessonStep } from "@/lib/playground/lesson-runs";
-import { tagsFor } from "@/lib/playground/prompt-tags";
 import type { ChatSummary } from "@/lib/playground/chats";
 import { MediaViewer, guessExtension, saveFile, type ViewerItem } from "./media-viewer";
 import { ChatHistory } from "./chat-history";
@@ -436,7 +435,6 @@ export function Playground({ initial }: { initial: PlaygroundInitial }) {
   const studioChanged = changedCount(activeTool, initial.role, studioParams);
 
   const aspectOptions = useMemo(() => aspectRatiosFor(activeTool), [activeTool]);
-  const tags = useMemo(() => tagsFor(activeTool.modality, categoryId ?? undefined), [activeTool.modality, categoryId]);
   const ladder = useMemo(() => buildLadder(input), [input]);
   const hasImageInThread = messages.some((m) => m.role === "assistant" && !!m.imageUrl);
 
@@ -997,10 +995,7 @@ export function Playground({ initial }: { initial: PlaygroundInitial }) {
   const firstPrompt = messages.find((m) => m.role === "user" && m.content.trim())?.content;
   const title = firstPrompt ?? chats.find((c) => c.id === chatId)?.preview ?? "Yeni sohbet";
   const messageCount = messages.filter((m) => m.kind !== "switch").length;
-  const subline = [
-    initial.weekNumber ? `${initial.weekNumber}. HAFTA` : null,
-    messageCount > 0 ? `${messageCount} MESAJ` : activeTool.name.toLocaleUpperCase("tr-TR"),
-  ]
+  const subline = [initial.weekNumber ? `${initial.weekNumber}. HAFTA` : null, messageCount > 0 ? `${messageCount} MESAJ` : null]
     .filter(Boolean)
     .join(" · ");
 
@@ -1034,6 +1029,9 @@ export function Playground({ initial }: { initial: PlaygroundInitial }) {
         subline={subline}
         name={initial.name}
         role={initial.role}
+        tool={activeTool}
+        onSelectTool={selectTool}
+        pickerLocked={locked}
         remaining={remaining}
         unlimited={unlimited}
         historyOpen={historyOpen}
@@ -1074,8 +1072,6 @@ export function Playground({ initial }: { initial: PlaygroundInitial }) {
         />
 
         <Composer
-          tool={activeTool}
-          onSelectTool={selectTool}
           input={input}
           setInput={setInput}
           textareaRef={textareaRef}
@@ -1097,8 +1093,6 @@ export function Playground({ initial }: { initial: PlaygroundInitial }) {
           setAttachments={setAttachments}
           maxImages={maxImages}
           firstFrameMode={activeTool.modality === "video"}
-          aspect={aspectControl}
-          memory={memoryControl}
           run={run}
           onCancelRun={() => {
             runCancelRef.current = true;
@@ -1109,7 +1103,6 @@ export function Playground({ initial }: { initial: PlaygroundInitial }) {
           onToggleTools={toggleTools}
           compareOn={!!compareTool}
           pendingCost={pendingCost}
-          tags={tags}
           placeholder={isWeb ? "Hayalindeki siteyi, oyunu tarif et..." : activeTool.modality === "text" ? "Bir şey sor, bir şey anlat..." : "Ne üretelim? Tarif et..."}
           quick={
             <QuickActions

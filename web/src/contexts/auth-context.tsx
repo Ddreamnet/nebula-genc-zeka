@@ -63,13 +63,29 @@ export function AuthProvider({
 
   useEffect(() => {
     let cancelled = false;
+    /** Deferred loadProfile timers, so unmount can cancel the ones still pending. */
+    const deferred = new Set<ReturnType<typeof setTimeout>>();
 
     async function loadProfile(userId: string) {
-      const [{ data: profileRow }, { data: roleRows }] = await Promise.all([
-        supabase.from("profiles").select("user_id, email, full_name").eq("user_id", userId).single(),
-        supabase.from("user_roles").select("role").eq("user_id", userId),
-      ]);
+      const [{ data: profileRow, error: profileError }, { data: roleRows, error: rolesError }] =
+        await Promise.all([
+          // maybeSingle, not single: a user with no profile row is a real
+          // (if odd) state, and .single() reports it as a 406 error — which
+          // the failure check below would then treat as "the read broke".
+          supabase
+            .from("profiles")
+            .select("user_id, email, full_name")
+            .eq("user_id", userId)
+            .maybeSingle(),
+          supabase.from("user_roles").select("role").eq("user_id", userId),
+        ]);
       if (cancelled) return;
+      // A read that FAILED is not the same as a user who has no profile and no
+      // roles. Writing null/[] here on an error would blank the name in the
+      // panel header and drop the student to a role-less view, and marking the
+      // id as loaded would mean nothing ever tried again. Leave the state alone
+      // and leave loadedForUserId unset, so the next auth event retries.
+      if (profileError || rolesError) return;
       loadedForUserId.current = userId;
       setProfile(profileRow ?? null);
       setRoles((roleRows ?? []).map((r) => r.role));
@@ -94,27 +110,47 @@ export function AuthProvider({
 
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange(async (event, session) => {
+    } = supabase.auth.onAuthStateChange((event, session) => {
       setUser(session?.user ?? null);
-      if (session?.user) {
-        // TOKEN_REFRESHED swaps the access token and nothing else; INITIAL_SESSION
-        // is just supabase-js replaying the session we already rendered with.
-        // Neither can have changed profiles/user_roles, so neither is worth a
-        // pair of queries. Every other event (SIGNED_IN, USER_UPDATED, ...) still
-        // re-reads, so a genuine account switch is picked up exactly as before.
-        const replayed =
-          (event === "INITIAL_SESSION" || event === "TOKEN_REFRESHED") &&
-          loadedForUserId.current === session.user.id;
-        if (!replayed) await loadProfile(session.user.id);
-      } else {
+      if (!session?.user) {
         loadedForUserId.current = null;
         setProfile(null);
         setRoles([]);
+        return;
       }
+      // TOKEN_REFRESHED swaps the access token and nothing else; INITIAL_SESSION
+      // is just supabase-js replaying the session we already rendered with.
+      // Neither can have changed profiles/user_roles, so neither is worth a
+      // pair of queries. Every other event (SIGNED_IN, USER_UPDATED, ...) still
+      // re-reads, so a genuine account switch is picked up exactly as before.
+      const replayed =
+        (event === "INITIAL_SESSION" || event === "TOKEN_REFRESHED") &&
+        loadedForUserId.current === session.user.id;
+      if (replayed) return;
+
+      // Hop out of the callback before querying — this is not tidiness, it is
+      // the documented rule for onAuthStateChange.
+      //
+      // supabase-js runs this callback while holding its internal auth lock,
+      // and EVERY PostgREST request resolves its bearer token through that
+      // same lock (SupabaseClient._getSessionToken -> auth.getSession). So a
+      // query fired from in here races the session swap that is still in
+      // progress. That is how, half a second after a successful sign-in, the
+      // profiles request left with a token PostgREST could not verify
+      // (401, PGRST301 "None of the keys was able to decode the JWT") while
+      // the user_roles request ten milliseconds behind it carried the new one.
+      const userId = session.user.id;
+      const timer = setTimeout(() => {
+        deferred.delete(timer);
+        void loadProfile(userId);
+      }, 0);
+      deferred.add(timer);
     });
 
     return () => {
       cancelled = true;
+      deferred.forEach(clearTimeout);
+      deferred.clear();
       subscription.unsubscribe();
     };
   }, [supabase]);

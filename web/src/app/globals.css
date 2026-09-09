@@ -372,9 +372,9 @@
    kâğıt dili). Bir pazarlama sayfasında iyi çalışıyor, saatlerce bakılan bir
    panelde çalışmıyor: her kart aynı ağırlıkta bağırıyor, hiyerarşi kalmıyor.
 
-   Sonrası: krem kart + 1px saç konturu + iki katmanlı yumuşak gölge. Renk
-   kart gövdesinden BAŞLIK BANDINA taşındı, böylece uzun süre bakılan yüzey
-   nötr krem kalıyor ve renk yalnızca "bu ne kartı" sorusunu cevaplıyor.
+   Sonrası: buz mavisi kart + 1px saç konturu + iki katmanlı yumuşak gölge.
+   Renk kart gövdesinden BAŞLIK BANDINA taşındı, böylece uzun süre bakılan
+   yüzey nötr kalıyor ve renk yalnızca "bu ne kartı" sorusunu cevaplıyor.
 
    Bütün panel-ui/shadcn bileşenleri --card/--popover/--muted/... üzerinden
    dolaylı olarak buradaki --color-* token'larını okur; dolayısıyla burayı
@@ -383,18 +383,18 @@
    kuralı.
    ========================================================================= */
 .panel-theme {
-  /* ---- Yüzeyler. Çalışma zemini açık mavi, kart krem. ---- */
+  /* ---- Yüzeyler. Çalışma zemini açık mavi, kart bir ton açığı. ---- */
   --color-surface: #e9effc;
   --color-surface-dim: #dfe7f8;
   --color-surface-lowest: #d3def4;
   --color-surface-low: #f2f5fc;
-  --color-surface-container: #fffbf2;
-  --color-surface-high: #fffbf2;
+  --color-surface-container: #f2f8fc;
+  --color-surface-high: #f2f8fc;
   --color-surface-highest: #ffffff;
   --color-surface-bright: #ffffff;
 
-  /* Mürekkep lacivert, asla siyah — kremin üstünde daha sıcak okunur.
-     Ölçülen kontrastlar: #152343 13.9:1, #5B6480 5.68:1 (krem üstünde). */
+  /* Mürekkep lacivert, asla siyah — mavimsi kâğıtla aynı aileden okunur.
+     Ölçülen kontrastlar: #152343 14.5:1, #5B6480 5.48:1 (kart zemininde). */
   --color-on-surface: #152343;
   --color-on-surface-variant: #5b6480;
   --color-outline: #8a93ac;
@@ -2069,9 +2069,10 @@
   font-variant-numeric: tabular-nums;
   padding: 0 9px;
 }
-/* Etiket çipleri: sessiz — konturu yok, açık zemin. Prompt'a bir kelime
-   ekler; seçildiğinde mavi dolguya geçer, lacivert değil (seçili bir
-   etiket bir mod değil, bir ekleme). */
+/* Etiket çipleri: sessiz — konturu yok, açık zemin. Bir kelimeyi tek dokunuşla
+   yerine koyar; seçildiğinde mavi dolguya geçer, lacivert değil (seçili bir
+   etiket bir mod değil, bir ekleme). Ders araçlarında ve sahnedeki prompt
+   özetinde kullanılır. */
 .pg-chip--tag {
   height: 30px;
   padding: 0 9px;
@@ -2090,6 +2091,23 @@
   background: var(--pn-blue);
   border-color: var(--pn-blue-line);
   color: var(--pn-blue-ink-strong);
+}
+
+/* Katalog kartı (model seçici).
+
+   `content-visibility` burada süs değil ölçülmüş bir düzeltme: "Tümü"
+   kategorisi 72 kart demek ve her kartın içinde bir SVG marka işareti var.
+   Hepsini tek karede yerleştirip boyamak, 4x yavaşlatılmış bir işlemcide
+   1066ms'lik tek bir uzun göreve dönüşüyordu — açılış animasyonu hiç
+   oynamıyor, pencere donmuş gibi beliriyordu. Bu kuralla tarayıcı yalnızca
+   görünür kartları yerleştiriyor; gerisi kaydırma sırasında geliyor.
+
+   `contain-intrinsic-size: auto 104px`: kart bir kez ölçüldüğünde gerçek
+   boyu hatırlanır, sabit 104px yalnızca ilk tahmindir — kaydırma çubuğunun
+   boyu bu yüzden zıplamaz. */
+.pg-tool-card {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 104px;
 }
 
 /* Composer'ın ana alanı: kartın kendi zemininde, kontursuz. Panel genel alan
