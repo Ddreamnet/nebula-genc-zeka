@@ -29,6 +29,7 @@
 import { MODEL_CAPS, type ImageCaps, type ModelCaps, type TextCaps, type VideoCaps } from "@/lib/playground/capabilities.generated";
 import { paramDoc, type ParamDoc } from "@/lib/playground/param-docs";
 import type { PlaygroundTool } from "@/lib/playground/tools";
+import { inputOre, kindsFor, TEXT_ATTACHMENT_SLOTS, type AttachmentKind, type InputRef } from "@/lib/playground/attachments";
 
 export type Role = "admin" | "teacher" | "student";
 export type ParamValue = string | number | boolean | null;
@@ -534,6 +535,27 @@ export function imageBudget(tool: PlaygroundTool, params: StudioParams): number 
   return caps?.kind === "video" && caps.frameImages.includes("last_frame") ? Math.max(base, 2) : base;
 }
 
+/**
+ * Which kinds of file this tool takes — see `kindsFor` in attachments.ts
+ * for the rule. Eligibility for text models comes from the catalog's
+ * `inputModalities`, the same field the image rule was always read from.
+ */
+export function attachmentKindsFor(tool: PlaygroundTool): AttachmentKind[] {
+  const caps = capsFor(tool);
+  const modalities = caps?.kind === "text" || caps?.kind === "audio" ? caps.inputModalities : [];
+  return kindsFor(tool.modality, tool.maxImageInputs, modalities);
+}
+
+/**
+ * How many attachments may ride along with one message, whatever the mix.
+ * Text tools get a flat number of slots; image and video tools keep the
+ * picture budget (references, or first and last frame).
+ */
+export function attachmentBudget(tool: PlaygroundTool, params: StudioParams): number {
+  if (tool.modality === "text") return attachmentKindsFor(tool).length > 0 ? TEXT_ATTACHMENT_SLOTS : 0;
+  return imageBudget(tool, params);
+}
+
 /* ------------------------------------------------------------------ */
 /* Pricing                                                             */
 /* ------------------------------------------------------------------ */
@@ -602,8 +624,8 @@ export function videoUsdPerSecond(caps: VideoCaps, resolution: string, withAudio
 }
 
 export interface CostInput {
-  /** Attached + carried + remembered pictures that reach the model. */
-  imageCount: number;
+  /** Every attachment that reaches the model — attached, carried forward or remembered — by kind and weight. */
+  inputs: readonly InputRef[];
   params: StudioParams;
 }
 
@@ -619,7 +641,7 @@ export interface CostInput {
  */
 export function generationCost(tool: PlaygroundTool, input: CostInput): number {
   const caps = capsFor(tool);
-  const { params, imageCount } = input;
+  const { params, inputs } = input;
   let ore = tool.oreCost;
 
   if (caps?.kind === "video") {
@@ -651,7 +673,7 @@ export function generationCost(tool: PlaygroundTool, input: CostInput): number {
     if (Number.isFinite(maxTokens) && maxTokens > 2000) ore += 0.05;
   }
 
-  ore += imageCount * IMAGE_INPUT_ORE[tool.modality === "image" ? "image" : tool.modality === "video" ? "video" : "text"];
+  for (const ref of inputs) ore += inputOre(ref, tool.modality);
   return Math.round(ore * 100) / 100;
 }
 
@@ -661,8 +683,6 @@ export function generationCost(tool: PlaygroundTool, input: CostInput): number {
  */
 const WEB_SEARCH_ORE = 0.5;
 
-/** Mirrors tools.ts — see the note there for how each figure was measured. */
-const IMAGE_INPUT_ORE = { text: 0.1, image: 0.25, video: 0 } as const;
 
 /**
  * Whether this combination of dials is too expensive to run at all.

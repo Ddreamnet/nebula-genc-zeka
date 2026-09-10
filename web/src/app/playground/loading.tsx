@@ -1,5 +1,5 @@
 /**
- * What the student sees between pressing "Playground" and the page arriving.
+ * What the student sees between pressing "Üretim Atölyesi" and the page arriving.
  *
  * A dynamic route has nothing to prefetch but this boundary, so this is the
  * whole difference between "the click did something" and a frozen panel for
@@ -9,7 +9,7 @@
  */
 export default function PlaygroundLoading() {
   return (
-    <div className="pg-shell" aria-busy aria-label="Playground yükleniyor">
+    <div className="pg-shell" aria-busy aria-label="Üretim Atölyesi yükleniyor">
       <div className="pg-bar" />
       <div className="pg-body">
         <div className="pg-stage pn-card animate-pulse" style={{ background: "var(--color-surface-low)" }} />

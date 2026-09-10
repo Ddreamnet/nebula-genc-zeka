@@ -2,20 +2,14 @@ import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { findTool } from "@/lib/playground/tools";
 import { readAdminOreBalance } from "@/lib/playground/treasury";
-import {
-  streamText,
-  generateImage,
-  generateAudio,
-  startVideo,
-  type ChatMessage,
-  type ContentPart,
-} from "@/lib/ai/openrouter";
+import { streamText, generateImage, generateAudio, startVideo, type ChatMessage } from "@/lib/ai/openrouter";
 import { resolveAspectRatio } from "@/lib/playground/aspect";
-import { exceedsCap, generationCost, imageBudget, nonDefaultParams, sanitizeParams, type Role } from "@/lib/playground/params";
+import { attachmentBudget, attachmentKindsFor, exceedsCap, generationCost, nonDefaultParams, sanitizeParams, type Role } from "@/lib/playground/params";
+import { imageAttachment, inputRef, sanitizeAttachments, type Attachment, type AttachmentKind } from "@/lib/playground/attachments";
 // The request bodies are built by the same module the composer's `</>` panel
 // builds its preview with, so what a student reads there is what this route
 // actually sends — not a paraphrase that drifts.
-import { buildAudioBody, buildImageBody, buildTextBody, buildVideoBody, systemPromptFor } from "@/lib/playground/request";
+import { buildAudioBody, buildImageBody, buildTextBody, buildVideoBody, chatMessage, systemPromptFor } from "@/lib/playground/request";
 
 // Session memory for text chat only — caps how much prior conversation gets
 // resent as input tokens on every turn. Enforced server-side too (not just
@@ -25,47 +19,23 @@ import { buildAudioBody, buildImageBody, buildTextBody, buildVideoBody, systemPr
 // still paying the same flat per-message ore price.
 const HISTORY_LIMIT = 20;
 
-// Attachment limits. The client already downscales to ~1024px before upload,
-// so 5MB is a generous ceiling that only trips on a hand-crafted payload —
-// it exists because every attached image is billed prompt tokens, and the
-// flat per-image ore surcharge only holds if the image is roughly the size
-// we told the client to send.
-const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
-const IMAGE_DATA_URL_RE = /^data:image\/(?:png|jpeg|webp);base64,[A-Za-z0-9+/]+={0,2}$/;
+// Attachment validation — kind whitelist, MIME whitelist, size ceilings and
+// a PDF magic check — lives in `lib/playground/attachments.ts`, shared with
+// the composer so both sides read the same limits. Anything that fails is
+// dropped rather than 400'd: a student shouldn't lose a typed message because
+// one of three files came through malformed.
 
-/** A base64 payload of n chars decodes to 3n/4 bytes, minus the `=` padding. */
-function base64Bytes(dataUrl: string): number {
-  const b64 = dataUrl.slice(dataUrl.indexOf(",") + 1);
-  const padding = b64.endsWith("==") ? 2 : b64.endsWith("=") ? 1 : 0;
-  return Math.floor((b64.length * 3) / 4) - padding;
-}
+type HistoryEntry = { role: "user" | "assistant"; content: string; attachments: Attachment[] };
 
-function isUsableImage(value: unknown): value is string {
-  return typeof value === "string" && IMAGE_DATA_URL_RE.test(value) && base64Bytes(value) <= MAX_IMAGE_BYTES;
-}
-
-/**
- * Anything that fails validation is dropped rather than 400'd — a student
- * shouldn't lose a typed message because one of three thumbnails came through
- * malformed. The count cap is enforced by the caller against the tool's own
- * `maxImageInputs`.
- */
-function sanitizeImages(raw: unknown): string[] {
-  if (!Array.isArray(raw)) return [];
-  return raw.filter(isUsableImage);
-}
-
-type HistoryEntry = { role: "user" | "assistant"; content: string; images: string[] };
-
-function sanitizeHistory(raw: unknown): HistoryEntry[] {
+function sanitizeHistory(raw: unknown, kinds: readonly AttachmentKind[], budget: number): HistoryEntry[] {
   if (!Array.isArray(raw)) return [];
   return raw
     .filter(
-      (m): m is { role: "user" | "assistant"; content: string; images?: unknown } =>
+      (m): m is { role: "user" | "assistant"; content: string; attachments?: unknown } =>
         typeof m === "object" && m !== null && (m.role === "user" || m.role === "assistant") && typeof m.content === "string" && m.content.trim().length > 0,
     )
     .slice(-HISTORY_LIMIT)
-    .map((m) => ({ role: m.role, content: m.content, images: m.role === "user" ? sanitizeImages(m.images) : [] }));
+    .map((m) => ({ role: m.role, content: m.content, attachments: m.role === "user" ? sanitizeAttachments(m.attachments, kinds, budget) : [] }));
 }
 
 /**
@@ -82,11 +52,6 @@ function lastUserTurnIndex(history: HistoryEntry[]): number {
   return -1;
 }
 
-function toChatMessage(role: "user" | "assistant", text: string, images: string[]): ChatMessage {
-  if (images.length === 0) return { role, content: text };
-  const parts: ContentPart[] = [{ type: "text", text }, ...images.map((url) => ({ type: "image_url" as const, image_url: { url } }))];
-  return { role, content: parts };
-}
 
 /** How long a signed input URL needs to live — just long enough to be fetched. */
 const INPUT_SIGN_TTL = 3600;
@@ -245,28 +210,31 @@ export async function POST(request: Request) {
    */
   const params = sanitizeParams(tool, role, body?.params);
 
-  // Attachments are capped by the model's own ceiling, not by whatever the
-  // client felt like sending — the composer hides its attach button for
-  // text-only models, but that's cosmetic and can't be the enforcement point.
-  // A video model whose end-frame dial is on takes two: first frame and last.
-  const budget = imageBudget(tool, params);
-  const attachments = sanitizeImages(body?.attachments).slice(0, budget);
+  // Attachments are capped by what THIS model takes — which kinds, and how
+  // many — not by whatever the client felt like sending. The composer hides
+  // what a model can't read, but that's cosmetic and can't be the enforcement
+  // point: a sound file sent to a model with no audio input is dropped here.
+  // A video model whose end-frame dial is on takes two pictures: first frame
+  // and last.
+  const kinds = attachmentKindsFor(tool);
+  const budget = attachmentBudget(tool, params);
+  const attachments = sanitizeAttachments(body?.attachments, kinds, budget);
 
   // Memory off means the transcript is not resent at all: the model answers
   // this one message and nothing else. Enforced here rather than trusted to
   // the client, which is also what stops a crafted payload from re-adding
   // history the student switched off.
-  const history = tool.modality === "text" && memory ? sanitizeHistory(body?.history) : [];
+  const history = tool.modality === "text" && memory ? sanitizeHistory(body?.history, kinds, budget) : [];
 
-  // Images ride along from the most recent user turn, and only that one.
-  // Resending every past image would multiply cost without bound — 20 turns
+  // Attachments ride along from the most recent user turn, and only that one.
+  // Resending every past file would multiply cost without bound — 20 turns
   // of history at ~1600 prompt tokens per image is 32k tokens on every single
-  // message. Carrying one turn is what makes the obvious follow-up ("peki
-  // rengi ne?" right after "bu görselde ne var?") work, for at most a few
-  // extra images per request.
+  // message, and a PDF is far more. Carrying one turn is what makes the
+  // obvious follow-up ("peki 3. bölüm ne diyor?" right after "bu PDF'i
+  // özetle") work, for at most a few extra inputs per request.
   const carryIndex = lastUserTurnIndex(history);
   const carryRoom = Math.max(0, budget - attachments.length);
-  const carriedInline = carryIndex >= 0 ? history[carryIndex].images.slice(0, carryRoom) : [];
+  const carriedInline = carryIndex >= 0 ? history[carryIndex].attachments.slice(0, carryRoom) : [];
 
   // A reopened chat has no data URLs left to carry — the browser only ever
   // held them for the life of the tab. The previous turn's pictures are read
@@ -277,17 +245,17 @@ export async function POST(request: Request) {
   // could point at another student's file.
   const carriedStored =
     carryIndex >= 0 && carriedInline.length === 0 && chatId && carryRoom > 0
-      ? await loadPreviousTurnInputs(supabase, chatId, carryRoom)
+      ? (await loadPreviousTurnInputs(supabase, chatId, carryRoom)).map((url) => imageAttachment(url))
       : [];
-  const carried = [...carriedInline, ...carriedStored];
+  const carried: Attachment[] = [...carriedInline, ...carriedStored];
 
   // The image/video side of the same switch. Skipped entirely when the student
   // attached something themselves — a picture they just picked is a more
   // deliberate instruction than one we remembered for them, and the budget is
   // small enough that filling it with both would push theirs out.
-  const remembered =
+  const remembered: Attachment[] =
     memory && chatId && (tool.modality === "image" || tool.modality === "video") && attachments.length === 0 && budget > 0
-      ? await loadLastOutputImage(supabase, chatId)
+      ? (await loadLastOutputImage(supabase, chatId)).map((url) => imageAttachment(url))
       : [];
 
   // What this generation costs, priced from the dials the caller actually
@@ -297,17 +265,15 @@ export async function POST(request: Request) {
   // with the same params, which is why the number it showed is the number
   // taken. (Video input images price at 0: providers fold the frame image
   // into the clip's rate, so a remembered first frame costs nothing.)
-  const oreCost = generationCost(tool, {
-    imageCount: attachments.length + carried.length + remembered.length,
-    params,
-  });
+  const inputs = [...attachments, ...carried, ...remembered].map(inputRef);
+  const oreCost = generationCost(tool, { inputs, params });
 
   // The per-generation ceiling, enforced before anything is charged. The
   // composer already refuses this combination, so reaching here means a stale
   // tab or a crafted payload — either way nothing is debited and no model is
   // called. It is a refusal rather than a capped price on purpose: charging 60
   // for an 80-cevher clip would quietly hand the difference to the treasury.
-  if (exceedsCap(tool, { imageCount: attachments.length + carried.length + remembered.length, params })) {
+  if (exceedsCap(tool, { inputs, params })) {
     return NextResponse.json({ gated: true, reason: "over_generation_cap", remaining: 0 });
   }
 
@@ -387,16 +353,16 @@ export async function POST(request: Request) {
    */
   if (tool.modality === "text") {
     const priorTurns = history.map((m, i) =>
-      // Only the most recent user turn keeps its images; `carried` is that
-      // turn's list, already trimmed to the remaining image budget.
-      toChatMessage(m.role, m.content, i === carryIndex ? carried : []),
+      // Only the most recent user turn keeps its attachments; `carried` is
+      // that turn's list, already trimmed to the remaining budget.
+      chatMessage(m.role, m.content, i === carryIndex ? carried : []),
     );
     const messages: ChatMessage[] = [
       // Nebula's own prompt, then the persona the student picked, then a
       // teacher's extra instruction — appended in that order, never replaced.
       { role: "system", content: systemPromptFor(tool, category?.id, params) },
       ...priorTurns,
-      toChatMessage("user", prompt.trim(), attachments),
+      chatMessage("user", prompt.trim(), attachments),
     ];
     const kind = isWebTool ? "code" : "text";
     const requestBody = buildTextBody({ tool, params, messages });
@@ -516,7 +482,7 @@ export async function POST(request: Request) {
           params,
           prompt: prompt.trim(),
           aspectRatio,
-          references: [...attachments, ...remembered],
+          references: [...attachments, ...remembered].map((a) => a.data),
         }),
       );
       // Extension follows what the model actually returned — Grok Imagine
@@ -597,11 +563,11 @@ export async function POST(request: Request) {
         params,
         prompt: prompt.trim(),
         aspectRatio,
-        firstFrame: attachments[0] ?? remembered[0] ?? null,
+        firstFrame: attachments[0]?.data ?? remembered[0]?.data ?? null,
         // The second attachment, and only when the end-frame dial is on and
         // the model's catalog entry lists `last_frame` — the body builder
         // checks that too, so a crafted payload cannot invent one.
-        lastFrame: params.lastFrame === true ? (attachments[1] ?? null) : null,
+        lastFrame: params.lastFrame === true ? (attachments[1]?.data ?? null) : null,
       }),
     );
     await supabase.rpc("rpc_attach_video_job", { p_generation_id: generationId, p_job_id: jobId });

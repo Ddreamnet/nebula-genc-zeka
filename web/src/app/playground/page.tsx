@@ -4,11 +4,12 @@ import { createClient } from "@/lib/supabase/server";
 import { readBalance } from "@/lib/playground/balance";
 import { listChats } from "@/lib/playground/chats";
 import { Playground } from "@/components/playground/playground";
+import { DARK_THEME_BOOT } from "@/lib/playground/theme";
 import { weekNumberSince } from "@/lib/lesson/week-number";
 
 export const metadata: Metadata = {
-  title: "Playground",
-  description: "Nebula Genç Zeka Playground — yapay zekayı hemen dene.",
+  title: "Üretim Atölyesi",
+  description: "Nebula Genç Zeka Üretim Atölyesi — yapay zekayı hemen dene.",
 };
 
 export default async function PlaygroundPage() {
@@ -49,16 +50,26 @@ export default async function PlaygroundPage() {
   const weekNumber = weekNumberSince(studentRows?.[0]?.created_at);
 
   return (
-    <Playground
-      initial={{
-        balance: balance.balance,
-        unlimited: balance.unlimited,
-        role: balance.role,
-        balanceStale: balance.stale === true,
-        chats: chats ?? [],
-        name: profile?.full_name ?? "",
-        weekNumber,
-      }}
-    />
+    <>
+      {/* The "Koyu" theme's boot line, for the accounts that may choose it.
+          Runs while the HTML is still parsing — before hydration, before the
+          first paint — so a remembered choice never flashes ice-blue first.
+          Not rendered for a student: nothing in their session reads the
+          stored flag, so a teacher's pick on a shared machine stays theirs.
+          (The root <html> carries suppressHydrationWarning for this: React
+          leaves the extra class alone but would otherwise warn in dev.) */}
+      {balance.role !== "student" && <script dangerouslySetInnerHTML={{ __html: DARK_THEME_BOOT }} />}
+      <Playground
+        initial={{
+          balance: balance.balance,
+          unlimited: balance.unlimited,
+          role: balance.role,
+          balanceStale: balance.stale === true,
+          chats: chats ?? [],
+          name: profile?.full_name ?? "",
+          weekNumber,
+        }}
+      />
+    </>
   );
 }

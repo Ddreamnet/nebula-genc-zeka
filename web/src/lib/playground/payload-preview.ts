@@ -1,12 +1,15 @@
 import type { PlaygroundTool } from "@/lib/playground/tools";
 import type { AspectRatio } from "@/lib/playground/aspect";
 import type { Role, StudioParams } from "@/lib/playground/params";
+import type { Attachment } from "@/lib/playground/attachments";
 import { paramDoc } from "@/lib/playground/param-docs";
 import {
   buildAudioBody,
   buildImageBody,
   buildTextBody,
   buildVideoBody,
+  chatMessage,
+  dataStub,
   systemPromptFor,
   targetFor,
   type ChatMessage,
@@ -42,8 +45,8 @@ export interface PayloadInput {
   categoryId?: string | null;
   prompt: string;
   aspectRatio: AspectRatio | null;
-  /** Data URLs staged in the composer right now. */
-  attachments: string[];
+  /** What is staged in the composer right now. */
+  attachments: Attachment[];
   memory: boolean;
   /** How many prior turns would be resent (text tools with memory on). */
   historyTurns: number;
@@ -64,16 +67,9 @@ export interface PayloadPreview {
   notes: { key: string; note: string }[];
 }
 
-/** "1,2 MB" for a data URL, so the stub says how big the thing it replaced is. */
-function dataUrlSize(dataUrl: string): string {
-  const b64 = dataUrl.slice(dataUrl.indexOf(",") + 1);
-  const padding = b64.endsWith("==") ? 2 : b64.endsWith("=") ? 1 : 0;
-  const bytes = Math.max(0, Math.floor((b64.length * 3) / 4) - padding);
-  return bytes >= 1024 * 1024 ? `${(bytes / (1024 * 1024)).toFixed(1)} MB` : `${Math.round(bytes / 1024)} KB`;
-}
-
-function imageStub(dataUrl: string): string {
-  return dataUrl.startsWith("data:") ? `${dataUrl.slice(0, 24)}… (${dataUrlSize(dataUrl)})` : dataUrl;
+/** A picture's data URL shortened to its prefix and size — the stub in place of megabytes of base64. */
+function imageStub(a: Attachment): string {
+  return dataStub(a);
 }
 
 const REMEMBERED_STUB = "<bu sohbette ürettiğin son görsel (imzalı bağlantı)>";
@@ -136,9 +132,10 @@ export function buildPayloadPreview(input: PayloadInput): PayloadPreview {
     const system = showSystem ? systemPromptFor(tool, categoryId, params) : "<Nebula sistem promptu>";
     const messages: ChatMessage[] = [
       { role: "system", content: system },
-      attachments.length > 0
-        ? { role: "user", content: [{ type: "text", text }, ...attachments.map((a) => ({ type: "image_url" as const, image_url: { url: imageStub(a) } }))] }
-        : { role: "user", content: text },
+      // The same builder the route uses, in stub mode: a PDF prints as its
+      // `file` part with the size in place of the base64, a text file as its
+      // <dosya> block with the size in place of the text.
+      chatMessage("user", text, attachments, { stub: true }),
     ];
     const body = tool.modality === "audio" ? buildAudioBody({ tool, params, messages }) : buildTextBody({ tool, params, messages });
     // The resent transcript is summarised rather than reprinted: twenty past

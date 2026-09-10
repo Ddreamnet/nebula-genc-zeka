@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { BookOpen, FileText, Gamepad2, Phone, Upload, Video } from "lucide-react";
+import { BookOpen, FileText, Hammer, Phone, Upload, Video } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { useAuth } from "@/contexts/auth-context";
 import { PanelShell, type PanelNavItem } from "@/components/panel-shell/panel-shell";
@@ -126,7 +126,7 @@ export function StudentDashboard({ userId }: { userId: string }) {
       onClick: () => setDrawer(drawer === "homework" ? null : "homework"),
     },
     { key: "contact", label: "İletişim", icon: Phone, tone: "pink", onClick: () => setContactOpen(true) },
-    { key: "playground", label: "Playground", icon: Gamepad2, tone: "violet", href: "/playground" },
+    { key: "playground", label: "Üretim Atölyesi", icon: Hammer, tone: "violet", href: "/playground" },
   ];
 
   if (loading) {

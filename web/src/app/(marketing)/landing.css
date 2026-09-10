@@ -637,6 +637,35 @@
    min-height is what guarantees the field is taller than it is wide enough
    for the plume to read as a cone; the section has no content tall enough to
    hold it open on its own. */
+/* The hero section clips its own space field. `clip`, not `hidden`: an
+   overflow:hidden ancestor is a scroll container as far as position:sticky
+   is concerned, so the scroll cue below would "stick" to a box that never
+   scrolls — i.e. never move. `clip` cuts the same pixels and creates no
+   scroll container. (`hidden` first, as the floor for a browser without
+   `clip`; the cue simply stays in flow there.) */
+.nb-hero-section {
+  overflow: hidden;
+  overflow: clip;
+}
+
+/* Paragraph + "Aşağı kaydır", pinned to the bottom of the screen on desktop.
+
+   The frame is 800–930 screen px tall (min-height × zoom) and most laptops
+   show 650–800, so at first paint the paragraph — whose whole job is to say
+   what this is and to invite the scroll — sat under the fold on most of
+   them. Sticky with a bottom offset lifts it just into view: while the
+   hero's bottom is below the screen the block rides at the bottom edge, and
+   as soon as its natural spot scrolls up it settles there and leaves with
+   the hero. No JavaScript, no scroll listener, nothing fixed over the rest
+   of the page. Desktop only: on a phone the frame roughly matches the
+   screen already, and a bottom-stuck block fights the browser chrome. */
+@media (min-width: 860px) {
+  .nb-hero-foot {
+    position: sticky;
+    bottom: clamp(22px, 2.4vw, 34px);
+  }
+}
+
 .nb-hero {
   --nb-shift: max(0px, calc(300px - 36vw));
   position: relative;

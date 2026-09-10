@@ -16,15 +16,86 @@ import type { PlaygroundTool } from "@/lib/playground/tools";
 import type { AspectRatio } from "@/lib/playground/aspect";
 import { SYSTEM_PROMPT, WEB_SYSTEM_PROMPT } from "@/lib/playground/system-prompts";
 import { capsFor, personaPrompt, type StudioParams } from "@/lib/playground/params";
+import { audioFormat, formatSize, type Attachment } from "@/lib/playground/attachments";
 
 export const OPENROUTER_BASE = "https://openrouter.ai/api/v1";
 
-/** OpenAI-style content parts; the image form is how a picture reaches a vision model. */
-export type ContentPart = { type: "text"; text: string } | { type: "image_url"; image_url: { url: string } };
+/**
+ * OpenAI-style content parts, one shape per attachment kind. All four media
+ * forms are from OpenRouter's multimodal docs (images, PDFs, audio, video —
+ * read 10 Sep 2026):
+ *  - `image_url`   a picture, data URL or https;
+ *  - `file`        a PDF; `file_data` is a data URL, `filename` is shown to
+ *                  the model. Needs the `file-parser` plugin on models that
+ *                  cannot read PDFs natively — see buildTextBody;
+ *  - `input_audio` raw base64 (no data: prefix) plus the format name. Audio
+ *                  must be inline: URLs are not accepted;
+ *  - `video_url`   a data URL for a local clip.
+ */
+export type ContentPart =
+  | { type: "text"; text: string }
+  | { type: "image_url"; image_url: { url: string } }
+  | { type: "file"; file: { filename: string; file_data: string } }
+  | { type: "input_audio"; input_audio: { data: string; format: string } }
+  | { type: "video_url"; video_url: { url: string } };
 
 export interface ChatMessage {
   role: "system" | "user" | "assistant";
   content: string | ContentPart[];
+}
+
+/** A data URL shortened for the `</>` panel — the prefix plus how big the thing it replaced is. */
+export function dataStub(a: Pick<Attachment, "kind" | "size" | "data">): string {
+  return a.data.startsWith("data:") ? `${a.data.slice(0, 24)}… (${formatSize(a)})` : a.data;
+}
+
+/**
+ * A text file, pasted into the prompt. Every model reads this, which is
+ * what makes .txt/.md/.csv (and Word, Excel and PowerPoint, unpacked to text
+ * in the browser) work on models with no file input at all.
+ */
+function fileBlock(a: Attachment, stub: boolean): string {
+  const name = a.name || "dosya.txt";
+  const body = stub ? `<${formatSize(a)} — dosyanın metni buraya gelir>` : a.data;
+  return `<dosya ad="${name}">\n${body}\n</dosya>`;
+}
+
+function mediaPart(a: Attachment, stub: boolean): ContentPart {
+  const data = stub ? dataStub(a) : a.data;
+  switch (a.kind) {
+    case "document":
+      return { type: "file", file: { filename: a.name || "belge.pdf", file_data: data } };
+    case "audio":
+      // The bare base64: OpenRouter takes `data` without the data: prefix.
+      return { type: "input_audio", input_audio: { data: stub ? data : data.slice(data.indexOf(",") + 1), format: audioFormat(a.mime) ?? "mp3" } };
+    case "video":
+      return { type: "video_url", video_url: { url: data } };
+    default:
+      return { type: "image_url", image_url: { url: data } };
+  }
+}
+
+/**
+ * One turn as the model sees it. Text attachments go into the words
+ * (before the prompt, so the question comes last — the order long-document
+ * prompting guides recommend); everything else becomes a content part after
+ * the text. `stub` is for the `</>` preview, which shows shapes and sizes
+ * rather than megabytes of base64.
+ *
+ * Used by the generate route for the real body and by the preview panel for
+ * the printed one, so the two cannot drift.
+ */
+export function chatMessage(role: "user" | "assistant", text: string, attachments: readonly Attachment[] = [], opts: { stub?: boolean } = {}): ChatMessage {
+  const stub = opts.stub === true;
+  const files = attachments.filter((a) => a.kind === "text");
+  const media = attachments.filter((a) => a.kind !== "text");
+  const body = files.length > 0 ? `${files.map((a) => fileBlock(a, stub)).join("\n\n")}\n\n${text}` : text;
+  if (media.length === 0) return { role, content: body };
+  return { role, content: [{ type: "text", text: body }, ...media.map((a) => mediaPart(a, stub))] };
+}
+
+function carriesFile(messages: readonly ChatMessage[]): boolean {
+  return messages.some((m) => Array.isArray(m.content) && m.content.some((p) => p.type === "file"));
 }
 
 /** A JSON body, printed rather than typed — every field is a wire value. */
@@ -98,6 +169,17 @@ export function buildTextBody(args: { tool: PlaygroundTool; params: StudioParams
   if (has("response_format") && params.jsonMode === true) body.response_format = { type: "json_object" };
   if (has("reasoning") && params.reasoning === true) {
     body.reasoning = has("reasoning_effort") && typeof params.reasoningEffort === "string" ? { enabled: true, effort: params.reasoningEffort } : { enabled: true };
+  }
+  // A PDF in the conversation switches the file parser on. Models whose
+  // catalog entry lists "file" read the PDF themselves (`native`, billed as
+  // input tokens); for the rest OpenRouter's `cloudflare-ai` engine turns it
+  // into text first, free. Set explicitly because OpenRouter's own fallback
+  // for a non-native model is `mistral-ocr` at $2 per thousand pages —
+  // a line item nothing here has priced. (`pdf-text`, the old name of the
+  // free engine, is deprecated and redirects to `cloudflare-ai`.)
+  if (carriesFile(messages)) {
+    const native = caps?.kind === "text" && caps.inputModalities.includes("file");
+    body.plugins = [{ id: "file-parser", pdf: { engine: native ? "native" : "cloudflare-ai" } }];
   }
   return body;
 }

@@ -188,10 +188,13 @@ export function useDragToDismiss(
       const onScrim = !!scrimEl && scrimEl.contains(target);
       if (!onScrim) {
         if (!node!.contains(target)) return;
-        // A field keeps its own gestures: text selection, a range thumb, a
-        // video scrubber. Losing a half-filled form to a stray pull is worse
-        // than having to reach for the grip.
-        if (target.closest("input, textarea, select, video, audio, [data-no-drag]")) return;
+        // Only a control with a touch gesture of its own keeps the finger: a
+        // range thumb, a native select, a video scrubber, a rich-text editor
+        // (selection). Plain inputs and textareas do NOT — on a form sheet
+        // they cover most of the card, and a card that only closes from the
+        // gaps between its fields reads as a card that does not close.
+        // Losing a half-filled form takes a deliberate quarter-height pull.
+        if (target.closest('select, input[type="range"], input[type="file"], video, audio, [contenteditable="true"], [data-no-drag]')) return;
         if (window.getSelection()?.toString()) return;
       }
       const t = e.touches[0];
@@ -389,8 +392,8 @@ function SheetOverlay({ className, ...props }: React.ComponentProps<typeof Dialo
 interface SheetContentProps extends React.ComponentProps<typeof DialogPrimitive.Content> {
   size?: SheetSize;
   /**
-   * Called when the sheet is dragged shut. Radix owns `open`, so the drag has
-   * to ask the owner to flip it; every caller already has an `onOpenChange`.
+   * Called when the sheet is dragged shut. Optional: without it the drag
+   * presses a hidden Radix Close, which reaches the owner's `onOpenChange`.
    */
   onDismiss?: () => void;
   /** Grow and shrink with the content instead of jumping (phone only). */
@@ -416,7 +419,12 @@ function useMountedRef<T extends HTMLElement>() {
 function SheetContent({ className, children, size = "md", onDismiss, animateHeight, onPointerDownOutside, ...props }: SheetContentProps) {
   const [ref, setRef, mounted] = useMountedRef<HTMLDivElement>();
   const overlayRef = React.useRef<HTMLDivElement>(null);
-  useDragToDismiss(ref, () => onDismiss?.(), { open: mounted, scrim: overlayRef });
+  // Radix owns `open` and exposes no imperative close, but it does expose a
+  // Close BUTTON — so a hidden one, clicked, is how a drag closes a sheet
+  // whose owner passed no `onDismiss`. Without it the card just froze where
+  // the finger let go.
+  const closeRef = React.useRef<HTMLButtonElement>(null);
+  useDragToDismiss(ref, () => (onDismiss ? onDismiss() : closeRef.current?.click()), { open: mounted, scrim: overlayRef });
   useAnimatedHeight(ref, !!animateHeight && mounted);
   return (
     <SheetPortal>
@@ -437,6 +445,9 @@ function SheetContent({ className, children, size = "md", onDismiss, animateHeig
         }}
         {...props}
       >
+        <DialogPrimitive.Close asChild>
+          <button ref={closeRef} type="button" hidden tabIndex={-1} aria-hidden />
+        </DialogPrimitive.Close>
         {/* The grip only draws below `lg` (CSS): the "this can be pulled
             down" affordance, even though the whole card can be. */}
         <div className="pn-sheet-handle">

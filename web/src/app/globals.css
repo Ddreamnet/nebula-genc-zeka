@@ -606,6 +606,133 @@
   --font-mono: var(--font-plex-mono), "IBM Plex Mono", ui-monospace, monospace;
 }
 
+/* =========================================================================
+   Playground "Koyu" teması — yalnızca yönetici ve öğretmen hesapları açar.
+
+   Claude'un sıcak koyu paleti: ılık koyu gri zemin (#2b2a27), ondan bir ton
+   koyu composer ve kartlar (#1f1e1b), gri öğrenci balonu (#393937), kırık
+   beyaz mürekkep (#eeeeee) ve tek vurgu olarak terracotta (#de7356 /
+   #c96442). Bar en koyu tona (#141413) iner; seçili çipler ve lacivert
+   butonlar balonun grisini alır, bu yüzden bar kendi token'ını taşır
+   (--pn-bar-fill) — ikisi aynı --pn-navy'yi paylaşsaydı ya bar kartlarla
+   karışırdı ya da seçili çip kartın içinde kaybolurdu.
+
+   Bu blok yeni bir tema DEĞİL, yukarıdaki token setinin yeniden
+   renklendirilmesidir: hiçbir bileşen değişmez, yalnızca değişkenler.
+   Seçici iki yüzeyi de yakalar — <body> (portallar için .panel-theme'i
+   taşır) ve layout'un sarmalayıcı div'i — çünkü sınıf <html>'e konur ve
+   `.pg-theme-dark .panel-theme` ikisiyle de eşleşir. Öğrenci hesabında
+   sınıf hiç konmaz (bkz. app/playground/page.tsx ve playground.tsx).
+
+   Aile eşlemesi: "blue" (öğrencinin sesi, seçili durum, varsayılan buton)
+   gri + kırık beyaz; "peach" (değer, gönder, öne çıkan model) terracotta.
+   Koyu zeminde roller ters döner: `fill` derin bir ton, `ink` açık pastel.
+   Ölçülen kontrastlar (AA ≥ 4.5): ikincil metin 8:1, peach-ink 5:1,
+   mint 8:1, pembe 7:1, mor 7:1, bar yazısı 16:1, balon 10:1.
+   ========================================================================= */
+.pg-theme-dark .panel-theme,
+.pg-theme-dark.panel-theme {
+  /* Kaydırma çubuğu, yerel select ve range koyu çizilsin. */
+  color-scheme: dark;
+
+  --color-surface: #2b2a27;
+  --color-surface-dim: #262522;
+  --color-surface-lowest: #141413;
+  --color-surface-low: #34332f;
+  --color-surface-container: #1f1e1b;
+  --color-surface-high: #1f1e1b;
+  --color-surface-highest: #393937;
+  --color-surface-bright: #393937;
+
+  --color-on-surface: #eeeeee;
+  --color-on-surface-variant: #b3b1a9;
+  --color-outline: #7a786f;
+  --color-outline-variant: rgba(238, 238, 238, 0.14);
+
+  --color-secondary: #de7356;
+  --color-secondary-bright: #e8927a;
+  --color-on-secondary: #1f1e1b;
+  --color-secondary-container: #4a2a1e;
+  --color-on-secondary-container: #f3c4b3;
+
+  --color-primary: #141413;
+  --color-primary-bright: #1f1e1b;
+  --color-on-primary: #eeeeee;
+  --color-primary-container: #0e0e0d;
+  --color-on-primary-container: #b3b1a9;
+
+  --color-tertiary: #de7356;
+  --color-on-tertiary: #1f1e1b;
+
+  --color-error: #e8857a;
+  --color-success: #8fd6ab;
+
+  --pn-mint: #2a4a37;
+  --pn-mint-tint: #242d27;
+  --pn-mint-sel: #283329;
+  --pn-mint-ink: #8fd6ab;
+  --pn-mint-ink-strong: #c6f1dc;
+  --pn-mint-line: rgba(143, 214, 171, 0.3);
+
+  --pn-peach: #5a3222;
+  --pn-peach-tint: #2f2521;
+  --pn-peach-sel: #352925;
+  --pn-peach-ink: #de7356;
+  --pn-peach-ink-strong: #f3c4b3;
+  --pn-peach-line: rgba(222, 115, 86, 0.38);
+
+  --pn-pink: #57282e;
+  --pn-pink-tint: #2f2325;
+  --pn-pink-sel: #35282a;
+  --pn-pink-ink: #f09aa6;
+  --pn-pink-ink-strong: #ffd6de;
+  --pn-pink-line: rgba(240, 154, 166, 0.3);
+
+  --pn-blue: #393937;
+  --pn-blue-tint: #2f2e2b;
+  --pn-blue-sel: #34332f;
+  --pn-blue-ink: #de7356;
+  --pn-blue-ink-strong: #eeeeee;
+  --pn-blue-line: rgba(238, 238, 238, 0.16);
+
+  --pn-violet: #3b2f5e;
+  --pn-violet-tint: #29262f;
+  --pn-violet-sel: #2e2a36;
+  --pn-violet-ink: #b9a5f0;
+  --pn-violet-ink-strong: #dcd2ff;
+  --pn-violet-line: rgba(185, 165, 240, 0.3);
+
+  --pn-navy: #393937;
+  --pn-navy-line: rgba(238, 238, 238, 0.12);
+  --pn-on-navy: #eeeeee;
+  --pn-on-navy-dim: rgba(238, 238, 238, 0.66);
+  --pn-on-navy-fill: rgba(238, 238, 238, 0.08);
+  --pn-on-navy-edge: rgba(238, 238, 238, 0.18);
+  --pn-bar-fill: #141413;
+  --pn-bar-active-ink: #eeeeee;
+  --pn-bar-active-line: rgba(238, 238, 238, 0.3);
+  --pn-bar-hover-fill: rgba(238, 238, 238, 0.14);
+  --pn-bar-hover-line: rgba(238, 238, 238, 0.28);
+
+  --pn-hair: rgba(238, 238, 238, 0.1);
+  --pn-hair-strong: rgba(238, 238, 238, 0.18);
+  --pn-ink: #eeeeee;
+  --pn-focus-ring: rgba(222, 115, 86, 0.28);
+  --pn-scrim-rgb: 0 0 0;
+
+  /* Varsayılan (mavi aileli) butonun parıltısı; renkli varyantlar kendi
+     elemanlarında bunu ezer, bu yüzden yalnızca varsayılanı etkiler. */
+  --pn-btn-glow: rgba(0, 0, 0, 0.28);
+  --pn-btn-glow-strong: rgba(0, 0, 0, 0.5);
+
+  --pn-shadow-card: 0 1px 2px rgba(0, 0, 0, 0.25), 0 8px 20px -12px rgba(0, 0, 0, 0.5);
+  --pn-shadow-float: 0 2px 4px rgba(0, 0, 0, 0.3), 0 14px 32px -16px rgba(0, 0, 0, 0.6);
+  --pn-shadow-drawer: 0 2px 4px rgba(0, 0, 0, 0.3), 0 16px 38px -18px rgba(0, 0, 0, 0.65);
+  --pn-shadow-lift: 0 4px 12px -6px rgba(0, 0, 0, 0.45);
+
+  --destructive-foreground: #1f1e1b;
+}
+
 /* Başlıklar display yüzünü her bileşen ayrıca istemek zorunda kalmadan alır. */
 .panel-theme :is(h1, h2, h3, h4) {
   font-family: var(--font-display);
@@ -664,7 +791,7 @@
 .panel-theme :is(input, textarea, select):not(.pn-bare):focus-visible {
   outline: none;
   border-color: var(--color-secondary);
-  box-shadow: 0 0 0 3px rgba(36, 55, 166, 0.14);
+  box-shadow: 0 0 0 3px var(--pn-focus-ring, rgba(36, 55, 166, 0.14));
 }
 
 
@@ -1082,7 +1209,7 @@
    düzenlemeden aynı kâğıt (böylece yükseltilebilir kalırlar).
    ========================================================================= */
 .panel-theme :is([data-slot="dialog-overlay"], [data-slot="alert-dialog-overlay"]) {
-  background: rgba(20, 31, 60, 0.38);
+  background: rgb(var(--pn-scrim-rgb, 20 31 60) / 0.38);
   backdrop-filter: none;
   -webkit-backdrop-filter: none;
 }
@@ -1480,13 +1607,13 @@
    ikonuyla aynı açık mavi dolgu, aynı lacivert mürekkep. */
 .pn-bar-btn[data-active="true"] {
   background: var(--pn-blue);
-  color: #132750;
-  border-color: rgba(207, 225, 255, 0.55);
+  color: var(--pn-bar-active-ink, #132750);
+  border-color: var(--pn-bar-active-line, rgba(207, 225, 255, 0.55));
 }
 @media (hover: hover) {
   .pn-bar-btn:hover:not(:disabled):not(.pn-bar-btn--num) {
-    background: rgba(207, 225, 255, 0.26);
-    border-color: rgba(207, 225, 255, 0.44);
+    background: var(--pn-bar-hover-fill, rgba(207, 225, 255, 0.26));
+    border-color: var(--pn-bar-hover-line, rgba(207, 225, 255, 0.44));
   }
   /* Çıkış: yıkıcı olmayan ama geri dönüşü olan bir eylem. Rengi yalnızca
      imleç üstüne geldiğinde alır. */
@@ -1713,7 +1840,7 @@
   inset: 0;
   z-index: 44;
   /* --scrim-p: sürüklerken kartla birlikte açılır (useDragToDismiss). */
-  background: rgb(20 31 60 / calc(0.38 * var(--scrim-p, 1)));
+  background: rgb(var(--pn-scrim-rgb, 20 31 60) / calc(0.38 * var(--scrim-p, 1)));
   transition: background-color 0.32s var(--pn-ease-sheet);
   touch-action: none;
   animation: pn-fade-in 0.2s var(--pn-ease) both;
@@ -1793,19 +1920,22 @@
      shell past the viewport on a phone. */
   min-width: 0;
   overflow: hidden;
-  gap: 9px;
+  gap: 10px;
   height: var(--pg-bar);
-  padding: 0 9px 0 13px;
+  /* Sol iç boşluk sağdakinden belirgin geniş: soldaki grup (logo · model ·
+     başlık) barın kenarına yapışıp sıkışık okunuyordu; sağda yalnızca iki
+     buton var, orada aynı boşluğa gerek yok. */
+  padding: 0 9px 0 18px;
   border-radius: var(--pn-r-bar);
-  background: var(--pn-navy);
+  background: var(--pn-bar-fill, var(--pn-navy));
   border: 1px solid var(--pn-navy-line);
   box-shadow: var(--pn-shadow-float);
   color: var(--pn-on-navy);
 }
 @media (min-width: 1024px) {
   .pg-bar {
-    gap: 13px;
-    padding: 0 13px;
+    gap: 18px;
+    padding: 0 13px 0 34px;
   }
 }
 
@@ -1853,6 +1983,57 @@
   display: flex;
   flex-direction: column;
   overflow: hidden;
+}
+
+/* Boş sahnenin selamı: "Merhaba, ne üretiyoruz?" — sahnenin tam ortasında,
+   tek satır (telefonda dengeli iki satır). Yazı yüzü Brixela yalnızca
+   Atölye layout'unda yüklenir (bkz. app/playground/layout.tsx); değişken
+   orada yoksa Nunito'ya düşer. Giriş hareketi tek bir süzülme — 10px
+   yukarı, solarak; hareket azaltmada yalnızca solma. */
+.pg-greeting {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: grid;
+  place-items: center;
+  /* Alt boşluk kasten büyük: yazı sahnenin tam merkezinde değil, üst
+     üçte birinde dursun. Merkez, alt boşluğun yarısı kadar yukarı kayar —
+     yani 1440x900'de ~110px, telefonda ~95px. */
+  padding: 16px clamp(16px, 4vw, 40px) clamp(96px, 26vh, 280px);
+  text-align: center;
+}
+.pg-greeting p {
+  margin: 0;
+  font-family: var(--font-brixela), "Brixela Nebula", var(--font-nunito), sans-serif;
+  font-weight: 400;
+  font-size: clamp(1.125rem, 1.3vw + 0.7rem, 2.125rem);
+  line-height: 1.12;
+  letter-spacing: 0.015em;
+  color: var(--color-on-surface);
+  text-wrap: balance;
+  animation: pg-greeting-in 0.7s var(--ease-out-expo) both;
+}
+@keyframes pg-greeting-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes pg-greeting-fade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .pg-greeting p {
+    animation: pg-greeting-fade 0.4s ease-out both;
+  }
 }
 
 /* Alt yerleşke: hızlı eylem satırı + composer. Aralarındaki boşluk kasten
@@ -1990,7 +2171,7 @@
   z-index: 45;
   /* --scrim-p: kart sürüklenirken perde de onunla açılır. Perdeye dokunmak
      kapatır, perdeden aşağı çekmek kartı çeker (useDragToDismiss). */
-  background: rgb(20 31 60 / calc(0.34 * var(--scrim-p, 1)));
+  background: rgb(var(--pn-scrim-rgb, 20 31 60) / calc(0.34 * var(--scrim-p, 1)));
   transition: background-color 0.32s var(--pn-ease-sheet);
   touch-action: none;
   animation: pn-fade-in 0.2s var(--pn-ease) both;
@@ -2160,7 +2341,213 @@
 }
 .pg-prompt::placeholder {
   color: var(--color-on-surface-variant);
-  opacity: 0.6;
+  /* Alfa YOK. Işık kuvvetlendikten sonra 0.75, en koyu lekenin üstünde
+     kontrastı 2.8:1'e düşürüyordu; tam opaklıkta en kötü hâlde 4.35:1. */
+  opacity: 1;
+}
+
+/* =========================================================================
+   Composer ışığı (.pg-glow)
+
+   Açık temada yazı kutusu düz bir renk değil: beyazla çok açık mavi arasında
+   ağır ağır süzülen dört yumuşak ışık lekesi. Amaç "animasyon" değil,
+   kâğıdın üstünde duman gibi gezinen gün ışığı — yavaş, rastgele, bakınca
+   fark edilir, bakmayınca rahatsız etmez.
+
+   Kurulum (her satırın bir sebebi var):
+
+   · Katmanlar. Kutu (.pg-composer) kendi yığın bağlamı; ışık (.pg-glow)
+     absolute, inset:0, z-index:-1 — kutunun zemininin üstünde, içeriğinin
+     altında. İçerik (çipler, textarea, düğmeler) ışıktan bağımsız, olduğu
+     yerde durur; kontur kutuda sabittir, yalnızca içerisi hareket eder.
+
+   · Palet SAYFA ZEMİNİNDEN AYRI bir maviye kurulu. Zemin (#e9effc) mora
+     çalan bir buz mavisi; kutunun içi camgöbeğine çalan bir gök mavisi:
+     #ffffff, #f2fafe, #d5ecfb, #cfe8fa, #c3e2f8. Aynı aileden ama aynı
+     renk değil — bu yüzden kutu zeminin üstünde ayrı bir yüzey olarak
+     okunur, üstüne yapıştırılmış bir yama gibi değil. Mor/lavanta yok.
+     Yazı bu lekelerin üstünde 11:1 ile 14:1 arasında; ipucu yazısı en
+     koyu lekede 4.35:1.
+
+   · Her leke iki katman. Dış sarmalayıcı (.pg-blob) JS'in 3–6 saniyede bir
+     verdiği yeni hedefe `transition: transform` ile süzülür
+     (lib/playground/use-glow-drift.ts). İç katman (::before) kendi CSS
+     keyframe'inde nefes alır: translate+scale, 9/13/17/21 s, ease-in-out,
+     alternate, farklı (negatif) gecikmeler. İki hareket üst üste binince
+     desen hiç tekrarlamaz gibi okunur — "slow, random, smoky".
+
+   · Yalnızca `transform` (ve statik bir `filter: blur`). Lekeler kendi
+     compositor katmanında kayar; ana iş parçacığı kare başına hiçbir şey
+     boyamaz. Model seçici gibi ağır bir iş sırasında bile ışık takılmaz.
+
+   · Kâğıt dokusu (.pg-glow::after): %5 fraktal gürültü, gradyan
+     basamaklarını (banding) kırar. 128px'lik satır içi SVG, ağdan bir şey
+     inmez, bir kez rasterize edilir.
+
+   · Telefonda (≤767px) iki leke ve daha küçük blur; `prefers-reduced-motion`
+     hareketi durdurur (lekeler kalır); koyu tema katmanı hiç oluşturmaz
+     (display: none → sıfır maliyet); sürükle-bırak sırasında ışık söner ki
+     mavi "bırak buraya" zemini okunsun.
+   ========================================================================= */
+.pg-composer {
+  position: relative;
+  /* Kendi yığın bağlamı: ışık z-index:-1 ile kutunun kendi zemininin
+     ÜSTÜNE, içeriğinin ALTINA oturur ve sayfada başka bir şeyin altına
+     kaçamaz. */
+  isolation: isolate;
+}
+.pg-glow {
+  --pg-blob-blur: 56px;
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  overflow: hidden;
+  /* Kutunun 16px köşesi, 1px konturun içinden ölçülür. */
+  border-radius: 15px;
+  pointer-events: none;
+  contain: layout paint;
+  /* Taban: lekeler geçmediğinde bile kutu düz beyaz değil. Köşegen, çünkü
+     dikey bir gradyan kutunun enine oranında bant gibi okunuyordu. Statik,
+     bir kez boyanır. */
+  background: linear-gradient(160deg, #ffffff 0%, #f4fbfe 48%, #e9f6fd 100%);
+  transition: opacity var(--pn-dur-fast) var(--pn-ease);
+}
+.pg-composer[data-dragging="true"] .pg-glow {
+  opacity: 0;
+}
+.pg-theme-dark .pg-glow {
+  display: none;
+}
+/* Dış katman: JS'in verdiği hedef. `translate` ortalar, `transform` JS'den
+   gelir; ikisi ayrı özellik olduğu için birbirini ezmez. Süreyi de JS verir
+   (bekleme kadar), buradaki 5s yalnızca ilk kare içindir. */
+.pg-blob {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: max(56%, 300px);
+  aspect-ratio: 1;
+  translate: -50% -50%;
+  will-change: transform;
+  transition: transform 5s ease-in-out;
+}
+/* İç katman: rengin kendisi ve CSS nefesi. Gradyan zaten yumuşak; blur
+   üstüne "duman" kenarını verir. */
+.pg-blob::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  filter: blur(var(--pg-blob-blur));
+  will-change: transform;
+  animation-timing-function: ease-in-out;
+  animation-iteration-count: infinite;
+  animation-direction: alternate;
+}
+.pg-blob:nth-child(1) {
+  width: max(74%, 380px);
+}
+.pg-blob:nth-child(1)::before {
+  background: radial-gradient(closest-side, #c3e2f8 0%, rgb(195 226 248 / 0.62) 46%, rgb(195 226 248 / 0) 100%);
+  opacity: 0.95;
+  animation-name: pg-blob-a;
+  animation-duration: 13s;
+  animation-delay: -4s;
+}
+.pg-blob:nth-child(2) {
+  width: max(62%, 320px);
+}
+.pg-blob:nth-child(2)::before {
+  background: radial-gradient(closest-side, #d5ecfb 0%, rgb(213 236 251 / 0.58) 48%, rgb(213 236 251 / 0) 100%);
+  opacity: 0.9;
+  animation-name: pg-blob-b;
+  animation-duration: 17s;
+  animation-delay: -9s;
+}
+.pg-blob:nth-child(3) {
+  width: max(48%, 250px);
+}
+.pg-blob:nth-child(3)::before {
+  background: radial-gradient(closest-side, #ffffff 0%, rgb(255 255 255 / 0.72) 40%, rgb(255 255 255 / 0) 100%);
+  opacity: 0.9;
+  animation-name: pg-blob-c;
+  animation-duration: 9s;
+  animation-delay: -2s;
+}
+.pg-blob:nth-child(4) {
+  width: max(58%, 300px);
+}
+.pg-blob:nth-child(4)::before {
+  background: radial-gradient(closest-side, #cfe8fa 0%, rgb(207 232 250 / 0.56) 50%, rgb(207 232 250 / 0) 100%);
+  opacity: 0.85;
+  animation-name: pg-blob-d;
+  animation-duration: 21s;
+  animation-delay: -13s;
+}
+/* Yüzdeler lekenin kendi kutusuna göre; y hep x'ten dar, çünkü kutu enine
+   uzun. Dört ayrı yol, dört ayrı yön: hiçbiri diğeriyle aynı fazda değil. */
+@keyframes pg-blob-a {
+  from {
+    transform: translate(-22%, -18%) scale(0.9);
+  }
+  to {
+    transform: translate(24%, 16%) scale(1.15);
+  }
+}
+@keyframes pg-blob-b {
+  from {
+    transform: translate(26%, 12%) scale(1.1);
+  }
+  to {
+    transform: translate(-20%, -14%) scale(0.85);
+  }
+}
+@keyframes pg-blob-c {
+  from {
+    transform: translate(-10%, 20%) scale(0.8);
+  }
+  to {
+    transform: translate(14%, -22%) scale(1.05);
+  }
+}
+@keyframes pg-blob-d {
+  from {
+    transform: translate(18%, -10%) scale(1.2);
+  }
+  to {
+    transform: translate(-26%, 14%) scale(0.95);
+  }
+}
+/* Kâğıt dokusu: siyah, alfası gürültü olan bir döşeme; %5 opaklıkta yalnızca
+   gradyan basamaklarını kırar, doku olarak görünmez. En üstte durur ki
+   lekelerin üstünü örtsün — banding'i altta değil üstte kırmak gerekir. */
+.pg-glow::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  opacity: 0.05;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='128' height='128'%3E%3Cfilter id='n' x='0' y='0' width='100%25' height='100%25'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='1.1' numOctaves='2' stitchTiles='stitch' seed='7'/%3E%3CfeColorMatrix values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1 0 0 0 0'/%3E%3C/filter%3E%3Crect width='128' height='128' filter='url(%23n)'/%3E%3C/svg%3E");
+  background-size: 128px 128px;
+}
+/* Telefon: iki leke, yarı blur. GPU'ya kare başına düşen iş yarıdan az. */
+@media (max-width: 767.98px) {
+  .pg-glow {
+    --pg-blob-blur: 32px;
+  }
+  .pg-blob:nth-child(n + 3) {
+    display: none;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .pg-blob {
+    transition: none;
+    will-change: auto;
+  }
+  .pg-blob::before {
+    animation: none;
+    will-change: auto;
+  }
 }
 
 /* =========================================================================
@@ -2415,7 +2802,7 @@
      durmak zorunda. Playground'un yüzen panelleri (46) ve yan panel (45)
      ise sheet'in altında kalır. */
   z-index: 48;
-  background: rgb(20 31 60 / calc(0.38 * var(--scrim-p, 1)));
+  background: rgb(var(--pn-scrim-rgb, 20 31 60) / calc(0.38 * var(--scrim-p, 1)));
 }
 .pn-sheet-scrim[data-state="open"] {
   animation: pn-fade-in var(--pn-dur-sheet-out) var(--pn-ease) both;
@@ -2427,7 +2814,7 @@
   /* Masaüstünde perde daha hafif: çekmece bir kolon gibi durur, arkadaki
      sayfa karartılmış bir fotoğraf değil, hâlâ "orada" olan bir çalışma. */
   .pn-sheet-scrim {
-    background: rgb(20 31 60 / calc(0.22 * var(--scrim-p, 1)));
+    background: rgb(var(--pn-scrim-rgb, 20 31 60) / calc(0.22 * var(--scrim-p, 1)));
   }
 }
 

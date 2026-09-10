@@ -56,8 +56,8 @@ export function PlaygroundOreButton({ studentUserId }: { studentUserId: string }
             düğmeydi ve üçlü kümede tek başına havada duruyordu. */}
         <button
           type="button"
-          aria-label="Playground cevheri"
-          title="Playground cevheri"
+          aria-label="Atölye cevheri"
+          title="Atölye cevheri"
           className="grid size-9 shrink-0 place-items-center rounded-[10px] border border-[color:var(--pn-hair)] bg-surface-low text-on-surface-variant transition-colors duration-[.16s] hover:bg-[color:var(--pn-mint-tint)] hover:text-[color:var(--pn-mint-ink)] pointer-fine:size-7"
         >
           <Gem className="size-3.5" strokeWidth={1.9} aria-hidden />

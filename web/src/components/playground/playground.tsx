@@ -2,16 +2,18 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import Link from "next/link";
-import { Lock, Smile, Zap } from "lucide-react";
+import { Lock, Paperclip, Smile, Zap } from "lucide-react";
 import { whatsappHref } from "@/lib/site";
 import { WhatsappIcon } from "@/components/ui/brand-icons";
 import { CATEGORIES, FEATURED_TOOL, findTool, type PlaygroundTool } from "@/lib/playground/tools";
-import { changedCount, defaultParams, exceedsCap, generationCost, imageBudget, nonDefaultParams, sanitizeParams, type StudioParams } from "@/lib/playground/params";
+import { attachmentBudget, attachmentKindsFor, changedCount, defaultParams, exceedsCap, generationCost, nonDefaultParams, sanitizeParams, type StudioParams } from "@/lib/playground/params";
+import { IMAGE_REF, imageAttachment, inputRef, type Attachment } from "@/lib/playground/attachments";
 import { buildRows } from "@/lib/playground/transcript";
 import { readEventStream } from "@/lib/playground/event-stream";
 import { aspectRatiosFor, defaultAspectFor, type AspectRatio } from "@/lib/playground/aspect";
 import { buildExpressionRun, buildLadder, LESSON_EXPRESSIONS, type LessonStep } from "@/lib/playground/lesson-runs";
 import type { ChatSummary } from "@/lib/playground/chats";
+import { DARK_THEME_CLASS, DARK_THEME_KEY } from "@/lib/playground/theme";
 import { MediaViewer, guessExtension, saveFile, type ViewerItem } from "./media-viewer";
 import { ChatHistory } from "./chat-history";
 import { TopBar } from "./top-bar";
@@ -47,9 +49,11 @@ type Notice =
   | { kind: "soon"; tool: string }
   | { kind: "busy" }
   /** A lesson run needed a picture from this thread and couldn't read it back. */
-  | { kind: "reference" };
+  | { kind: "reference" }
+  /** A file the composer turned away, and why — wording from `fileToAttachment`. */
+  | { kind: "attach"; text: string };
 
-const NOTICE_MS: Record<Notice["kind"], number> = { soon: 2400, busy: 3400, reference: 3600 };
+const NOTICE_MS: Record<Notice["kind"], number> = { soon: 2400, busy: 3400, reference: 3600, attach: 4200 };
 
 const LESSON_EXPRESSION_COUNT = LESSON_EXPRESSIONS.length;
 
@@ -80,12 +84,13 @@ function canCompareWith(tool: PlaygroundTool): boolean {
  * from a normal attachment and rides the already-verified `input_references`
  * route.
  */
-async function imageUrlToAttachment(url: string): Promise<string | null> {
+async function imageUrlToAttachment(url: string): Promise<Attachment | null> {
   const blob = await fetch(url)
     .then((r) => (r.ok ? r.blob() : null))
     .catch(() => null);
   if (!blob || !blob.type.startsWith("image/")) return null;
-  return toAttachmentDataUrl(new File([blob], "referans", { type: blob.type }));
+  const data = await toAttachmentDataUrl(new File([blob], "referans", { type: blob.type }));
+  return data ? imageAttachment(data) : null;
 }
 
 /**
@@ -311,7 +316,7 @@ export function Playground({ initial }: { initial: PlaygroundInitial }) {
 
   const [messages, setMessages] = useState<Msg[]>([]);
   const [input, setInput] = useState("");
-  const [attachments, setAttachments] = useState<string[]>([]);
+  const [attachments, setAttachments] = useState<Attachment[]>([]);
   /** The replies still being generated, by message id. */
   const [pendingIds, setPendingIds] = useState<string[]>([]);
   const busy = pendingIds.length > 0;
@@ -351,6 +356,24 @@ export function Playground({ initial }: { initial: PlaygroundInitial }) {
   // in the composer, and the choice is remembered.
   const [historyOpen, setHistoryOpen] = usePersistedFlag("pg-history-open", () => false);
   const [toolsOpen, setToolsOpen] = usePersistedFlag("pg-tools-open", () => false);
+  /**
+   * The dark "Koyu" theme, an admin/teacher affordance. Gated on the role
+   * here and nowhere else: the bar only shows the switch when it is handed a
+   * handler, and a student on a shared browser never inherits a teacher's
+   * stored pick. The class sits on <html> (page.tsx puts it there before the
+   * first paint; this effect keeps it in step with the switch afterwards) and
+   * comes off on unmount, so the dashboard stays ice-blue whatever was chosen.
+   */
+  const [darkStored, setDarkStored] = usePersistedFlag(DARK_THEME_KEY, () => false);
+  const canTheme = initial.role !== "student";
+  const darkTheme = canTheme && darkStored;
+  useEffect(() => {
+    document.documentElement.classList.toggle(DARK_THEME_CLASS, darkTheme);
+    return () => {
+      document.documentElement.classList.remove(DARK_THEME_CLASS);
+    };
+  }, [darkTheme]);
+  const toggleTheme = useCallback(() => setDarkStored(!darkStored), [darkStored, setDarkStored]);
   /** Which output the gallery shows; null follows the newest. */
   const [stageIndex, setStageIndex] = useState<number | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -369,37 +392,40 @@ export function Playground({ initial }: { initial: PlaygroundInitial }) {
   const categoryId = category?.id ?? null;
   const isWeb = categoryId === "web";
 
-  // 0 means this model can't see images at all, which is what hides the
+  // 0 means this model takes no file of any kind, which is what hides the
   // attach button. The server enforces the same ceiling regardless.
-  const maxImages = imageBudget(activeTool, studioParams);
-  const memoryKind: "text" | "image" | null = activeTool.modality === "text" ? "text" : maxImages > 0 ? "image" : null;
+  const maxAttachments = attachmentBudget(activeTool, studioParams);
+  const attachmentKinds = useMemo(() => attachmentKindsFor(activeTool), [activeTool]);
+  const memoryKind: "text" | "image" | null = activeTool.modality === "text" ? "text" : maxAttachments > 0 ? "image" : null;
   // Mirrors the server's carry-forward rule: the most recent user turn's
-  // images are resent with the next message and billed again.
-  const carriedCount =
+  // attachments are resent with the next message and billed again.
+  const carriedRefs =
     memory && !compareTool && activeTool.modality === "text"
-      ? Math.min(
-          [...messages].reverse().find((m) => m.role === "user" && m.content.trim())?.attachments?.length ?? 0,
-          Math.max(0, maxImages - attachments.length),
-        )
-      : 0;
+      ? ([...messages].reverse().find((m) => m.role === "user" && m.content.trim())?.attachments ?? [])
+          .slice(0, Math.max(0, maxAttachments - attachments.length))
+          .map(inputRef)
+      : [];
   // The picture memory would carry into an image/video generation. The
   // conditions mirror the server exactly (see `remembered` in generate/route.ts).
-  const memoryImages =
+  const memoryRefs =
     memory && !compareTool && memoryKind === "image" && chatId !== null && attachments.length === 0 && messages.some((m) => m.role === "assistant" && !!m.imageUrl)
-      ? 1
-      : 0;
-  // Priced as composed right now — attachments, carried images, and both
+      ? [IMAGE_REF]
+      : [];
+  const stagedRefs = attachments.map(inputRef);
+  /** Everything that would reach the model on the next press, for the price. */
+  const inputRefs = [...stagedRefs, ...carriedRefs, ...memoryRefs];
+  // Priced as composed right now — attachments, carried files, and both
   // halves of a comparison — so the gate refuses a send the student can only
   // half afford.
   const pendingCost =
-    generationCost(activeTool, { imageCount: attachments.length + carriedCount + memoryImages, params: studioParams }) +
+    generationCost(activeTool, { inputs: inputRefs, params: studioParams }) +
     // The second side of a comparison runs on the same dials where the model
     // has them, and on its own defaults where it does not.
-    (compareTool ? generationCost(compareTool, { imageCount: attachments.length, params: sanitizeParams(compareTool, initial.role, studioParams) }) : 0);
+    (compareTool ? generationCost(compareTool, { inputs: stagedRefs, params: sanitizeParams(compareTool, initial.role, studioParams) }) : 0);
   // Too expensive to run at all — a dial combination past the per-generation
   // ceiling. Separate from the wallet gate: this one is not about how much a
   // student has, and topping them up would not fix it.
-  const overCap = exceedsCap(activeTool, { imageCount: attachments.length + carriedCount + memoryImages, params: studioParams });
+  const overCap = exceedsCap(activeTool, { inputs: inputRefs, params: studioParams });
   const gated = gateReason !== null || overCap || (!unlimited && remaining < pendingCost);
 
   /** The transcript, folded so a comparison's two replies draw as one row. */
@@ -617,8 +643,8 @@ export function Playground({ initial }: { initial: PlaygroundInitial }) {
   }: {
     tool: PlaygroundTool;
     prompt: string;
-    images: string[];
-    history: { role: string; content: string; images: string[] }[];
+    images: Attachment[];
+    history: { role: string; content: string; attachments: Attachment[] }[];
     useMemory: boolean;
     targetId: string;
     /** Held by the second side of a comparison until the first has been told the thread id. */
@@ -728,7 +754,7 @@ export function Playground({ initial }: { initial: PlaygroundInitial }) {
    * never from memory) and `forceSingle: true` (a six-step run must not
    * silently double because a toggle was left on).
    */
-  async function sendOne(text: string, sentImages: string[], memoryOverride?: boolean, forceSingle?: boolean): Promise<SendOutcome> {
+  async function sendOne(text: string, sentImages: Attachment[], memoryOverride?: boolean, forceSingle?: boolean): Promise<SendOutcome> {
     const q = text.trim();
     if (!q) return "error";
 
@@ -740,9 +766,9 @@ export function Playground({ initial }: { initial: PlaygroundInitial }) {
 
     const priorTurns =
       useMemory && activeTool.modality === "text" ? messages.filter((m) => m.kind !== "switch" && m.content.trim()).slice(-HISTORY_LIMIT) : [];
-    // Only the most recent user turn's images are replayed — that's all the server will use.
+    // Only the most recent user turn's attachments are replayed — that's all the server will use.
     const lastUserIndex = priorTurns.map((m) => m.role).lastIndexOf("user");
-    const history = priorTurns.map((m, i) => ({ role: m.role, content: m.content, images: i === lastUserIndex ? (m.attachments ?? []) : [] }));
+    const history = priorTurns.map((m, i) => ({ role: m.role, content: m.content, attachments: i === lastUserIndex ? (m.attachments ?? []) : [] }));
 
     const userId = newMsgId();
     const sideIds = sides.map(() => newMsgId());
@@ -820,7 +846,7 @@ export function Playground({ initial }: { initial: PlaygroundInitial }) {
    * first step opens the thread, the server caps concurrent generations, and
    * a class of twelve firing six parallel jobs each is a bill nobody planned.
    */
-  async function runLesson(label: string, steps: LessonStep[], reference?: string) {
+  async function runLesson(label: string, steps: LessonStep[], reference?: Attachment) {
     if (busy || gated || run || steps.length === 0) return;
     runCancelRef.current = false;
     setRun({ label, done: 0, total: steps.length, step: steps[0].label });
@@ -957,7 +983,7 @@ export function Playground({ initial }: { initial: PlaygroundInitial }) {
   }
 
   // ---- Stage actions ----------------------------------------------------
-  const canReference = activeTool.modality === "image" && maxImages > 0;
+  const canReference = activeTool.modality === "image" && maxAttachments > 0;
 
   async function regenerate(promptText: string) {
     if (busy || gated || run) return;
@@ -1000,7 +1026,7 @@ export function Playground({ initial }: { initial: PlaygroundInitial }) {
     .join(" · ");
 
   const memoryControl: MemoryControl | null = memoryKind
-    ? { on: memory, kind: memoryKind, carrying: memoryImages > 0, onToggle: () => setMemory(!memory) }
+    ? { on: memory, kind: memoryKind, carrying: memoryRefs.length > 0, onToggle: () => setMemory(!memory) }
     : null;
   const aspectControl = aspectOptions.length > 0 ? { options: aspectOptions, value: aspectRatio, onChange: setAspectRatio } : null;
   const studioControl = {
@@ -1010,7 +1036,7 @@ export function Playground({ initial }: { initial: PlaygroundInitial }) {
     changed: studioChanged,
     // Priced for one side only: the comparison surcharge belongs on the
     // composer's own line, next to the button that would spend it.
-    costLine: studioSummary(activeTool, studioParams, generationCost(activeTool, { imageCount: attachments.length + carriedCount + memoryImages, params: studioParams })),
+    costLine: studioSummary(activeTool, studioParams, generationCost(activeTool, { inputs: inputRefs, params: studioParams })),
     atCeiling: overCap,
   };
   const compareControl = {
@@ -1038,6 +1064,8 @@ export function Playground({ initial }: { initial: PlaygroundInitial }) {
         canNewChat={!locked}
         onNewChat={newChat}
         onToggleHistory={toggleHistory}
+        darkTheme={darkTheme}
+        onToggleTheme={canTheme ? toggleTheme : undefined}
       />
 
       <div className="pg-body" data-history={historyOpen} data-tools={toolsOpen}>
@@ -1091,7 +1119,9 @@ export function Playground({ initial }: { initial: PlaygroundInitial }) {
           }
           attachments={attachments}
           setAttachments={setAttachments}
-          maxImages={maxImages}
+          maxAttachments={maxAttachments}
+          kinds={attachmentKinds}
+          onReject={(text) => setNotice({ kind: "attach", text })}
           firstFrameMode={activeTool.modality === "video"}
           run={run}
           onCancelRun={() => {
@@ -1198,6 +1228,11 @@ export function Playground({ initial }: { initial: PlaygroundInitial }) {
               <>
                 <Zap className="size-3.5 shrink-0 text-[color:var(--pn-peach-ink)]" />
                 <span>Aynı anda çok fazla üretim var — biri bitsin, sonra tekrar dene.</span>
+              </>
+            ) : notice.kind === "attach" ? (
+              <>
+                <Paperclip className="size-3.5 shrink-0 text-[color:var(--pn-peach-ink)]" />
+                <span>{notice.text}</span>
               </>
             ) : (
               <>

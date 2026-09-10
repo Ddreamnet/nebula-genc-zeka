@@ -87,7 +87,7 @@ function TreasuryBody() {
   }
 
   if (loading && !data) {
-    return <p className="py-2 text-sm text-on-surface-variant">Playground kasası yükleniyor...</p>;
+    return <p className="py-2 text-sm text-on-surface-variant">Atölye kasası yükleniyor...</p>;
   }
 
   if (error || !data) {
@@ -149,7 +149,7 @@ function TreasuryBody() {
           wallet: the "Karşılığı" figure above is also the balance the admin
           sees inside the Playground. */}
       <p className="text-micro leading-relaxed text-on-surface-variant/70">
-        Senin Playground bakiyen bu kasanın kendisi: <strong className="font-medium text-on-surface">{ore(data.remainingOre)} cevher</strong>.
+        Senin Atölye bakiyen bu kasanın kendisi: <strong className="font-medium text-on-surface">{ore(data.remainingOre)} cevher</strong>.
         Öğrencilerin cüzdanı ayrı, seninki değil.
       </p>
 
@@ -211,7 +211,7 @@ export function PlaygroundTreasuryButton({
         </SheetTrigger>
       )}
       <SheetContent size="lg" onDismiss={() => setOpen(false)}>
-        <SheetHeader tone="violet" title="Playground kasası" subtitle="OpenRouter bakiyesi ve cevher dağıtımı" icon={<Gem className="size-5 shrink-0 text-[color:var(--pn-violet-ink)]" strokeWidth={1.9} aria-hidden />} />
+        <SheetHeader tone="violet" title="Atölye kasası" subtitle="OpenRouter bakiyesi ve cevher dağıtımı" icon={<Gem className="size-5 shrink-0 text-[color:var(--pn-violet-ink)]" strokeWidth={1.9} aria-hidden />} />
         <SheetBody>
           <TreasuryBody />
         </SheetBody>

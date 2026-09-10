@@ -4,6 +4,7 @@
  * into one component per region is what moved them here.
  */
 import type { StudioParams } from "@/lib/playground/params";
+import type { Attachment } from "@/lib/playground/attachments";
 
 export type Msg = {
   /**
@@ -19,8 +20,8 @@ export type Msg = {
   id?: string;
   role: "user" | "assistant";
   content: string;
-  /** Images the student attached to their own message, as data URLs. */
-  attachments?: string[];
+  /** What the student attached to their own message — pictures, files, sound, clips. Held in this tab only. */
+  attachments?: Attachment[];
   imageUrl?: string;
   videoUrl?: string;
   videoPending?: boolean;

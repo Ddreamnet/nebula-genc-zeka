@@ -7,6 +7,7 @@ import { cn } from "@/lib/cn";
 import { findTool, type PlaygroundTool } from "@/lib/playground/tools";
 import { cutOutBackground } from "@/lib/playground/cutout";
 import { ProviderBadge } from "./provider-logos";
+import { AttachmentChip } from "./attachment-chip";
 import type { ViewerItem } from "./media-viewer";
 import type { Msg } from "./types";
 
@@ -263,11 +264,15 @@ export function Bubble({
       <div className={cn("group relative min-w-0", column ? "w-full" : "max-w-[85%]", !isUser && !column && "flex-1 sm:w-auto sm:max-w-[85%] sm:flex-none")}>
         {msg.attachments && msg.attachments.length > 0 && (
           <div className="mb-1.5 flex flex-wrap justify-end gap-1.5">
-            {msg.attachments.map((src, i) => (
-              // A data: URL held in this tab, never a routable asset the optimizer could fetch.
-              // eslint-disable-next-line @next/next/no-img-element
-              <img key={i} src={src} alt="" className="size-24 rounded-[12px] border border-[color:var(--pn-hair-strong)] object-cover" />
-            ))}
+            {msg.attachments.map((a, i) =>
+              a.kind === "image" ? (
+                // A data: URL held in this tab, never a routable asset the optimizer could fetch.
+                // eslint-disable-next-line @next/next/no-img-element
+                <img key={i} src={a.data} alt="" className="size-24 rounded-[12px] border border-[color:var(--pn-hair-strong)] object-cover" />
+              ) : (
+                <AttachmentChip key={i} attachment={a} />
+              ),
+            )}
           </div>
         )}
         {msg.reasoning && <ReasoningPanel text={msg.reasoning} live={busy && !msg.content} />}

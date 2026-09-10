@@ -3,7 +3,8 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useState } from "react";
-import { History, LayoutGrid, LogOut, Menu, Plus, Gem } from "lucide-react";
+import { History, LayoutGrid, LogOut, Menu, Moon, Plus, Gem } from "lucide-react";
+import { cn } from "@/lib/cn";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/panel-ui/popover";
 import { createClient } from "@/lib/supabase/client";
 import type { PlaygroundTool } from "@/lib/playground/tools";
@@ -49,6 +50,8 @@ export function TopBar({
   canNewChat,
   onNewChat,
   onToggleHistory,
+  darkTheme,
+  onToggleTheme,
 }: {
   title: string;
   subline: string;
@@ -64,6 +67,10 @@ export function TopBar({
   canNewChat: boolean;
   onNewChat: () => void;
   onToggleHistory: () => void;
+  /** The dark "Koyu" theme is on. */
+  darkTheme: boolean;
+  /** Absent for a student: the switch is not drawn at all. */
+  onToggleTheme?: () => void;
 }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [signingOut, setSigningOut] = useState(false);
@@ -161,6 +168,43 @@ export function TopBar({
                 {unlimited ? "∞" : formatOre(remaining)}
               </span>
             </div>
+
+            {/* Theme. A real switch rather than a button so the state reads
+                without pressing; peach when on, because the dark theme's one
+                accent is terracotta and this is its first appearance. Only an
+                admin or teacher is handed the handler, so only they see it. */}
+            {onToggleTheme && (
+              <button
+                type="button"
+                role="switch"
+                aria-checked={darkTheme}
+                onClick={onToggleTheme}
+                className={cn(
+                  "flex w-full items-center gap-2 rounded-[10px] border px-2.5 py-2 text-left transition-colors duration-[.16s]",
+                  darkTheme
+                    ? "border-[color:var(--pn-peach-line)] bg-[color:var(--pn-peach-tint)]"
+                    : "border-[color:var(--pn-hair)] bg-surface-container hover:bg-surface-low",
+                )}
+              >
+                <Moon
+                  className={cn("size-4 shrink-0", darkTheme ? "text-[color:var(--pn-peach-ink-strong)]" : "text-on-surface-variant")}
+                  strokeWidth={1.9}
+                  aria-hidden
+                />
+                <span className={cn("flex-1 text-[12px] font-semibold", darkTheme ? "text-[color:var(--pn-peach-ink-strong)]" : "text-on-surface")}>
+                  Koyu tema
+                </span>
+                <span
+                  aria-hidden
+                  className={cn(
+                    "inline-flex h-5 w-9 shrink-0 items-center rounded-full border p-[2px] transition-colors duration-[.16s]",
+                    darkTheme ? "border-[color:var(--pn-peach-ink)] bg-[color:var(--pn-peach-ink)]" : "border-[color:var(--pn-hair-strong)] bg-surface-low",
+                  )}
+                >
+                  <span className={cn("size-3.5 rounded-full bg-white shadow-sm transition-transform duration-200 ease-out", darkTheme ? "translate-x-4" : "translate-x-0")} />
+                </span>
+              </button>
+            )}
 
             <button
               type="button"

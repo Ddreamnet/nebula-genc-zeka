@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import dynamic from "next/dynamic";
-import { BookOpen, Calendar, Gamepad2, Gem, Newspaper, Plus, Users, Wallet } from "lucide-react";
+import { BookOpen, Calendar, Gem, Hammer, Newspaper, Plus, Users, Wallet } from "lucide-react";
 import { toast } from "sonner";
 import { createClient } from "@/lib/supabase/client";
 import { useAuth } from "@/contexts/auth-context";
@@ -302,9 +302,9 @@ export function AdminDashboard() {
       active: drawer === "balance",
       onClick: () => setDrawer(drawer === "balance" ? null : "balance"),
     },
-    { key: "playground", label: "Playground", icon: Gamepad2, tone: "violet", href: "/playground" },
+    { key: "playground", label: "Üretim Atölyesi", icon: Hammer, tone: "violet", href: "/playground" },
     { key: "topics", label: "Konu kütüphanesi", icon: BookOpen, tone: "blue", onClick: () => setShowGlobalTopics(true) },
-    { key: "treasury", label: "Playground kasası", icon: Gem, tone: "mint", onClick: () => setShowTreasury(true) },
+    { key: "treasury", label: "Atölye kasası", icon: Gem, tone: "mint", onClick: () => setShowTreasury(true) },
     { key: "blog", label: "Blog yönetimi", icon: Newspaper, tone: "pink", onClick: () => setShowBlogManager(true) },
   ];
 

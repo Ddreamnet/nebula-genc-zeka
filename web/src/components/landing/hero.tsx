@@ -22,11 +22,12 @@ export function Hero() {
     <section
       id="top"
       data-navtheme="light"
-      className="nb-scale"
+      className="nb-scale nb-hero-section"
       style={
         {
           position: "relative",
-          overflow: "hidden",
+          // overflow lives in .nb-hero-section: it has to be `clip`, not
+          // `hidden`, or the sticky scroll cue below never reaches the viewport.
           background: "#FFFBF2",
           color: "var(--ink)",
           // The hero is drawn 20% down from the handoff's own scale, the rest
@@ -96,7 +97,14 @@ export function Hero() {
             />
           </h1>
 
+          {/* Paragraph + scroll cue. On a desktop this block is sticky to the
+              bottom of the viewport (see .nb-hero-foot): the frame is taller
+              than most laptop screens, so its natural spot was below the fold
+              — and a "scroll down" cue nobody can see without scrolling first
+              is not a cue. Sticky, not fixed: it rides at the screen's bottom
+              edge only while the hero is in view, then goes with the hero. */}
           <div
+            className="nb-hero-foot"
             style={{
               display: "flex",
               flexDirection: "column",

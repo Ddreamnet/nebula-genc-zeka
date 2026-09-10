@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Calendar, Gamepad2, Users, Wallet } from "lucide-react";
+import { Calendar, Hammer, Users, Wallet } from "lucide-react";
 import { toast } from "sonner";
 import { createClient } from "@/lib/supabase/client";
 import { useAuth } from "@/contexts/auth-context";
@@ -197,7 +197,7 @@ export function TeacherDashboard({ userId }: { userId: string }) {
       active: drawer === "balance",
       onClick: () => setDrawer(drawer === "balance" ? null : "balance"),
     },
-    { key: "playground", label: "Playground", icon: Gamepad2, tone: "violet", href: "/playground" },
+    { key: "playground", label: "Üretim Atölyesi", icon: Hammer, tone: "violet", href: "/playground" },
   ];
 
   if (loading) {

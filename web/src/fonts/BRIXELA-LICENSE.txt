@@ -1,0 +1,25 @@
+Brixela — Say Studio (sayfont.com)
+Source: Brixela DEMO (fontspace.com/brixela-font-f159146), license: Demo
+
+brixela-nebula.woff2 is derived from BrixelaDemoRegular.ttf with
+scripts/build-brixela.py: it adds ü Ü ö Ö ı İ ? ! (built from the demo's
+own glyphs) so "Merhaba, ne üretiyoruz?" renders in one face. Nothing else
+is changed. The Italic was not taken.
+
+The vendor's demo terms, verbatim:
+
+  This demo font is free for PERSONAL USE, but any donation are very appreciated
+
+  Here is the link to purchase commercial license and special characters:
+  https://sayfont.com/product/brixela-font/
+  or
+  https://saystudio.gumroad.com/l/brixela
+
+  For Corporate use you have to purchase Corporate license
+
+  If you need a custom license please contact us at
+  sayfont.com@gmail.com
+
+Nebula Genç Zeka is a commercial product. Before this ships to production,
+buy the commercial (or corporate) license from the link above and, ideally,
+replace this file with the full retail font, which has the real Turkish set.

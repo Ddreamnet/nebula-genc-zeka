@@ -26,13 +26,13 @@ export default function GizlilikPage() {
       <ul>
         <li>Instagram/WhatsApp üzerinden bizimle iletişime geçtiğinizde paylaştığınız ad, e-posta ve telefon bilgileri</li>
         <li>Öğrenci paneli hesabı oluşturulurken kaydedilen e-posta, ders ve ilerleme bilgileri</li>
-        <li>Playground (yapay zeka deneme alanı) üzerindeki kullanımınıza ait kredi ve üretim kayıtları</li>
+        <li>Üretim Atölyesi (yapay zeka deneme alanı) üzerindeki kullanımınıza ait kredi ve üretim kayıtları</li>
         <li>Cihaz, tarayıcı ve IP adresi gibi teknik bilgiler</li>
       </ul>
 
       <h2>3. Bilgilerin Kullanımı</h2>
       <p>
-        Bu bilgileri; eğitim hizmetimizi sunmak, sizinle iletişim kurmak, öğrenci panelinin ve Playground&apos;ın
+        Bu bilgileri; eğitim hizmetimizi sunmak, sizinle iletişim kurmak, öğrenci panelinin ve Üretim Atölyesi&apos;nin
         güvenli çalışmasını sağlamak, hizmetimizi geliştirmek ve yasal yükümlülüklerimizi yerine getirmek için
         kullanırız. Bilgileriniz hiçbir şekilde satılmaz veya pazarlama amacıyla üçüncü taraflarla paylaşılmaz.
       </p>
@@ -46,7 +46,7 @@ export default function GizlilikPage() {
         Ayrıca sitenin nasıl kullanıldığını anlamak ve reklam performansını ölçmek için{" "}
         <strong>ölçümleme ve pazarlama çerezleri</strong> kullanıyoruz: Google Analytics (ziyaret istatistikleri) ve
         Meta Pixel (Instagram/Facebook reklamlarının ölçümü). Bu çerezler ziyaretinize dair istatistiksel bilgi ve
-        cihaz/tarayıcı bilgisi toplar; öğrenci panelindeki ders, ödev veya Playground içeriğinize erişmez.
+        cihaz/tarayıcı bilgisi toplar; öğrenci panelindeki ders, ödev veya Üretim Atölyesi içeriğinize erişmez.
       </p>
       <p>
         Tarayıcınızın ayarlarından çerezleri silebilir veya engelleyebilirsiniz; zorunlu çerezleri engellemeniz
@@ -56,7 +56,7 @@ export default function GizlilikPage() {
       <h2>5. Üçüncü Taraf Hizmetler ve Yurt Dışına Aktarım</h2>
       <p>
         Altyapımız için GoDaddy (barındırma) ve Supabase (veritabanı, kimlik doğrulama ve dosya depolama)
-        hizmetlerini; Playground&apos;da seçtiğiniz modele göre OpenRouter üzerinden ilgili yapay zeka sağlayıcısını
+        hizmetlerini; Üretim Atölyesi&apos;nde seçtiğiniz modele göre OpenRouter üzerinden ilgili yapay zeka sağlayıcısını
         kullanıyoruz. Bu sağlayıcılar yalnızca hizmeti çalıştırmak için gerekli veriye, gerektiği kadar erişebilir.
       </p>
       <p>

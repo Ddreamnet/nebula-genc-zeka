@@ -26,7 +26,7 @@ export default function KvkkPage() {
         <li><strong>Kimlik ve iletişim bilgileri:</strong> veli/öğrenci ad-soyad, e-posta, telefon numarası</li>
         <li><strong>Öğrenciye ilişkin bilgiler:</strong> yaş, ders programı, ödev ve ilerleme kayıtları</li>
         <li><strong>Hesap bilgileri:</strong> öğrenci paneli e-posta/şifre bilgisi ve oturum kayıtları</li>
-        <li><strong>Playground kullanım verileri:</strong> deneme alanında yapılan üretimler ve harcanan kredi (&quot;cevher&quot;) miktarı</li>
+        <li><strong>Üretim Atölyesi kullanım verileri:</strong> atölyede yapılan üretimler ve harcanan kredi (&quot;cevher&quot;) miktarı</li>
         <li><strong>Teknik veriler:</strong> IP adresi, cihaz/tarayıcı bilgisi ve zorunlu çerezler</li>
       </ul>
 
@@ -35,7 +35,7 @@ export default function KvkkPage() {
         <li>Eğitim hizmetinin planlanması, yürütülmesi ve ders/ödev takibinin yapılması</li>
         <li>Veli ve öğrenci ile iletişim kurulması</li>
         <li>Öğrenci paneli hesabının oluşturulması ve güvenliğinin sağlanması</li>
-        <li>Playground&apos;daki yapay zeka araçlarının çalıştırılması ve kötüye kullanımın önlenmesi</li>
+        <li>Üretim Atölyesi&apos;ndeki yapay zeka araçlarının çalıştırılması ve kötüye kullanımın önlenmesi</li>
         <li>Yasal yükümlülüklerin yerine getirilmesi</li>
       </ul>
 
@@ -56,13 +56,13 @@ export default function KvkkPage() {
         <li><strong>GoDaddy:</strong> web sitesi ve öğrenci paneli barındırma</li>
         <li><strong>Supabase:</strong> veritabanı, kimlik doğrulama ve dosya depolama</li>
         <li>
-          <strong>OpenRouter ve seçtiğiniz yapay zeka modelinin sağlayıcısı:</strong> yalnızca Playground&apos;da bir
+          <strong>OpenRouter ve seçtiğiniz yapay zeka modelinin sağlayıcısı:</strong> yalnızca Üretim Atölyesi&apos;nde bir
           üretim talebinde bulunduğunuzda, o talebin içeriğiyle sınırlı olarak
         </li>
       </ul>
       <p>
         Bu aktarımlar KVKK m.9 kapsamında, sözleşmenin ifası için zorunlu olması ve gerektiğinde açık rızanız hukuki
-        sebeplerine dayanılarak yapılır. Playground&apos;a hiçbir zaman kimlik bilgisi, iletişim bilgisi veya kişisel
+        sebeplerine dayanılarak yapılır. Üretim Atölyesi&apos;ne hiçbir zaman kimlik bilgisi, iletişim bilgisi veya kişisel
         veri içeren bir metin girilmemesini öneririz.
       </p>
 

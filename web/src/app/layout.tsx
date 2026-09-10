@@ -131,6 +131,11 @@ export default function RootLayout({
       // "Scroll Behavior Override".
       data-scroll-behavior="smooth"
       className={`${plexMono.variable} h-full antialiased`}
+      // The Playground's theme boot script (app/playground/page.tsx) adds a
+      // class to <html> before hydration. React keeps it — attributes are
+      // never patched on hydrate — but would log a className mismatch in
+      // dev. This silences that one element's attribute check, nothing more.
+      suppressHydrationWarning
     >
       <body className="relative min-h-full flex flex-col">
         {children}

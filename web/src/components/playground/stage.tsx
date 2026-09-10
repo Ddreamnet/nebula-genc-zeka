@@ -37,8 +37,9 @@ export interface StageActions {
  * audio model gets a gallery — one output at a time, large, with arrows to
  * walk back through the thread and a floating action bar under it — because
  * there the product is the thing, not the exchange. An empty thread shows
- * NOTHING: a studio opens on an empty canvas, and a page of suggestion chips
- * and a headline is a brochure, not a workspace.
+ * one line — "Merhaba, ne üretiyoruz?" — and nothing else: a studio opens on
+ * an empty canvas, and a page of suggestion chips is a brochure, not a
+ * workspace.
  *
  * There is no card around any of this. The stage used to be a cream panel
  * sitting on the blue ground — a box inside a room — and every output was
@@ -86,9 +87,13 @@ export function Stage({
   return (
     <section className="pg-stage" aria-label="Sahne">
       {mode === "empty" ? (
-        // Deliberately empty. The composer below already names the model and
-        // holds the cursor; anything drawn here would only be in the way.
-        <div className="flex-1" />
+        // The greeting, centred in the space the work will fill. It is the
+        // only thing here on purpose: the composer below already names the
+        // model and holds the cursor. Set in Brixela, which only this route's
+        // layout loads (app/playground/layout.tsx).
+        <div className="pg-greeting">
+          <p>Merhaba, ne üretiyoruz?</p>
+        </div>
       ) : mode === "transcript" ? (
         <div ref={scrollRef} onScroll={(e) => onScroll(e.currentTarget)} className="pg-scroll min-h-0 flex-1">
           <div className="pg-center space-y-6 px-1 pb-2 pt-4 sm:px-4">

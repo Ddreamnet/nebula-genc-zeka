@@ -4,6 +4,9 @@ import { useEffect, useRef, useState, type ReactNode, type RefObject } from "rea
 import { GraduationCap, Paperclip, SendHorizontal, SlidersHorizontal, Square, X } from "lucide-react";
 import { cn } from "@/lib/cn";
 import type { ASPECT_RATIOS } from "@/lib/playground/aspect";
+import { useGlowDrift } from "@/lib/playground/use-glow-drift";
+import { acceptFor, ATTACHMENT_LIMITS, classifyFile, dataUrlBytes, formatSize, KIND_LABEL, kindList, type Attachment, type AttachmentKind } from "@/lib/playground/attachments";
+import { AttachmentChip } from "./attachment-chip";
 import type { RunState } from "./types";
 
 // Attached images are downscaled here, in the browser, before they ever hit
@@ -38,6 +41,68 @@ export async function toAttachmentDataUrl(file: File): Promise<string | null> {
   } finally {
     bitmap.close();
   }
+}
+
+/** Office files can be large for the text they hold (embedded pictures); past this we don't even unpack. */
+const MAX_OFFICE_BYTES = 25 * 1024 * 1024;
+
+type FileResult = { attachment: Attachment } | { error: string };
+
+/** A file as a data URL carrying OUR mime, not the browser's — the server whitelists the canonical one. */
+function readDataUrl(file: File, mime: string): Promise<string> {
+  const blob = new Blob([file], { type: mime });
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result));
+    reader.onerror = () => reject(reader.error);
+    reader.readAsDataURL(blob);
+  });
+}
+
+/**
+ * One picked/pasted/dropped file → an attachment, or one sentence saying why
+ * not. The sentence is for the student, so it names the file, says what
+ * would have worked, and never mentions a MIME type.
+ *
+ * Pictures take the downscale path above. PDFs, sound and video are read as
+ * they are (the server re-checks size and magic). Text files are read as
+ * text; Word, Excel and PowerPoint are unpacked to text right here in the
+ * browser (`office-text.ts`, loaded on first use) — the model gets words,
+ * not a binary it may not know how to open.
+ */
+export async function fileToAttachment(file: File, kinds: readonly AttachmentKind[]): Promise<FileResult> {
+  const name = file.name || "dosya";
+  const cls = classifyFile(file.name, file.type);
+  if (!cls) return { error: `"${name}" desteklenmiyor — ${kindList(kinds)} ekleyebilirsin.` };
+  if (!kinds.includes(cls.kind)) return { error: `Bu model ${KIND_LABEL[cls.kind]} okuyamıyor — ${kindList(kinds)} ekleyebilirsin.` };
+  const limit = ATTACHMENT_LIMITS[cls.kind];
+  const tooBig = `"${name}" çok büyük — ${KIND_LABEL[cls.kind]} en fazla ${formatSize({ kind: cls.kind, size: limit })} olabilir.`;
+
+  if (cls.kind === "image") {
+    const data = await toAttachmentDataUrl(file);
+    if (!data) return { error: `"${name}" açılamadı — PNG, JPG ya da WebP dener misin?` };
+    return { attachment: { kind: "image", name: file.name, mime: "image/jpeg", data, size: dataUrlBytes(data) } };
+  }
+
+  if (cls.kind === "text") {
+    if (file.size > (cls.office ? MAX_OFFICE_BYTES : limit * 2)) return { error: tooBig };
+    let text: string;
+    try {
+      text = cls.office ? await (await import("@/lib/playground/office-text")).officeText(await file.arrayBuffer(), cls.office) : await file.text();
+    } catch {
+      return { error: `"${name}" açılamadı — dosya bozuk olabilir.` };
+    }
+    // A NUL byte is the cheapest tell that a "text" file is really a binary.
+    if (!cls.office && text.includes("\u0000")) return { error: `"${name}" okunabilir bir metin değil.` };
+    text = text.replace(/\r\n?/g, "\n").trim();
+    if (!text) return { error: `"${name}" boş görünüyor.` };
+    if (text.length > limit) return { error: tooBig };
+    return { attachment: { kind: "text", name: file.name, mime: "text/plain", data: text, size: text.length } };
+  }
+
+  if (file.size > limit) return { error: tooBig };
+  const data = await readDataUrl(file, cls.mime);
+  return { attachment: { kind: cls.kind, name: file.name, mime: cls.mime, data, size: file.size } };
 }
 
 export type AspectOption = (typeof ASPECT_RATIOS)[number];
@@ -88,7 +153,9 @@ export function Composer({
   gatedHint,
   attachments,
   setAttachments,
-  maxImages,
+  maxAttachments,
+  kinds,
+  onReject,
   firstFrameMode,
   run,
   onCancelRun,
@@ -111,9 +178,14 @@ export function Composer({
   gated: boolean;
   /** Why, in one sentence — the two reasons need different answers from a student. */
   gatedHint: string | null;
-  attachments: string[];
-  setAttachments: (updater: (prev: string[]) => string[]) => void;
-  maxImages: number;
+  attachments: Attachment[];
+  setAttachments: (updater: (prev: Attachment[]) => Attachment[]) => void;
+  /** How many files may ride along with one message; 0 hides the button. */
+  maxAttachments: number;
+  /** Which kinds this model takes — decides the picker's filter and the wording. */
+  kinds: readonly AttachmentKind[];
+  /** A file was turned away; one sentence saying why, for the toast. */
+  onReject: (text: string) => void;
   /** Video tools: the attached picture is the clip's first frame, not context. */
   firstFrameMode: boolean;
   /** A lesson run in flight — takes the composer over while it walks. */
@@ -130,10 +202,16 @@ export function Composer({
   quick: ReactNode;
 }) {
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const glowRef = useRef<HTMLSpanElement>(null);
+  useGlowDrift(glowRef);
   const [dragging, setDragging] = useState(false);
-  const canAttach = maxImages > 0;
-  const full = attachments.length >= maxImages;
+  const canAttach = maxAttachments > 0 && kinds.length > 0;
+  const full = attachments.length >= maxAttachments;
   const locked = busy || !!run;
+  // Image and video tools take pictures and nothing else, and their button
+  // says "görsel"; a text model's says "dosya" and lists what it reads.
+  const imageOnly = kinds.length === 1 && kinds[0] === "image";
+  const noun = imageOnly ? "görsel" : "dosya";
 
   // Grow the box with the text instead of scrolling a one-line slot. Height
   // has to go back to `auto` first, otherwise scrollHeight can only ever
@@ -146,13 +224,25 @@ export function Composer({
     el.style.height = `${Math.min(el.scrollHeight, 176)}px`;
   }, [input, attachments.length, textareaRef]);
 
-  /** Shared by the file picker, paste and drop — all three end up here. */
+  /**
+   * Shared by the file picker, paste and drop — all three end up here. Good
+   * files are staged; the first bad one is explained in the toast, and so is
+   * a drop of more files than there is room for.
+   */
   async function addFiles(files: FileList | File[]) {
-    const room = maxImages - attachments.length;
-    if (room <= 0) return;
-    const encoded = await Promise.all(Array.from(files).slice(0, room).map(toAttachmentDataUrl));
-    const usable = encoded.filter((v): v is string => v !== null);
-    if (usable.length > 0) setAttachments((prev) => [...prev, ...usable].slice(0, maxImages));
+    const list = Array.from(files);
+    if (list.length === 0) return;
+    const room = maxAttachments - attachments.length;
+    const overflow = `En fazla ${maxAttachments} ${noun} ekleyebilirsin.`;
+    if (room <= 0) {
+      onReject(overflow);
+      return;
+    }
+    const results = await Promise.all(list.slice(0, room).map((f) => fileToAttachment(f, kinds)));
+    const usable = results.flatMap((r) => ("attachment" in r ? [r.attachment] : []));
+    if (usable.length > 0) setAttachments((prev) => [...prev, ...usable].slice(0, maxAttachments));
+    const problem = results.find((r): r is { error: string } => "error" in r)?.error ?? (list.length > room ? overflow : null);
+    if (problem) onReject(problem);
   }
 
   // What this press will cost, and nothing else. The old line also explained
@@ -219,14 +309,51 @@ export function Composer({
           setDragging(false);
           void addFiles(e.dataTransfer.files);
         }}
+        onClick={(e) => {
+          // The whole box is the prompt. The textarea itself is only two
+          // lines tall; the padding around it, the empty run of the button
+          // row and the attachment strip are all "the text box" to a
+          // student, so a click anywhere that isn't a control lands the
+          // caret at the end of what's typed. Controls keep their own
+          // clicks, and a drag that selected text is left alone.
+          const target = e.target as HTMLElement;
+          if (target.closest("button, a, input, textarea, select, label, [role='button']")) return;
+          if (window.getSelection()?.toString()) return;
+          const el = textareaRef.current;
+          if (!el || el.disabled) return;
+          el.focus();
+          const end = el.value.length;
+          el.setSelectionRange(end, end);
+        }}
+        data-dragging={dragging || undefined}
         className={cn(
-          "pg-center rounded-[16px] border border-[color:var(--pn-hair-strong)] bg-surface-container shadow-[var(--pn-shadow-float)] transition-[background-color,border-color] duration-[.16s]",
+          "pg-composer pg-center cursor-text rounded-[16px] border border-[color:var(--pn-hair-strong)] bg-surface-container shadow-[var(--pn-shadow-float)] transition-[background-color,border-color] duration-[.16s]",
           dragging && "border-[color:var(--pn-blue-ink)] bg-[color:var(--pn-blue-sel)]",
         )}
       >
+        {/* The light under the words — `.pg-glow` in globals.css. Decorative,
+            paints beneath everything in the box, and only exists in the ice
+            theme (the dark theme hides it outright). Four blobs: CSS breathes
+            them, `useGlowDrift` hands each a new random target every few
+            seconds so the pattern never repeats. */}
+        <span ref={glowRef} className="pg-glow" aria-hidden>
+          <span className="pg-blob" />
+          <span className="pg-blob" />
+          <span className="pg-blob" />
+          <span className="pg-blob" />
+        </span>
         {attachments.length > 0 && (
           <div className="flex flex-wrap items-center gap-2 px-4 pt-3">
-            {attachments.map((src, i) => {
+            {attachments.map((a, i) => {
+              // A file is a chip: its name, what it is, how big. A picture is
+              // the picture.
+              if (a.kind !== "image") {
+                return (
+                  <div key={i} className="animate-in fade-in-0 zoom-in-95">
+                    <AttachmentChip attachment={a} onRemove={() => setAttachments((prev) => prev.filter((_, idx) => idx !== i))} />
+                  </div>
+                );
+              }
               // On a video model each slot has a job, and which job it is
               // depends on position: the first picture opens the clip, the
               // second (only when the end-frame dial is on) closes it.
@@ -234,7 +361,7 @@ export function Composer({
               return (
                 <div key={i} className="group/thumb relative animate-in fade-in-0 zoom-in-95">
                   {/* eslint-disable-next-line @next/next/no-img-element -- client-side data URL, never a remote asset */}
-                  <img src={src} alt="" className="size-16 rounded-[10px] border border-[color:var(--pn-hair-strong)] object-cover" />
+                  <img src={a.data} alt="" className="size-16 rounded-[10px] border border-[color:var(--pn-hair-strong)] object-cover" />
                   {frame && (
                     <span className="absolute inset-x-0 bottom-0 rounded-b-[10px] bg-[color:var(--pn-navy)]/85 py-0.5 text-center text-[9px] font-semibold text-[color:var(--pn-on-navy)]">
                       {frame}
@@ -253,7 +380,7 @@ export function Composer({
             })}
             {firstFrameMode && (
               <p className="text-[11px] text-on-surface-variant">
-                {maxImages > 1 ? "Video ilk kareden başlar, son karede biter." : "Video bu kareden başlar."}
+                {maxAttachments > 1 ? "Video ilk kareden başlar, son karede biter." : "Video bu kareden başlar."}
               </p>
             )}
           </div>
@@ -266,9 +393,9 @@ export function Composer({
           onChange={(e) => setInput(e.target.value)}
           onPaste={(e) => {
             if (!canAttach) return;
-            const files = Array.from(e.clipboardData.files).filter((f) => f.type.startsWith("image/"));
+            const files = Array.from(e.clipboardData.files);
             if (files.length === 0) return;
-            // Only swallow the paste when it really carried an image —
+            // Only swallow the paste when it really carried a file —
             // otherwise a normal text paste would be eaten.
             e.preventDefault();
             void addFiles(files);
@@ -315,8 +442,8 @@ export function Composer({
               <input
                 ref={fileInputRef}
                 type="file"
-                accept="image/png,image/jpeg,image/webp"
-                multiple={maxImages > 1}
+                accept={acceptFor(kinds)}
+                multiple={maxAttachments > 1}
                 className="hidden"
                 onChange={(e) => {
                   if (e.target.files) void addFiles(e.target.files);
@@ -328,15 +455,17 @@ export function Composer({
                 type="button"
                 onClick={() => fileInputRef.current?.click()}
                 disabled={full || locked}
-                aria-label={firstFrameMode ? (attachments.length === 0 ? "İlk kareyi seç" : "Son kareyi seç") : "Görsel ekle"}
+                aria-label={firstFrameMode ? (attachments.length === 0 ? "İlk kareyi seç" : "Son kareyi seç") : imageOnly ? "Görsel ekle" : "Dosya ekle"}
                 title={
                   firstFrameMode
                     ? attachments.length === 0
                       ? "İlk kareyi seç — video bu görselden başlar"
                       : "Son kareyi seç — video burada biter"
                     : full
-                      ? `En fazla ${maxImages} görsel`
-                      : "Görsel ekle"
+                      ? `En fazla ${maxAttachments} ${noun}`
+                      : imageOnly
+                        ? "Görsel ekle"
+                        : `Dosya ekle — ${kindList(kinds)}`
                 }
                 className="pn-btn pn-btn--icon pn-btn--paper"
               >
