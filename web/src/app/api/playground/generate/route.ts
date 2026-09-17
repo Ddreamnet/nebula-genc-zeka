@@ -136,6 +136,25 @@ async function loadLastOutputImage(
   return signed?.signedUrl ? [signed.signedUrl] : [];
 }
 
+/**
+ * Why an upstream call failed, in one word the client can turn into a
+ * sentence a student can act on. OpenRouter's own status and body stay in the
+ * server log only — the message wraps provider internals that have no place
+ * in front of a ten-year-old. "Bir şeyler ters gitti" with no reason was the
+ * whole complaint: a student whose treasury had simply run dry was told the
+ * same thing as one whose prompt a model refused.
+ */
+function failureReason(err: unknown): string {
+  const text = err instanceof Error ? err.message : String(err);
+  if (/\b402\b|insufficient credits/i.test(text)) return "no_credits";
+  if (/\b403\b/.test(text)) return "model_unavailable";
+  if (/\b429\b|rate limit/i.test(text)) return "busy";
+  if (/content-filtered|moderat|safety|blocked|prohibited/i.test(text)) return "content_filtered";
+  if (/\b400\b|\b404\b|\b422\b/.test(text)) return "bad_request";
+  if (/\b5\d\d\b|timed? ?out|ECONNRESET|fetch failed/i.test(text)) return "upstream_down";
+  return "unknown";
+}
+
 export async function POST(request: Request) {
   const body = await request.json().catch(() => null);
   const toolId: string | undefined = body?.toolId;
@@ -445,7 +464,7 @@ export async function POST(request: Request) {
             // empty bubble where half an answer had been.
             if (answer.trim()) await settle(kind, answer);
             console.error("[playground] stream failed", tool.id, err instanceof Error ? err.message : err);
-            send("error", {});
+            send("error", { reason: failureReason(err) });
           }
         } finally {
           open = false;
@@ -589,6 +608,6 @@ export async function POST(request: Request) {
     // raw response body, which would otherwise put upstream provider internals
     // in front of a 10-year-old.
     console.error("[playground] generation failed", tool.id, err instanceof Error ? err.message : err);
-    return NextResponse.json({ error: "generation_failed" }, { status: 502 });
+    return NextResponse.json({ error: "generation_failed", reason: failureReason(err) }, { status: 502 });
   }
 }

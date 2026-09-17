@@ -1,4 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { findTool } from "@/lib/playground/tools";
 
 /**
  * The Playground treasury: what the OpenRouter balance is worth in cevher, and
@@ -131,4 +132,164 @@ export async function readAdminOreBalance(supabase: SupabaseClient): Promise<num
   const treasury = await readTreasury(supabase);
   if (!treasury) return null;
   return Math.max(0, Math.floor(treasury.remainingOre));
+}
+
+/* ------------------------------------------------------------------ */
+/* Ledger — what was actually spent, generation by generation          */
+/* ------------------------------------------------------------------ */
+
+export interface LedgerRow {
+  id: string;
+  createdAt: string;
+  toolId: string;
+  toolName: string;
+  modality: string;
+  status: string;
+  /** Cevher taken from the wallet (or, for an admin, from the treasury). */
+  ore: number;
+  /** What OpenRouter actually billed. Null until the job settles, and for failures. */
+  realUsd: number | null;
+  user: string | null;
+}
+
+export interface ToolSpend {
+  toolId: string;
+  toolName: string;
+  modality: string;
+  count: number;
+  ore: number;
+  realUsd: number;
+}
+
+export interface Ledger {
+  days: number;
+  recent: LedgerRow[];
+  /** Completed generations only, most expensive tool first. */
+  byTool: ToolSpend[];
+  totals: { count: number; completed: number; failed: number; ore: number; realUsd: number };
+  /** The window hit the row ceiling, so every total above is a floor, not the truth. */
+  truncated: boolean;
+  error: string | null;
+}
+
+const LEDGER_WINDOW_DAYS = 30;
+/** PostgREST's default ceiling; one page is plenty for a two-student school and
+ *  keeps the admin dialog from pulling the whole table one day. */
+const LEDGER_ROW_CEILING = 1000;
+const LEDGER_RECENT = 25;
+
+/**
+ * The last month of generations, as the treasury sees them: who ran what,
+ * what it took in cevher and what it really cost. Read only by the admin
+ * route — the balance route calls readTreasury alone, and this query has no
+ * business running after every single generation.
+ *
+ * Failed rows are refunded by rpc_finalize_generation, so they count as
+ * failures but never as spend; pending rows have no cost yet.
+ */
+export async function readLedger(supabase: SupabaseClient): Promise<Ledger> {
+  const since = new Date(Date.now() - LEDGER_WINDOW_DAYS * 86_400_000).toISOString();
+  const { data, error } = await supabase
+    .from("ai_generations")
+    .select("id, created_at, tool_id, modality, status, ore_charged, real_cost_usd, user_id")
+    .gte("created_at", since)
+    .order("created_at", { ascending: false })
+    .limit(LEDGER_ROW_CEILING);
+  const rows = data ?? [];
+
+  const userIds = [...new Set(rows.map((r) => r.user_id as string).filter(Boolean))];
+  const names = new Map<string, string>();
+  if (userIds.length > 0) {
+    const { data: profiles } = await supabase.from("profiles").select("user_id, full_name").in("user_id", userIds);
+    for (const p of profiles ?? []) names.set(p.user_id, p.full_name);
+  }
+  const toolName = (toolId: string) => findTool(toolId)?.tool.name ?? toolId;
+
+  const totals = { count: rows.length, completed: 0, failed: 0, ore: 0, realUsd: 0 };
+  const byTool = new Map<string, ToolSpend>();
+  for (const r of rows) {
+    if (r.status === "failed") {
+      totals.failed += 1;
+      continue;
+    }
+    if (r.status !== "completed") continue;
+    const ore = Number(r.ore_charged ?? 0);
+    const usd = Number(r.real_cost_usd ?? 0);
+    totals.completed += 1;
+    totals.ore += ore;
+    totals.realUsd += usd;
+    const t = byTool.get(r.tool_id) ?? { toolId: r.tool_id, toolName: toolName(r.tool_id), modality: r.modality, count: 0, ore: 0, realUsd: 0 };
+    t.count += 1;
+    t.ore += ore;
+    t.realUsd += usd;
+    byTool.set(r.tool_id, t);
+  }
+
+  return {
+    days: LEDGER_WINDOW_DAYS,
+    recent: rows.slice(0, LEDGER_RECENT).map((r) => ({
+      id: r.id,
+      createdAt: r.created_at,
+      toolId: r.tool_id,
+      toolName: toolName(r.tool_id),
+      modality: r.modality,
+      status: r.status,
+      ore: Number(r.ore_charged ?? 0),
+      realUsd: r.real_cost_usd === null || r.real_cost_usd === undefined ? null : Number(r.real_cost_usd),
+      user: names.get(r.user_id) ?? null,
+    })),
+    byTool: [...byTool.values()].sort((a, b) => b.realUsd - a.realUsd),
+    totals,
+    truncated: rows.length >= LEDGER_ROW_CEILING,
+    error: error?.message ?? null,
+  };
+}
+
+/* ------------------------------------------------------------------ */
+/* Exchange rate — so the numbers above can be read in lira            */
+/* ------------------------------------------------------------------ */
+
+export interface FxRate {
+  usdTry: number;
+  source: "TCMB" | "open.er-api";
+  /** The day the rate is for, as the source prints it. */
+  asOf: string;
+}
+
+/**
+ * Dollars to lira, for display only — nothing is charged in lira.
+ *
+ * TCMB's daily bulletin first (the official rate an accountant would use;
+ * its forex selling rate is what buying dollars actually costs), a public
+ * ECB-style feed as a fallback, null when neither answers so the UI can say
+ * "kur alınamadı" instead of pretending. Both are cached for an hour by
+ * Next's fetch cache: the bulletin changes once a day.
+ */
+export async function readUsdTry(): Promise<FxRate | null> {
+  try {
+    const res = await fetch("https://www.tcmb.gov.tr/kurlar/today.xml", {
+      next: { revalidate: 3600 },
+      headers: { "User-Agent": "Mozilla/5.0 (compatible; nebula-atolye-kasa)" },
+    });
+    if (res.ok) {
+      const xml = await res.text();
+      const block = xml.match(/<Currency[^>]*CurrencyCode="USD"[\s\S]*?<\/Currency>/)?.[0] ?? "";
+      const selling = Number(block.match(/<ForexSelling>([\d.]+)<\/ForexSelling>/)?.[1]);
+      const asOf = xml.match(/Tarih="([^"]+)"/)?.[1];
+      if (Number.isFinite(selling) && selling > 0) return { usdTry: selling, source: "TCMB", asOf: asOf ?? "" };
+    }
+  } catch {
+    // Fall through to the second source.
+  }
+  try {
+    const res = await fetch("https://open.er-api.com/v6/latest/USD", { next: { revalidate: 3600 } });
+    if (res.ok) {
+      const body = (await res.json()) as { rates?: { TRY?: number }; time_last_update_utc?: string };
+      const rate = Number(body.rates?.TRY);
+      if (Number.isFinite(rate) && rate > 0) return { usdTry: rate, source: "open.er-api", asOf: body.time_last_update_utc ?? "" };
+    }
+  } catch {
+    // Neither source answered; the caller shows the dollar figures alone.
+  }
+  return null;
 }

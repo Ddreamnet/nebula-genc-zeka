@@ -102,6 +102,24 @@ async function imageUrlToAttachment(url: string): Promise<Attachment | null> {
  */
 const VIDEO_DEADLINE_MS = 10 * 60 * 1000;
 
+/**
+ * What a failed generation says, by the reason the server attached. The
+ * default line is the old one-size apology; the others tell the student the
+ * one thing that would actually change the outcome (wait, reword, switch
+ * tools, or fetch an adult).
+ */
+const FAILURE_TEXT: Record<string, string> = {
+  no_credits: "Atölye kasasında kredi kalmadı, yöneticine haber ver — kredi yüklenince kaldığın yerden devam edersin 💫",
+  content_filtered: "Bu model bu isteği üretmeyi reddetti. İsteği biraz değiştirip tekrar dener misin? 💫",
+  model_unavailable: "Bu araç şu an kullanılamıyor, başka bir araç dener misin? 💫",
+  busy: "Bu model şu an çok yoğun, birazdan tekrar dener misin? 💫",
+  upstream_down: "Modelin sunucusu cevap vermedi, birazdan tekrar dener misin? 💫",
+};
+const FAILURE_DEFAULT = "Bu isteği oluşturamadım, başka bir şey dener misin? 💫";
+function failureText(reason: unknown): string {
+  return (typeof reason === "string" && FAILURE_TEXT[reason]) || FAILURE_DEFAULT;
+}
+
 async function pollVideoStatus(
   generationId: string,
   onUpdate: (patch: Partial<Msg>) => void,
@@ -607,7 +625,7 @@ export function Playground({ initial }: { initial: PlaygroundInitial }) {
         if (data.unlimited === true) setUnlimited(true);
         else if (typeof data.remaining === "number") setRemaining(data.remaining);
       } else if (event === "error") {
-        if (!answer) answer = "Bu isteği oluşturamadım, başka bir şey dener misin? 💫";
+        if (!answer) answer = failureText(data.reason);
         // Drop back to a plain bubble: for the web tool `kind` is "code", which
         // would render this apology inside the preview iframe.
         kind = "text";
@@ -693,7 +711,7 @@ export function Playground({ initial }: { initial: PlaygroundInitial }) {
       }
 
       if (data.error) {
-        patch({ content: "Bu isteği oluşturamadım, başka bir şey dener misin? 💫" });
+        patch({ content: failureText(data.reason) });
         return "error";
       }
 
@@ -740,11 +758,51 @@ export function Playground({ initial }: { initial: PlaygroundInitial }) {
         refreshBalance();
         return "aborted";
       }
+      // The request itself broke — no JSON, no stream — which is what a host
+      // cutting a slow image or audio call looks like from here (GPT Image 1
+      // and Lyria routinely run past 30 s). The server keeps going: it is not
+      // listening to this socket, so the picture usually still lands in the
+      // transcript a few seconds later. Look before apologising.
+      if ((tool.modality === "image" || tool.modality === "audio") && chatIdRef.current) {
+        patch({ content: "Bağlantı koptu, sonucu kontrol ediyorum…" });
+        if (await recoverFromTranscript(chatIdRef.current, targetId)) return "ok";
+      }
       patch({ content: "Bir şeyler ters gitti, tekrar dener misin? 💫" });
+      setHistoryKey((k) => k + 1);
       return "error";
     } finally {
       abortsRef.current.delete(controller);
       finishPending(targetId);
+    }
+  }
+
+  /**
+   * After a dropped connection, re-reads the open chat from the server and,
+   * if its newest reply already carries a picture or a sound, shows that
+   * instead of an error. Waits first because the upload that puts the file
+   * there is what the client stopped waiting for. False means "nothing
+   * landed", and the caller says so.
+   */
+  async function recoverFromTranscript(chatIdToCheck: string, targetId: string): Promise<boolean> {
+    try {
+      await new Promise((r) => setTimeout(r, 8000));
+      const res = await fetch(`/api/playground/chats/${chatIdToCheck}`, { cache: "no-store" });
+      const data = await res.json();
+      if (data.error || !Array.isArray(data.messages) || chatIdRef.current !== chatIdToCheck) return false;
+      const last = [...(data.messages as Msg[])].reverse().find((m) => m.role === "assistant");
+      if (!last || (!last.imageUrl && !last.audioUrl)) return false;
+      setMessages((m) => {
+        const i = m.findIndex((x) => x.id === targetId);
+        if (i === -1) return m;
+        const copy = m.slice();
+        copy[i] = { ...copy[i], content: "", imageUrl: last.imageUrl, audioUrl: last.audioUrl };
+        return copy;
+      });
+      setHistoryKey((k) => k + 1);
+      refreshBalance();
+      return true;
+    } catch {
+      return false;
     }
   }
 

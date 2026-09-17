@@ -3,7 +3,7 @@
  *
  * Written by `node scripts/sync-catalog.mjs` from OpenRouter's live catalog
  * (/models, /images/models, /videos/models and each image model's /endpoints).
- * Last sync: 2026-09-08 — 58 models.
+ * Last sync: 2026-09-17 — 71 models.
  *
  * Machine facts only: which parameters a model accepts, their ranges and
  * enums, its price SKUs and its provider passthrough list. Every product
@@ -54,6 +54,159 @@ export interface TextCaps {
 export type ModelCaps = ImageCaps | VideoCaps | TextCaps;
 
 export const MODEL_CAPS: Record<string, ModelCaps> = {
+  "deepseek/deepseek-v4.1-flash": {
+    "kind": "text",
+    "supported": [
+      "frequency_penalty",
+      "include_reasoning",
+      "logit_bias",
+      "logprobs",
+      "max_tokens",
+      "min_p",
+      "presence_penalty",
+      "reasoning",
+      "reasoning_effort",
+      "repetition_penalty",
+      "response_format",
+      "seed",
+      "stop",
+      "structured_outputs",
+      "temperature",
+      "tool_choice",
+      "tools",
+      "top_k",
+      "top_logprobs",
+      "top_p"
+    ],
+    "inputModalities": [
+      "text",
+      "image"
+    ],
+    "contextLength": 1048576,
+    "maxCompletionTokens": 384000,
+    "pricing": {
+      "prompt": 3e-7,
+      "completion": 0.0000012
+    }
+  },
+  "openai/gpt-6-astra": {
+    "kind": "text",
+    "supported": [
+      "include_reasoning",
+      "max_completion_tokens",
+      "max_tokens",
+      "reasoning",
+      "reasoning_effort",
+      "response_format",
+      "seed",
+      "structured_outputs",
+      "tool_choice",
+      "tools"
+    ],
+    "inputModalities": [
+      "file",
+      "image",
+      "text"
+    ],
+    "contextLength": 1050000,
+    "maxCompletionTokens": 128000,
+    "pricing": {
+      "prompt": 0.00001,
+      "completion": 0.00005,
+      "webSearch": 0.01
+    }
+  },
+  "qwen/qwen3.8-max-0902": {
+    "kind": "text",
+    "supported": [
+      "frequency_penalty",
+      "include_reasoning",
+      "logprobs",
+      "max_tokens",
+      "presence_penalty",
+      "reasoning",
+      "reasoning_effort",
+      "response_format",
+      "seed",
+      "stop",
+      "structured_outputs",
+      "temperature",
+      "tool_choice",
+      "tools",
+      "top_k",
+      "top_logprobs",
+      "top_p"
+    ],
+    "inputModalities": [
+      "text",
+      "image",
+      "video"
+    ],
+    "contextLength": 1000000,
+    "maxCompletionTokens": 131072,
+    "pricing": {
+      "prompt": 0.000002,
+      "completion": 0.000006
+    }
+  },
+  "google/gemini-3.8-flash": {
+    "kind": "text",
+    "supported": [
+      "include_reasoning",
+      "max_tokens",
+      "reasoning",
+      "reasoning_effort",
+      "response_format",
+      "seed",
+      "stop",
+      "structured_outputs",
+      "temperature",
+      "tool_choice",
+      "tools",
+      "top_p"
+    ],
+    "inputModalities": [
+      "text",
+      "image",
+      "video",
+      "file",
+      "audio"
+    ],
+    "contextLength": 1048576,
+    "maxCompletionTokens": 65536,
+    "pricing": {
+      "prompt": 7.5e-7,
+      "completion": 0.00000375,
+      "webSearch": 0.014
+    }
+  },
+  "anthropic/claude-fable-5.1": {
+    "kind": "text",
+    "supported": [
+      "include_reasoning",
+      "max_completion_tokens",
+      "max_tokens",
+      "reasoning",
+      "reasoning_effort",
+      "response_format",
+      "stop",
+      "structured_outputs",
+      "tools",
+      "verbosity"
+    ],
+    "inputModalities": [
+      "text",
+      "image",
+      "file"
+    ],
+    "contextLength": 1000000,
+    "maxCompletionTokens": 128000,
+    "pricing": {
+      "prompt": 0.00001,
+      "completion": 0.00005,
+      "webSearch": 0.01
+    }
+  },
   "z-ai/glm-5.3": {
     "kind": "text",
     "supported": [
@@ -83,10 +236,71 @@ export const MODEL_CAPS: Record<string, ModelCaps> = {
       "text"
     ],
     "contextLength": 1310720,
-    "maxCompletionTokens": 943718,
+    "maxCompletionTokens": 943717,
     "pricing": {
       "prompt": 0.0000014,
       "completion": 0.0000044
+    }
+  },
+  "x-ai/grok-4.6": {
+    "kind": "text",
+    "supported": [
+      "include_reasoning",
+      "logprobs",
+      "max_tokens",
+      "reasoning",
+      "reasoning_effort",
+      "response_format",
+      "seed",
+      "stop",
+      "structured_outputs",
+      "temperature",
+      "tool_choice",
+      "tools",
+      "top_k",
+      "top_logprobs",
+      "top_p"
+    ],
+    "inputModalities": [
+      "text",
+      "image",
+      "file"
+    ],
+    "contextLength": 500000,
+    "maxCompletionTokens": 450000,
+    "pricing": {
+      "prompt": 0.000002,
+      "completion": 0.000006,
+      "webSearch": 0.005
+    }
+  },
+  "anthropic/claude-opus-5": {
+    "kind": "text",
+    "supported": [
+      "include_reasoning",
+      "max_completion_tokens",
+      "max_tokens",
+      "reasoning",
+      "reasoning_effort",
+      "response_format",
+      "stop",
+      "structured_outputs",
+      "temperature",
+      "tool_choice",
+      "tools",
+      "verbosity"
+    ],
+    "inputModalities": [
+      "text",
+      "image",
+      "file"
+    ],
+    "contextLength": 1000000,
+    "maxCompletionTokens": 128000,
+    "pricing": {
+      "prompt": 0.000005,
+      "completion": 0.000025,
+      "webSearch": 0.01
     }
   },
   "moonshotai/kimi-k3": {
@@ -123,36 +337,6 @@ export const MODEL_CAPS: Record<string, ModelCaps> = {
     "pricing": {
       "prompt": 0.000003,
       "completion": 0.000015
-    }
-  },
-  "x-ai/grok-4.5": {
-    "kind": "text",
-    "supported": [
-      "include_reasoning",
-      "logprobs",
-      "max_tokens",
-      "reasoning",
-      "reasoning_effort",
-      "response_format",
-      "seed",
-      "structured_outputs",
-      "temperature",
-      "tool_choice",
-      "tools",
-      "top_logprobs",
-      "top_p"
-    ],
-    "inputModalities": [
-      "text",
-      "image",
-      "file"
-    ],
-    "contextLength": 500000,
-    "maxCompletionTokens": 450000,
-    "pricing": {
-      "prompt": 0.000002,
-      "completion": 0.000006,
-      "webSearch": 0.005
     }
   },
   "tencent/hy3": {
@@ -215,6 +399,56 @@ export const MODEL_CAPS: Record<string, ModelCaps> = {
       "completion": 0.00001,
       "webSearch": 0.01
     }
+  },
+  "google/gemini-3.1-flash-lite-image": {
+    "kind": "image",
+    "params": {
+      "resolution": {
+        "type": "enum",
+        "values": [
+          "1K"
+        ]
+      },
+      "aspect_ratio": {
+        "type": "enum",
+        "values": [
+          "1:1",
+          "1:4",
+          "1:8",
+          "2:3",
+          "3:2",
+          "3:4",
+          "4:1",
+          "4:3",
+          "4:5",
+          "5:4",
+          "8:1",
+          "9:16",
+          "16:9",
+          "21:9"
+        ]
+      },
+      "n": {
+        "type": "range",
+        "min": 1,
+        "max": 1
+      },
+      "input_references": {
+        "type": "range",
+        "min": 0,
+        "max": 14
+      }
+    },
+    "passthrough": [
+      "cachedContent"
+    ],
+    "pricing": [
+      {
+        "billable": "output_image",
+        "unit": "token",
+        "costUsd": 0.00003
+      }
+    ]
   },
   "google/gemini-3.1-flash-image": {
     "kind": "image",
@@ -353,8 +587,8 @@ export const MODEL_CAPS: Record<string, ModelCaps> = {
     "contextLength": 262144,
     "maxCompletionTokens": 235929,
     "pricing": {
-      "prompt": 7.1e-7,
-      "completion": 0.0000035
+      "prompt": 7.062e-7,
+      "completion": 0.00000321
     }
   },
   "minimax/minimax-m3": {
@@ -699,38 +933,10 @@ export const MODEL_CAPS: Record<string, ModelCaps> = {
       "text"
     ],
     "contextLength": 204800,
-    "maxCompletionTokens": 131072,
+    "maxCompletionTokens": 16384,
     "pricing": {
-      "prompt": 5.5e-7,
-      "completion": 0.0000022
-    }
-  },
-  "qwen/qwen3-max": {
-    "kind": "text",
-    "supported": [
-      "frequency_penalty",
-      "logprobs",
-      "max_tokens",
-      "presence_penalty",
-      "response_format",
-      "seed",
-      "stop",
-      "structured_outputs",
-      "temperature",
-      "tool_choice",
-      "tools",
-      "top_k",
-      "top_logprobs",
-      "top_p"
-    ],
-    "inputModalities": [
-      "text"
-    ],
-    "contextLength": 262144,
-    "maxCompletionTokens": 65536,
-    "pricing": {
-      "prompt": 7.8e-7,
-      "completion": 0.0000039
+      "prompt": 4.3e-7,
+      "completion": 0.00000175
     }
   },
   "qwen/qwen3-coder-plus": {
@@ -814,36 +1020,6 @@ export const MODEL_CAPS: Record<string, ModelCaps> = {
       "completion": 0.00000125
     }
   },
-  "google/gemini-2.5-flash": {
-    "kind": "text",
-    "supported": [
-      "include_reasoning",
-      "max_tokens",
-      "reasoning",
-      "response_format",
-      "seed",
-      "stop",
-      "structured_outputs",
-      "temperature",
-      "tool_choice",
-      "tools",
-      "top_p"
-    ],
-    "inputModalities": [
-      "file",
-      "image",
-      "text",
-      "audio",
-      "video"
-    ],
-    "contextLength": 1048576,
-    "maxCompletionTokens": 65535,
-    "pricing": {
-      "prompt": 3e-7,
-      "completion": 0.0000025,
-      "webSearch": 0.014
-    }
-  },
   "cohere/command-a": {
     "kind": "text",
     "supported": [
@@ -889,35 +1065,6 @@ export const MODEL_CAPS: Record<string, ModelCaps> = {
       "prompt": 0.000001,
       "completion": 0.000001,
       "webSearch": 0.005
-    }
-  },
-  "deepseek/deepseek-r1": {
-    "kind": "text",
-    "supported": [
-      "frequency_penalty",
-      "include_reasoning",
-      "max_tokens",
-      "presence_penalty",
-      "reasoning",
-      "repetition_penalty",
-      "response_format",
-      "seed",
-      "stop",
-      "structured_outputs",
-      "temperature",
-      "tool_choice",
-      "tools",
-      "top_k",
-      "top_p"
-    ],
-    "inputModalities": [
-      "text"
-    ],
-    "contextLength": 64000,
-    "maxCompletionTokens": 16000,
-    "pricing": {
-      "prompt": 7e-7,
-      "completion": 0.0000025
     }
   },
   "meta-llama/llama-3.3-70b-instruct": {
@@ -972,11 +1119,335 @@ export const MODEL_CAPS: Record<string, ModelCaps> = {
       "completion": 0.0000032
     }
   },
+  "openai/gpt-image-2.5-sunburst": {
+    "kind": "image",
+    "params": {
+      "aspect_ratio": {
+        "type": "enum",
+        "values": [
+          "1:1",
+          "3:2",
+          "2:3",
+          "4:3",
+          "3:4",
+          "16:9",
+          "9:16",
+          "21:9",
+          "auto"
+        ]
+      },
+      "quality": {
+        "type": "enum",
+        "values": [
+          "auto",
+          "low",
+          "medium",
+          "high",
+          "xhigh",
+          "max"
+        ]
+      },
+      "background": {
+        "type": "enum",
+        "values": [
+          "auto",
+          "transparent",
+          "opaque"
+        ]
+      },
+      "n": {
+        "type": "range",
+        "min": 1,
+        "max": 10
+      },
+      "input_references": {
+        "type": "range",
+        "min": 0,
+        "max": 16
+      },
+      "output_compression": {
+        "type": "range",
+        "min": 0,
+        "max": 100
+      }
+    },
+    "passthrough": [
+      "moderation"
+    ],
+    "pricing": [
+      {
+        "billable": "input_image",
+        "unit": "token",
+        "costUsd": 0.000008
+      },
+      {
+        "billable": "input_text",
+        "unit": "token",
+        "costUsd": 0.000005
+      },
+      {
+        "billable": "output_image",
+        "unit": "token",
+        "costUsd": 0.00003
+      }
+    ]
+  },
+  "microsoft/mai-image-2.6": {
+    "kind": "image",
+    "params": {
+      "aspect_ratio": {
+        "type": "enum",
+        "values": [
+          "1:1",
+          "4:3",
+          "3:4",
+          "16:9",
+          "9:16",
+          "3:2",
+          "2:3",
+          "auto"
+        ]
+      },
+      "n": {
+        "type": "range",
+        "min": 1,
+        "max": 1
+      },
+      "input_references": {
+        "type": "range",
+        "min": 0,
+        "max": 5
+      }
+    },
+    "passthrough": [
+      "web_grounding"
+    ],
+    "pricing": [
+      {
+        "billable": "input_text",
+        "unit": "token",
+        "costUsd": 0.000005
+      },
+      {
+        "billable": "input_image",
+        "unit": "token",
+        "costUsd": 0.000008
+      },
+      {
+        "billable": "output_image",
+        "unit": "token",
+        "costUsd": 0.000038
+      }
+    ]
+  },
   "meta/muse-image": {
     "kind": "image",
     "params": {},
     "passthrough": [],
     "pricing": []
+  },
+  "bytedance-seed/seedream-5-0-pro": {
+    "kind": "image",
+    "params": {
+      "resolution": {
+        "type": "enum",
+        "values": [
+          "1K",
+          "2K"
+        ]
+      },
+      "aspect_ratio": {
+        "type": "enum",
+        "values": [
+          "1:1",
+          "1:2",
+          "2:1",
+          "2:3",
+          "3:2",
+          "3:4",
+          "4:3",
+          "4:5",
+          "5:4",
+          "9:16",
+          "16:9",
+          "9:19.5",
+          "19.5:9",
+          "9:20",
+          "20:9",
+          "9:21",
+          "21:9",
+          "auto"
+        ]
+      },
+      "n": {
+        "type": "range",
+        "min": 1,
+        "max": 1
+      },
+      "input_references": {
+        "type": "range",
+        "min": 0,
+        "max": 14
+      },
+      "seed": {
+        "type": "boolean"
+      }
+    },
+    "passthrough": [],
+    "pricing": [
+      {
+        "billable": "output_image",
+        "unit": "image",
+        "costUsd": 0.045
+      },
+      {
+        "billable": "output_image",
+        "unit": "image",
+        "costUsd": 0.09
+      },
+      {
+        "billable": "input_image",
+        "unit": "image",
+        "costUsd": 0.003
+      }
+    ]
+  },
+  "x-ai/grok-imagine-image-2.0": {
+    "kind": "image",
+    "params": {
+      "resolution": {
+        "type": "enum",
+        "values": [
+          "1K",
+          "2K"
+        ]
+      },
+      "aspect_ratio": {
+        "type": "enum",
+        "values": [
+          "1:1",
+          "3:4",
+          "4:3",
+          "9:16",
+          "16:9",
+          "2:3",
+          "3:2",
+          "9:19.5",
+          "19.5:9",
+          "9:20",
+          "20:9",
+          "1:2",
+          "2:1",
+          "auto"
+        ]
+      },
+      "quality": {
+        "type": "enum",
+        "values": [
+          "low",
+          "medium"
+        ]
+      },
+      "n": {
+        "type": "range",
+        "min": 1,
+        "max": 1
+      },
+      "input_references": {
+        "type": "range",
+        "min": 0,
+        "max": 3
+      }
+    },
+    "passthrough": [],
+    "pricing": [
+      {
+        "billable": "input_image",
+        "unit": "image",
+        "costUsd": 0.01
+      },
+      {
+        "billable": "output_image",
+        "unit": "image",
+        "costUsd": 0.04
+      },
+      {
+        "billable": "output_image",
+        "unit": "image",
+        "costUsd": 0.06
+      },
+      {
+        "billable": "output_image",
+        "unit": "image",
+        "costUsd": 0.06
+      },
+      {
+        "billable": "output_image",
+        "unit": "image",
+        "costUsd": 0.08
+      }
+    ]
+  },
+  "qwen/qwen-image-3-pro": {
+    "kind": "image",
+    "params": {
+      "resolution": {
+        "type": "enum",
+        "values": [
+          "1K",
+          "2K"
+        ]
+      },
+      "aspect_ratio": {
+        "type": "enum",
+        "values": [
+          "1:1",
+          "1:2",
+          "1:4",
+          "2:1",
+          "2:3",
+          "3:2",
+          "3:4",
+          "4:1",
+          "4:3",
+          "4:5",
+          "5:4",
+          "9:16",
+          "16:9"
+        ]
+      },
+      "n": {
+        "type": "range",
+        "min": 1,
+        "max": 6
+      },
+      "input_references": {
+        "type": "range",
+        "min": 0,
+        "max": 4
+      },
+      "seed": {
+        "type": "boolean"
+      }
+    },
+    "passthrough": [],
+    "pricing": [
+      {
+        "billable": "input_image",
+        "unit": "image",
+        "costUsd": 0.003
+      },
+      {
+        "billable": "output_image",
+        "unit": "image",
+        "costUsd": 0.04
+      },
+      {
+        "billable": "output_image",
+        "unit": "image",
+        "costUsd": 0.075
+      }
+    ]
   },
   "qwen/qwen-image-3": {
     "kind": "image",
@@ -1036,52 +1507,6 @@ export const MODEL_CAPS: Record<string, ModelCaps> = {
         "billable": "output_image",
         "unit": "image",
         "costUsd": 0.03
-      }
-    ]
-  },
-  "microsoft/mai-image-2.5-pro": {
-    "kind": "image",
-    "params": {
-      "aspect_ratio": {
-        "type": "enum",
-        "values": [
-          "1:1",
-          "4:3",
-          "3:4",
-          "16:9",
-          "9:16",
-          "3:2",
-          "2:3",
-          "auto"
-        ]
-      },
-      "n": {
-        "type": "range",
-        "min": 1,
-        "max": 1
-      },
-      "input_references": {
-        "type": "range",
-        "min": 0,
-        "max": 1
-      }
-    },
-    "passthrough": [],
-    "pricing": [
-      {
-        "billable": "input_text",
-        "unit": "token",
-        "costUsd": 0.000005
-      },
-      {
-        "billable": "input_image",
-        "unit": "token",
-        "costUsd": 0.000008
-      },
-      {
-        "billable": "output_image",
-        "unit": "token",
-        "costUsd": 0.000108
       }
     ]
   },
@@ -1402,65 +1827,6 @@ export const MODEL_CAPS: Record<string, ModelCaps> = {
       }
     ]
   },
-  "x-ai/grok-imagine-image-quality": {
-    "kind": "image",
-    "params": {
-      "resolution": {
-        "type": "enum",
-        "values": [
-          "1K",
-          "2K"
-        ]
-      },
-      "aspect_ratio": {
-        "type": "enum",
-        "values": [
-          "1:1",
-          "3:4",
-          "4:3",
-          "9:16",
-          "16:9",
-          "2:3",
-          "3:2",
-          "9:19.5",
-          "19.5:9",
-          "9:20",
-          "20:9",
-          "1:2",
-          "2:1",
-          "auto"
-        ]
-      },
-      "n": {
-        "type": "range",
-        "min": 1,
-        "max": 1
-      },
-      "input_references": {
-        "type": "range",
-        "min": 0,
-        "max": 3
-      }
-    },
-    "passthrough": [],
-    "pricing": [
-      {
-        "billable": "input_image",
-        "unit": "image",
-        "costUsd": 0.01
-      },
-      {
-        "billable": "output_image",
-        "unit": "image",
-        "costUsd": 0.05
-      },
-      {
-        "billable": "output_image",
-        "unit": "image",
-        "costUsd": 0.07
-      }
-    ]
-  },
   "recraft/recraft-v4": {
     "kind": "image",
     "params": {
@@ -1612,6 +1978,62 @@ export const MODEL_CAPS: Record<string, ModelCaps> = {
       }
     ]
   },
+  "black-forest-labs/flux.2-flex": {
+    "kind": "image",
+    "params": {
+      "aspect_ratio": {
+        "type": "enum",
+        "values": [
+          "1:1",
+          "4:3",
+          "3:4",
+          "3:2",
+          "2:3",
+          "16:9",
+          "9:16",
+          "21:9",
+          "auto"
+        ]
+      },
+      "output_format": {
+        "type": "enum",
+        "values": [
+          "png",
+          "jpeg"
+        ]
+      },
+      "n": {
+        "type": "range",
+        "min": 1,
+        "max": 1
+      },
+      "input_references": {
+        "type": "range",
+        "min": 0,
+        "max": 8
+      },
+      "seed": {
+        "type": "boolean"
+      }
+    },
+    "passthrough": [
+      "steps",
+      "guidance",
+      "safety_tolerance"
+    ],
+    "pricing": [
+      {
+        "billable": "input_image",
+        "unit": "megapixel",
+        "costUsd": 0.06
+      },
+      {
+        "billable": "output_image",
+        "unit": "megapixel",
+        "costUsd": 0.06
+      }
+    ]
+  },
   "black-forest-labs/flux.2-pro": {
     "kind": "image",
     "params": {
@@ -1662,6 +2084,63 @@ export const MODEL_CAPS: Record<string, ModelCaps> = {
         "costUsd": 0.03
       }
     ]
+  },
+  "alibaba/wan-3.0-prime": {
+    "kind": "video",
+    "durations": [
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11,
+      12,
+      13,
+      14,
+      15,
+      16,
+      17,
+      18,
+      19,
+      20,
+      21,
+      22,
+      23,
+      24,
+      25,
+      26,
+      27,
+      28,
+      29,
+      30
+    ],
+    "resolutions": [
+      "480p",
+      "720p",
+      "1080p"
+    ],
+    "aspectRatios": [
+      "16:9",
+      "4:3",
+      "1:1",
+      "3:4",
+      "9:16"
+    ],
+    "frameImages": [
+      "first_frame"
+    ],
+    "generateAudio": true,
+    "seed": true,
+    "priceSkus": {
+      "duration_seconds_480p": 0.068,
+      "duration_seconds_720p": 0.14,
+      "duration_seconds_1080p": 0.28
+    },
+    "passthrough": []
   },
   "alibaba/wan-3.0": {
     "kind": "video",
@@ -1719,6 +2198,52 @@ export const MODEL_CAPS: Record<string, ModelCaps> = {
       "duration_seconds_1080p": 0.2
     },
     "passthrough": []
+  },
+  "bytedance/seedance-2.0-mini": {
+    "kind": "video",
+    "durations": [
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11,
+      12,
+      13,
+      14,
+      15
+    ],
+    "resolutions": [
+      "480p",
+      "720p"
+    ],
+    "aspectRatios": [
+      "1:1",
+      "3:4",
+      "9:16",
+      "4:3",
+      "16:9",
+      "21:9",
+      "9:21"
+    ],
+    "frameImages": [
+      "first_frame",
+      "last_frame"
+    ],
+    "generateAudio": true,
+    "seed": true,
+    "priceSkus": {
+      "video_tokens": 0.0000035,
+      "video_tokens_without_audio": 0.0000035,
+      "video_tokens_with_video_input": 0.0000021
+    },
+    "passthrough": [
+      "watermark",
+      "req_key",
+      "return_last_frame"
+    ]
   },
   "bytedance/seedance-2.5": {
     "kind": "video",
@@ -1778,6 +2303,56 @@ export const MODEL_CAPS: Record<string, ModelCaps> = {
       "watermark",
       "req_key",
       "output_format"
+    ]
+  },
+  "black-forest-labs/flux-3-video": {
+    "kind": "video",
+    "durations": [
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11,
+      12,
+      13,
+      14,
+      15,
+      16,
+      17,
+      18,
+      19,
+      20
+    ],
+    "resolutions": [
+      "720p",
+      "1080p"
+    ],
+    "aspectRatios": [
+      "21:9",
+      "16:9",
+      "4:3",
+      "1:1",
+      "3:4",
+      "9:16"
+    ],
+    "frameImages": [
+      "first_frame",
+      "last_frame"
+    ],
+    "generateAudio": true,
+    "seed": false,
+    "priceSkus": {
+      "cents_per_second_output": 17,
+      "cents_per_second_output_720p": 17,
+      "cents_per_second_output_1080p": 29,
+      "cents_per_second_video_continuation_720p": 41,
+      "cents_per_second_video_continuation_1080p": 53
+    },
+    "passthrough": [
+      "safety_tolerance",
+      "version"
     ]
   },
   "minimax/hailuo-3": {
@@ -1852,6 +2427,52 @@ export const MODEL_CAPS: Record<string, ModelCaps> = {
       "contentModeration"
     ]
   },
+  "x-ai/grok-imagine-video-1.5": {
+    "kind": "video",
+    "durations": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11,
+      12,
+      13,
+      14,
+      15
+    ],
+    "resolutions": [
+      "480p",
+      "720p",
+      "1080p"
+    ],
+    "aspectRatios": [
+      "16:9",
+      "9:16",
+      "1:1",
+      "4:3",
+      "3:4",
+      "3:2",
+      "2:3"
+    ],
+    "frameImages": [
+      "first_frame"
+    ],
+    "generateAudio": false,
+    "seed": false,
+    "priceSkus": {
+      "cents_per_image_input": 1,
+      "cents_per_video_output_second_480p": 8,
+      "cents_per_video_output_second_720p": 14,
+      "cents_per_video_output_second_1080p": 25
+    },
+    "passthrough": []
+  },
   "alibaba/happyhorse-1.1": {
     "kind": "video",
     "durations": [
@@ -1890,50 +2511,6 @@ export const MODEL_CAPS: Record<string, ModelCaps> = {
     "priceSkus": {
       "duration_seconds_720p": 0.0988,
       "duration_seconds_1080p": 0.1278
-    },
-    "passthrough": []
-  },
-  "x-ai/grok-imagine-video": {
-    "kind": "video",
-    "durations": [
-      1,
-      2,
-      3,
-      4,
-      5,
-      6,
-      7,
-      8,
-      9,
-      10,
-      11,
-      12,
-      13,
-      14,
-      15
-    ],
-    "resolutions": [
-      "480p",
-      "720p"
-    ],
-    "aspectRatios": [
-      "16:9",
-      "9:16",
-      "1:1",
-      "4:3",
-      "3:4",
-      "3:2",
-      "2:3"
-    ],
-    "frameImages": [
-      "first_frame"
-    ],
-    "generateAudio": false,
-    "seed": false,
-    "priceSkus": {
-      "cents_per_image_input": 0.2,
-      "cents_per_video_output_second_480p": 5,
-      "cents_per_video_output_second_720p": 7
     },
     "passthrough": []
   },
@@ -2100,6 +2677,33 @@ export const MODEL_CAPS: Record<string, ModelCaps> = {
       "enhancePrompt"
     ]
   },
+  "kwaivgi/kling-video-o1": {
+    "kind": "video",
+    "durations": [
+      5,
+      10
+    ],
+    "resolutions": [
+      "720p"
+    ],
+    "aspectRatios": [
+      "16:9",
+      "9:16",
+      "1:1"
+    ],
+    "frameImages": [
+      "first_frame",
+      "last_frame"
+    ],
+    "generateAudio": true,
+    "seed": false,
+    "priceSkus": {
+      "duration_seconds": 0.112
+    },
+    "passthrough": [
+      "negative_prompt"
+    ]
+  },
   "minimax/hailuo-2.3": {
     "kind": "video",
     "durations": [
@@ -2123,6 +2727,95 @@ export const MODEL_CAPS: Record<string, ModelCaps> = {
     "passthrough": [
       "prompt_optimizer",
       "fast_pretreatment"
+    ]
+  },
+  "bytedance/seedance-2.0-fast": {
+    "kind": "video",
+    "durations": [
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11,
+      12,
+      13,
+      14,
+      15
+    ],
+    "resolutions": [
+      "480p",
+      "720p"
+    ],
+    "aspectRatios": [
+      "1:1",
+      "3:4",
+      "9:16",
+      "4:3",
+      "16:9",
+      "21:9",
+      "9:21"
+    ],
+    "frameImages": [
+      "first_frame",
+      "last_frame"
+    ],
+    "generateAudio": true,
+    "seed": true,
+    "priceSkus": {
+      "video_tokens": 0.0000042,
+      "video_tokens_without_audio": 0.0000042,
+      "video_tokens_with_video_input": 0.000002475
+    },
+    "passthrough": [
+      "watermark",
+      "req_key"
+    ]
+  },
+  "alibaba/wan-2.7": {
+    "kind": "video",
+    "durations": [
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10
+    ],
+    "resolutions": [
+      "720p",
+      "1080p"
+    ],
+    "aspectRatios": [
+      "16:9",
+      "9:16",
+      "1:1",
+      "4:3",
+      "3:4"
+    ],
+    "frameImages": [
+      "first_frame",
+      "last_frame"
+    ],
+    "generateAudio": true,
+    "seed": true,
+    "priceSkus": {
+      "duration_seconds": 0.1
+    },
+    "passthrough": [
+      "negative_prompt",
+      "prompt_extend",
+      "audio",
+      "ratio",
+      "last_image",
+      "video",
+      "videos",
+      "images"
     ]
   },
   "bytedance/seedance-2.0": {
@@ -2174,50 +2867,6 @@ export const MODEL_CAPS: Record<string, ModelCaps> = {
     "passthrough": [
       "watermark",
       "req_key"
-    ]
-  },
-  "alibaba/wan-2.7": {
-    "kind": "video",
-    "durations": [
-      2,
-      3,
-      4,
-      5,
-      6,
-      7,
-      8,
-      9,
-      10
-    ],
-    "resolutions": [
-      "720p",
-      "1080p"
-    ],
-    "aspectRatios": [
-      "16:9",
-      "9:16",
-      "1:1",
-      "4:3",
-      "3:4"
-    ],
-    "frameImages": [
-      "first_frame",
-      "last_frame"
-    ],
-    "generateAudio": true,
-    "seed": true,
-    "priceSkus": {
-      "duration_seconds": 0.1
-    },
-    "passthrough": [
-      "negative_prompt",
-      "prompt_extend",
-      "audio",
-      "ratio",
-      "last_image",
-      "video",
-      "videos",
-      "images"
     ]
   },
   "openai/sora-2-pro": {

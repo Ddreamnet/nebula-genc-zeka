@@ -172,6 +172,8 @@ export function personaPrompt(value: unknown): string {
  * left the catalog) — the panel then draws nothing rather than a row of dials
  * that would 400.
  */
+const QUALITY_LABELS: Record<string, string> = { auto: "Otomatik", low: "Düşük", medium: "Orta", high: "Yüksek", xhigh: "Çok yüksek", max: "En yüksek" };
+
 export function studioFields(tool: PlaygroundTool, role: Role): StudioField[] {
   const caps = capsFor(tool);
   if (!caps) return [];
@@ -343,7 +345,7 @@ export function studioFields(tool: PlaygroundTool, role: Role): StudioField[] {
         key: "quality",
         label: "Kalite",
         tier: "more",
-        spec: { control: "choice", options: quality.map((v) => ({ value: v, label: v === "auto" ? "Otomatik" : v === "low" ? "Düşük" : v === "medium" ? "Orta" : "Yüksek" })) },
+        spec: { control: "choice", options: quality.map((v) => ({ value: v, label: QUALITY_LABELS[v] ?? v })) },
         default: "auto",
         doc: doc("quality"),
       });
@@ -578,9 +580,9 @@ export const ORE_PER_USD = 25;
  */
 export const MAX_ORE_PER_GENERATION = 60;
 
-/** Rough price of one image relative to the tool's catalogued base. */
+/** Rough price of one image relative to the tool's catalogued base. xhigh/max exist only on GPT Image 2.5 and are staff-only dials; their factors are estimates, not measured. */
 const IMAGE_RES_MULTIPLIER: Record<string, number> = { "512": 0.5, "1K": 1, "2K": 2, "4K": 4 };
-const IMAGE_QUALITY_MULTIPLIER: Record<string, number> = { low: 0.6, auto: 1, medium: 1, high: 1.6 };
+const IMAGE_QUALITY_MULTIPLIER: Record<string, number> = { low: 0.6, auto: 1, medium: 1, high: 1.6, xhigh: 2.5, max: 4 };
 
 /**
  * Picks the `pricing_skus` entry that matches a resolution and an audio
@@ -617,10 +619,31 @@ export function videoUsdPerSecond(caps: VideoCaps, resolution: string, withAudio
     // An image_to_video key prices a different call than the one we may make.
     if (k.includes("image_to_video")) continue;
 
-    const score = (namesRes.length > 0 ? 2 : 0) + (saysAudio || saysSilent ? 1 : 0);
+    // An explicit audio state outranks an explicit resolution. Kling publishes
+    // `duration_seconds_with_audio` with no resolution suffix next to
+    // `text_to_video_duration_seconds_720p`, which is its SILENT price; scoring
+    // resolution higher picked the silent SKU for a clip with sound on, and
+    // the treasury paid the 50% difference (measured 17 Sep 2026: an 8 s
+    // Kling 3.0 Standard clip charged 16.8 cevher cost $1.008, not $0.672).
+    const score = (namesRes.length > 0 ? 2 : 0) + (saysAudio || saysSilent ? 3 : 0);
     if (!best || score > best.score) best = { score, usd };
   }
   return best?.usd ?? null;
+}
+
+/**
+ * How much cheaper a silent clip is on a token-billed model, read off its own
+ * SKUs rather than assumed. Seedance 2.x publishes `video_tokens_without_audio`
+ * equal to `video_tokens` — sound is free there, so a flat 30% discount was a
+ * discount the provider never gave (measured 17 Sep 2026: a silent 4 s
+ * Seedance 2.0 clip charged 10.5 cevher cost the full $0.611). No SKU pair
+ * means no evidence of a discount, so none is applied.
+ */
+function silentFactor(caps: VideoCaps): number {
+  const full = caps.priceSkus?.video_tokens;
+  const silent = caps.priceSkus?.video_tokens_without_audio;
+  if (!full || !silent || silent >= full) return 1;
+  return silent / full;
 }
 
 export interface CostInput {
@@ -659,7 +682,7 @@ export function generationCost(tool: PlaygroundTool, input: CostInput): number {
       const baseRes = VIDEO_RES_ORDER.indexOf(String(tool.videoResolution ?? "720p"));
       const wantRes = VIDEO_RES_ORDER.indexOf(resolution);
       const resFactor = baseRes >= 0 && wantRes >= 0 ? Math.pow(2, wantRes - baseRes) : 1;
-      ore = tool.oreCost * (seconds / Math.max(1, baseSeconds)) * resFactor * (withAudio ? 1 : 0.7);
+      ore = tool.oreCost * (seconds / Math.max(1, baseSeconds)) * resFactor * (withAudio ? 1 : silentFactor(caps));
     }
   } else if (caps?.kind === "image") {
     const resolution = String(params.resolution ?? "1K");

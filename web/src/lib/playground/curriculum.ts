@@ -51,14 +51,14 @@ export const CURRICULUM_WEEKS: CurriculumWeek[] = [
     month: 1,
     title: "Dedektif Günü: Gerçek mi, Yapay mı?",
     summary: "Halüsinasyonu yakala, açık kaynak modelleri karşılaştır, aileye bir rehber tasarla.",
-    toolIds: ["deepseek-r1", "llama-3-3-70b"],
+    toolIds: ["deepseek-v4-1-flash", "llama-3-3-70b"],
   },
   {
     week: 4,
     month: 1,
     title: "Araç Günü 1: Okul Süper Güçleri",
     summary: "Ders notundan podcast ve quiz üret, hızlı asistanlarla tanış.",
-    toolIds: ["gpt-5-mini", "gemini-2-5-flash"],
+    toolIds: ["gpt-5-mini", "gemini-3-8-flash"],
   },
   {
     week: 5,
