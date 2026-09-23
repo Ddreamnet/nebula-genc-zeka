@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Calendar, Hammer, Users, Wallet } from "lucide-react";
+import { Calendar, Sparkles, Wallet } from "lucide-react";
 import { toast } from "sonner";
 import { createClient } from "@/lib/supabase/client";
 import { useAuth } from "@/contexts/auth-context";
@@ -31,17 +31,6 @@ interface Row {
 /** Kim seçili olursa olsun, satırın "sıradaki ders"i grubun tüm slotlarıdır. */
 function rowSlots(row: Row): SlotRef[] {
   return row.members.flatMap((m) => m.lessons);
-}
-
-function initialsOf(name: string): string {
-  return (
-    name
-      .split(/\s+/)
-      .filter(Boolean)
-      .slice(0, 2)
-      .map((part) => part[0]?.toLocaleUpperCase("tr-TR") ?? "")
-      .join("") || "NG"
-  );
 }
 
 /** Yan panel yuvası — üçü aynı yeri paylaşır, ikisi aynı anda açılamaz. */
@@ -179,13 +168,16 @@ export function TeacherDashboard({ userId }: { userId: string }) {
   // render turu açıyordu.
   const selected = rows.find((row) => row.key === selectedKey) ?? null;
 
+  // 5a sırası: PROGRAM · BAKİYE · ATÖLYE · (zil) · (çıkış). "Öğrenciler"
+  // bir döşeme değil: liste her zaman solda, döşeme yalnızca bir paneli
+  // açar ya da kapatır.
   const nav: PanelNavItem[] = [
-    { key: "students", label: "Öğrenciler", icon: Users, tone: "blue", active: drawer === null, onClick: () => setDrawer(null) },
     {
       key: "schedule",
-      label: "Haftalık program",
+      label: "Program",
+      title: "Haftalık program",
       icon: Calendar,
-      tone: "mint",
+      tone: "blue",
       active: drawer === "schedule",
       onClick: () => setDrawer(drawer === "schedule" ? null : "schedule"),
     },
@@ -194,10 +186,11 @@ export function TeacherDashboard({ userId }: { userId: string }) {
       label: "Bakiye",
       icon: Wallet,
       tone: "peach",
+      mobile: "menu",
       active: drawer === "balance",
       onClick: () => setDrawer(drawer === "balance" ? null : "balance"),
     },
-    { key: "playground", label: "Üretim Atölyesi", icon: Hammer, tone: "violet", href: "/playground" },
+    { key: "playground", label: "Atölye", title: "Üretim Atölyesi", icon: Sparkles, tone: "violet", href: "/playground" },
   ];
 
   if (loading) {
@@ -217,29 +210,18 @@ export function TeacherDashboard({ userId }: { userId: string }) {
   return (
     <PanelShell
       greeting={`İyi dersler${teacherName ? `, ${teacherName.split(" ")[0]}` : ""}`}
-      subline={`${longDateLabel(now)} · BUGÜN ${lessonsToday} DERS`}
+      subline={`${longDateLabel(now)} · BUGÜN ${lessonsToday} DERS${balanceMinutes !== null ? ` · ${balanceMinutes} DK İŞLENDİ` : ""}`}
       nav={nav}
-      initials={initialsOf(teacherName)}
-      unreadCount={unreadCount}
       onSignOut={() => {
         setSigningOut(true);
         signOut();
       }}
       signingOut={signingOut}
-      chip={
-        balanceMinutes !== null ? (
-          <span className="pn-bar-btn pn-bar-btn--num" title="İşlenen toplam ders süresi">
-            {balanceMinutes}
-            <span className="text-[10px] font-normal tracking-wide text-[color:var(--pn-on-navy-dim)]">DK</span>
-          </span>
-        ) : null
-      }
       bell={
         <HomeworkNotificationBell
           notifications={notifications}
           unreadCount={unreadCount}
           onMarkAllRead={markAllAsRead}
-          variant="bar"
           onNotificationClick={(studentId) => {
             const row = rows.find((r) => r.members.some((m) => m.student_id === studentId));
             if (!row) return;
@@ -249,7 +231,7 @@ export function TeacherDashboard({ userId }: { userId: string }) {
         />
       }
     >
-      <div className="grid min-h-0 flex-1 grid-cols-1 items-start gap-3 md:grid-cols-[210px_1fr] lg:items-stretch lg:gap-4">
+      <div className="grid min-h-0 flex-1 grid-cols-1 items-start gap-3 md:grid-cols-[228px_1fr] lg:items-stretch lg:gap-3.5">
         <StudentRail
           rows={railRows}
           total={rows.length}
@@ -257,6 +239,7 @@ export function TeacherDashboard({ userId }: { userId: string }) {
           onSelect={(key) => setSelectedKey(key)}
           query={query}
           onQueryChange={setQuery}
+          minutes={balanceMinutes}
         />
 
         <div className="flex min-h-0 min-w-0 flex-col gap-3">

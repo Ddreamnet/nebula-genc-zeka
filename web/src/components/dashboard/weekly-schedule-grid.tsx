@@ -67,6 +67,8 @@ const STUDENT_COLORS = [
 ];
 
 const DAYS = ["Pazartesi", "Salı", "Çarşamba", "Perşembe", "Cuma", "Cumartesi", "Pazar"];
+// Kısa adlar elle: `slice(0, 3)` Pazartesi ile Pazar'ı ikisini de "Paz" yapıyordu.
+const SHORT_DAYS = ["Pzt", "Sal", "Çar", "Per", "Cum", "Cmt", "Paz"];
 
 export function WeeklyScheduleGrid({ teacherId }: WeeklyScheduleGridProps) {
   const [lessons, setLessons] = useState<StudentLesson[]>([]);
@@ -358,7 +360,7 @@ export function WeeklyScheduleGrid({ teacherId }: WeeklyScheduleGridProps) {
                     : "border-outline-variant bg-surface-container text-on-surface-variant",
                 )}
               >
-                {day.slice(0, 3)}
+                {SHORT_DAYS[i]}
               </button>
             ))}
           </div>

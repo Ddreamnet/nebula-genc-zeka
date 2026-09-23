@@ -1118,6 +1118,13 @@
   --pn-chip-ink: var(--pn-violet-ink-strong);
   --pn-chip-line: var(--pn-violet-line);
 }
+/* Tam tonlu bir bandın üstündeki sayaç: krem hap. */
+.pn-chip--cream,
+.pn-tag--cream {
+  --pn-chip-fill: #fffbf2;
+  --pn-chip-ink: #152343;
+  --pn-chip-line: rgba(21, 35, 67, 0.12);
+}
 .pn-chip--quiet,
 .pn-tag--quiet {
   --pn-chip-fill: var(--color-surface-low);
@@ -1319,94 +1326,48 @@
 }
 
 /* =========================================================================
-   Panel kabuğu — "birleşik L"
+   Panel kabuğu — 5a: yüzen bar
 
-   Navigasyon TEK PARÇA bir L'dir: tam yükseklikte 58px dikey şerit + tam
-   genişlikte 58px yatay bar, aynı silüeti paylaşır. Birleşme yerine barın
-   dolgusunda bir yama konur; böylece barın alt konturu ve sol alt yayı
-   şeridin üzerinde görünmez, ikisi tek şekil olarak okunur.
-
-   ÜÇÜ DE (şerit, bar, yama) tek düz lacivert taşır. Bu bilinçli: gradyan
-   OLMADIĞI için dikiş oluşamaz. Renk eşleştirilmiş üç gradyanla denendi ve
-   barın 4px altında sert bir basamak bıraktı — iki gradyan yalnızca BİR
-   kenarda eşitlenebilir.
-
-   İç köşeye kavis tile'ı konmaz: üzerine yatırılan bir kutuya border-radius
-   vermek yayı kutunun KARŞI köşesinde merkezler, yani yanlış tarafı keser ve
-   kavis yerine basamaklı bir çentik üretir. Tek dolguyla dik açılı birleşim
-   zaten tek parça okunur.
+   Sol şerit yok. Navigasyon çerçevenin üstünde yüzen TEK lacivert bar;
+   eylemler barın sağında, adları altlarında yazılı renkli döşemeler.
 
    ---- Ölçüler ------------------------------------------------------------
-   Dört değişken her şeyi belirler ve içerik ofseti bunlardan TÜRETİLİR,
-   elle yazılmaz:
+     --shell-pad  kenar payı                 20px  (mobil 12px)
+     --shell-top  barın üstündeki pay        18px  (mobil 12px)
+     --shell-nav  bar yüksekliği             82px  (mobil 56px)
+     --shell-gap  bar ile içerik arası       12px  (mobil 12px)
 
-     --shell-pad  çerçeve içi kenar payı        22px  (mobil 12px)
-     --shell-top  barın üstündeki pay           18px  (mobil 14px)
-     --shell-nav  bar yüksekliği = şerit eni    58px  (mobil 50px)
-     --shell-gap  nav ile içerik arası          13px  (mobil 12px)
-
-     içerik üst  = top + nav + gap = 18 + 58 + 13 = 89px
-     içerik sol  = pad + nav + gap = 22 + 58 + 13 = 93px
-
-   Bu iki türetme L nav'ın tüm anlamıdır: sola 22 verilirse içerik şeridin
-   ALTINA girer. Bir sayı elle yazıldığı anda ikisi ayrı düşer.
-
-   `top` neden `pad`'den 4px küçük: bar bir gölge taşır ve gölge yukarı
-   doğru da yayılır; optik olarak ortalanması için kutunun kendisi 4px
-   yukarı alınır. Alt kenarda gölge zaten aşağı düşer, orada düzeltme yok.
+     içerik üst = top + nav + gap = 18 + 82 + 12 = 112px
+   İçerik ofseti bu dördünden TÜRETİLİR, elle yazılmaz.
    ========================================================================= */
 .pn-shell {
   --shell-pad: 12px;
-  --shell-top: 14px;
-  --shell-nav: 50px;
+  --shell-top: 12px;
+  --shell-nav: 56px;
   --shell-gap: 12px;
-  /* Güvenli alanlar. Safari'de adres çubuğu çentiği zaten hesaba katar, ama
-     panel bir manifest taşıyor (app/manifest.ts) — ana ekrana eklenip tam
-     ekran açıldığında bar çentiğin ALTINDA kalırdı. Yatay olanlar da gerekli:
-     yan yatmış bir iPhone'da sol kenar çentiğin altına girer. */
+  /* Güvenli alanlar: ana ekrana eklenmiş tam ekran panelde bar çentiğin
+     altında kalmasın. */
   --safe-t: env(safe-area-inset-top, 0px);
   --safe-r: env(safe-area-inset-right, 0px);
   --safe-b: env(safe-area-inset-bottom, 0px);
   --safe-l: env(safe-area-inset-left, 0px);
   --shell-inset-top: calc(var(--shell-top) + var(--safe-t) + var(--shell-nav) + var(--shell-gap));
-  --shell-inset-left: calc(var(--shell-pad) + var(--safe-l));
   position: relative;
   min-height: 100dvh;
 }
 @media (min-width: 1024px) {
   .pn-shell {
-    --shell-pad: 22px;
+    --shell-pad: 20px;
     --shell-top: 18px;
-    --shell-nav: 58px;
-    --shell-gap: 13px;
-    --shell-inset-left: calc(var(--shell-pad) + var(--safe-l) + var(--shell-nav) + var(--shell-gap));
-    /* L'nin İÇ köşesinin kavis yarıçapı. Dış köşe 17px (--pn-r-bar); iç
-       köşe ondan bir tık küçük, çünkü içbükey bir kavis aynı yarıçapta dış
-       bükey olandan daha geniş okunur. 14 = 17 / 1.2. */
-    --shell-notch: 14px;
+    --shell-nav: 82px;
+    --shell-gap: 12px;
     /* Masaüstünde panel bir UYGULAMA: sayfa kaymaz, kolonlar kendi içinde
-       kayar. Öğretmen listeyi kaydırırken konular kartının yerinde kalması
-       için gereken şey bu. Mobilde tam tersi — orada iç içe kaydırma
-       parmakla yönetilemez, sayfa akar. */
+       kayar. Mobilde tam tersi — iç içe kaydırma parmakla yönetilemez. */
     height: 100dvh;
     overflow: hidden;
   }
 }
 
-/* Şerit (yalnızca masaüstü) ve bar sabit konumlu: içerik altlarından akar. */
-.pn-shell-rail {
-  position: fixed;
-  left: calc(var(--shell-pad) + var(--safe-l));
-  top: calc(var(--shell-top) + var(--safe-t));
-  bottom: calc(var(--shell-pad) + var(--safe-b));
-  width: var(--shell-nav);
-  z-index: 30;
-  border-radius: var(--pn-r-bar);
-  background: var(--pn-navy);
-  border: 1px solid var(--pn-navy-line);
-  box-shadow: var(--pn-shadow-float);
-  overflow: hidden;
-}
 .pn-shell-bar {
   position: fixed;
   left: calc(var(--shell-pad) + var(--safe-l));
@@ -1414,139 +1375,195 @@
   top: calc(var(--shell-top) + var(--safe-t));
   height: var(--shell-nav);
   z-index: 31;
-  border-radius: var(--pn-r-bar);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 6px 0 14px;
+  border-radius: 16px;
   background: var(--pn-navy);
-  border: 1px solid var(--pn-navy-line);
-  box-shadow: var(--pn-shadow-float);
+  box-shadow: 0 2px 4px rgba(19, 39, 80, 0.14), 0 16px 34px -18px rgba(19, 39, 80, 0.44);
 }
-/* Dikiş yaması: barın 1px konturunun altına, şeridin genişliği kadar.
-   left/width şeridin kontur içini kapsar (pad+1, nav-2), yükseklik barın
-   alt yarısından şeridin üstüne kadar uzanır. */
-.pn-shell-seam {
-  position: fixed;
-  left: calc(var(--shell-pad) + var(--safe-l) + 1px);
-  top: calc(var(--shell-top) + var(--safe-t) + var(--shell-nav) - 28px);
-  width: calc(var(--shell-nav) - 2px);
-  height: 32px;
-  z-index: 32;
-  background: var(--pn-navy);
-  pointer-events: none;
-}
-
-/* L'nin iç köşesi.
-
-   Bar ve şerit iki ayrı yuvarlak dikdörtgen olduğu için birleştikleri yerde
-   90°'lik keskin bir çentik kalıyordu: dışarıda her köşe 17px kavisliyken
-   içeride tek bir sivri uç. Bu parça o çentiği doldurur.
-
-   Geometri: köşe noktası P = (pad + nav, top + nav). Parça P'den başlayan
-   R×R'lik bir kare, maskesi P + (R, R) merkezli R yarıçaplı diski KESER —
-   geriye kalan eğri üçgen, barın alt kenarıyla şeridin sağ kenarını teğet
-   olarak birleştiren içbükey yaydır. Yarıçap tek yerde tanımlı, iki kenar
-   da ondan türer; elle yerleştirilmiş bir maske değil.
-
-   Maske desteklenmezse parça SAYDAM kalır (aşağıdaki @supports): keskin bir
-   köşe, yanlış yerde duran opak bir kareden iyidir. Görünürlüğü `display`
-   ile değil `background` ile ayarlıyoruz — `display`, çağrı yerindeki
-   `hidden lg:block` yardımcı sınıflarının işi. */
-.pn-shell-notch {
-  position: fixed;
-  left: calc(var(--shell-pad) + var(--safe-l) + var(--shell-nav));
-  top: calc(var(--shell-top) + var(--safe-t) + var(--shell-nav));
-  width: var(--shell-notch);
-  height: var(--shell-notch);
-  z-index: 32;
-  background: transparent;
-  pointer-events: none;
-}
-@supports (mask-image: radial-gradient(#000, #000)) or (-webkit-mask-image: radial-gradient(#000, #000)) {
-  .pn-shell-notch {
-    background: var(--pn-navy);
-    -webkit-mask-image: radial-gradient(circle var(--shell-notch) at 100% 100%, transparent 99%, #000 100%);
-    mask-image: radial-gradient(circle var(--shell-notch) at 100% 100%, transparent 99%, #000 100%);
+@media (min-width: 1024px) {
+  .pn-shell-bar {
+    gap: 18px;
+    padding: 0 16px 0 24px;
+    border-radius: 18px;
   }
 }
 
-/* İçerik. Masaüstünde tam yükseklik ve iç kaydırma, mobilde normal akış. */
 .pn-shell-content {
   padding: var(--shell-inset-top) calc(var(--shell-pad) + var(--safe-r)) calc(var(--shell-pad) + var(--safe-b))
-    var(--shell-inset-left);
+    calc(var(--shell-pad) + var(--safe-l));
 }
 @media (min-width: 1024px) {
   .pn-shell-content {
     height: 100dvh;
-    padding-bottom: calc(var(--shell-pad) + var(--safe-b));
     display: flex;
     flex-direction: column;
     min-height: 0;
   }
 }
 
-/* Şerit ikonları. Koyu ve dekorlu bir zeminde saydam bir ikon okunmaz —
-   her ikon hafif dolgulu bir kutu taşır. Aktif olan pastel doluya geçer,
-   hover'da her öğe KENDİ ailesinin pasteline gider (Program nane, Bakiye
-   şeftali, Playground mor): renk, gidilecek yeri daha tıklamadan söyler.
-   Kalem kalınlığı 1.9 — koyu zemin krem zeminden daha kalın kalem ister. */
-.pn-rail-btn {
-  display: grid;
-  place-items: center;
-  width: 44px;
-  height: 44px;
+/* ---- Döşeme ------------------------------------------------------------
+   Pastel dolgu, 22px ikon, altında Plex Mono versal ad. Kontur yok: lacivert
+   zeminde pastel kendi kenarını zaten çizer. Hover'da 1px yükselir ve
+   KENDİ tonunda yumuşak bir gölge alır. Açık bir paneli temsil eden döşeme
+   (data-active) içe basılır: aynı döşeme, ışığı ters. */
+.pn-tile {
+  position: relative;
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  width: 54px;
+  height: 46px;
   flex-shrink: 0;
-  border-radius: 13px;
-  border: 1px solid var(--pn-on-navy-edge);
-  background: var(--pn-on-navy-fill);
-  color: var(--pn-on-navy);
+  box-sizing: border-box;
+  border: 0;
+  border-radius: 12px;
+  background: var(--pn-tile-fill);
+  color: var(--pn-tile-ink);
   cursor: pointer;
-  transition: background-color var(--pn-dur) var(--pn-ease), border-color var(--pn-dur) var(--pn-ease),
-    color var(--pn-dur) var(--pn-ease), transform var(--pn-dur) var(--pn-ease);
+  text-decoration: none;
+  transition: transform var(--pn-dur-fast) var(--pn-ease), box-shadow var(--pn-dur-fast) var(--pn-ease);
   touch-action: manipulation;
   -webkit-tap-highlight-color: transparent;
 }
-.pn-rail-btn[data-active="true"] {
-  background: var(--pn-blue);
-  color: #132750;
-  border-color: rgba(207, 225, 255, 0.55);
-  box-shadow: 0 2px 6px -1px rgba(8, 18, 44, 0.45);
+.pn-tile-icon {
+  width: 18px;
+  height: 18px;
 }
-@media (hover: hover) {
-  .pn-rail-btn:not([data-active="true"]):hover {
-    background: var(--pn-rail-hover, var(--pn-blue));
-    border-color: var(--pn-rail-hover-line, rgba(207, 225, 255, 0.7));
-    color: var(--pn-rail-hover-ink, #132750);
+.pn-tile-label {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 600;
+  line-height: 1;
+  letter-spacing: 0;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+@media (min-width: 1024px) {
+  .pn-tile {
+    width: 66px;
+    height: 58px;
+    gap: 5px;
+    border-radius: 14px;
+  }
+  .pn-tile-icon {
+    width: 22px;
+    height: 22px;
+  }
+  .pn-tile-label {
+    font-size: 10px;
+    letter-spacing: 0.06em;
   }
 }
-.pn-rail-btn:focus-visible {
-  outline: 2px solid var(--pn-on-navy);
+@media (hover: hover) {
+  .pn-tile:hover:not(:disabled) {
+    transform: translateY(-1px);
+    box-shadow: 0 6px 16px -6px var(--pn-tile-glow);
+  }
+}
+.pn-tile[data-active] {
+  transform: none;
+  box-shadow: inset 0 2px 5px var(--pn-tile-glow), 0 0 0 2px rgba(242, 246, 255, 0.85);
+}
+.pn-tile:focus-visible {
+  outline: 2px solid #f2f6ff;
   outline-offset: 2px;
 }
-.pn-rail-btn--mint {
-  --pn-rail-hover: var(--pn-mint);
-  --pn-rail-hover-line: rgba(198, 241, 220, 0.7);
-  --pn-rail-hover-ink: var(--pn-mint-ink-strong);
+.pn-tile:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
 }
-.pn-rail-btn--peach {
-  --pn-rail-hover: var(--pn-peach);
-  --pn-rail-hover-line: rgba(255, 225, 196, 0.7);
-  --pn-rail-hover-ink: var(--pn-peach-ink-strong);
+.pn-tile--blue {
+  --pn-tile-fill: var(--pn-blue);
+  --pn-tile-ink: var(--pn-blue-ink-strong);
+  --pn-tile-glow: rgba(36, 55, 166, 0.5);
 }
-.pn-rail-btn--violet {
-  --pn-rail-hover: var(--pn-violet);
-  --pn-rail-hover-line: rgba(220, 210, 255, 0.7);
-  --pn-rail-hover-ink: var(--pn-violet-ink-strong);
+.pn-tile--mint {
+  --pn-tile-fill: var(--pn-mint);
+  --pn-tile-ink: var(--pn-mint-ink);
+  --pn-tile-glow: rgba(23, 145, 91, 0.5);
 }
-.pn-rail-btn--pink {
-  --pn-rail-hover: var(--pn-pink);
-  --pn-rail-hover-line: rgba(255, 214, 222, 0.7);
-  --pn-rail-hover-ink: var(--pn-pink-ink-strong);
+.pn-tile--peach {
+  --pn-tile-fill: var(--pn-peach);
+  --pn-tile-ink: var(--pn-peach-ink);
+  --pn-tile-glow: rgba(210, 112, 26, 0.5);
+}
+.pn-tile--violet {
+  --pn-tile-fill: var(--pn-violet);
+  --pn-tile-ink: var(--pn-violet-ink-strong);
+  --pn-tile-glow: rgba(74, 47, 184, 0.5);
+}
+.pn-tile--pink {
+  --pn-tile-fill: var(--pn-pink);
+  --pn-tile-ink: var(--pn-pink-ink-strong);
+  --pn-tile-glow: rgba(178, 47, 79, 0.5);
+}
+.pn-tile .pn-badge {
+  top: -5px;
+  right: -5px;
+  min-width: 17px;
+  height: 17px;
 }
 
-/* Mobil barda aynı düğme, 34px. Ayrı bir sınıf değil, aynı sınıfın küçük
-   boyu — iki farklı ikon düğmesi dili panelde yok. */
-.pn-rail-btn--bar {
-  width: 34px;
-  height: 34px;
-  border-radius: 11px;
+/* Menü satırı (mobil menü + açılır döşeme): kendi pastelinde küçük ikon
+   kutusu + ad. 44px, parmak boyu. */
+.pn-menu-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 44px;
+  width: 100%;
+  padding: 0 8px;
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--color-on-surface);
+  text-align: left;
+  text-decoration: none;
+  transition: background-color var(--pn-dur-fast) var(--pn-ease);
+}
+@media (pointer: fine) {
+  .pn-menu-row {
+    min-height: 38px;
+    font-size: 13px;
+  }
+}
+.pn-menu-row:hover {
+  background: var(--pn-blue-tint);
+}
+.pn-menu-row-icon {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  flex-shrink: 0;
+  border-radius: 8px;
+  background: var(--pn-tile-fill);
+  color: var(--pn-tile-ink);
+}
+.pn-menu-row--blue {
+  --pn-tile-fill: var(--pn-blue);
+  --pn-tile-ink: var(--pn-blue-ink-strong);
+}
+.pn-menu-row--mint {
+  --pn-tile-fill: var(--pn-mint);
+  --pn-tile-ink: var(--pn-mint-ink);
+}
+.pn-menu-row--peach {
+  --pn-tile-fill: var(--pn-peach);
+  --pn-tile-ink: var(--pn-peach-ink);
+}
+.pn-menu-row--violet {
+  --pn-tile-fill: var(--pn-violet);
+  --pn-tile-ink: var(--pn-violet-ink-strong);
+}
+.pn-menu-row--pink {
+  --pn-tile-fill: var(--pn-pink);
+  --pn-tile-ink: var(--pn-pink-ink-strong);
 }
 
 /* =========================================================================
@@ -3100,4 +3117,215 @@
   background-image:
     conic-gradient(from 0deg at 50% 50%, #e6edf7 25%, transparent 0 50%, #e6edf7 0 75%, transparent 0);
   background-size: 16px 16px;
+}
+
+/* =========================================================================
+   Panel 5a — yalnızca öğretmen / öğrenci / yönetici panelleri
+
+   .panel-theme'in üstüne binen dar bir katman. Atölye ve giriş sayfası aynı
+   temayı paylaşır ama bu sınıfı taşımaz, o yüzden hiçbiri etkilenmez.
+     · Masa nane (#E8F4EC) + nokta dokusu, kart gövdeleri krem (#FFFBF2).
+     · Başlıklar Sora. Fredoka panelden çıktı.
+     · Bantlar TAM ton pastel; yıkanmış tint'ler yalnızca zeminde.
+   Alias'lar (--card, --popover…) burada yeniden bildiriliyor: işaret
+   ettikleri token'lar bu kapsamda değiştiği için (bkz. .panel-theme notu).
+   ========================================================================= */
+.panel-5a {
+  --color-surface: #e8f4ec;
+  --color-surface-container: #fffbf2;
+  --color-surface-high: #fffbf2;
+  --color-surface-low: #f7f1e3;
+  --color-on-surface-variant: #5b6480;
+  --pn-ink-2: #2c3550;
+  --pn-on-navy: #f2f6ff;
+  --pn-on-navy-dim: #9db4de;
+
+  --card: var(--color-surface-container);
+  --popover: var(--color-surface-container);
+  --muted: var(--color-surface-low);
+  --sidebar: var(--color-surface-container);
+
+  --pn-shadow-card: 0 1px 2px rgba(21, 35, 67, 0.05), 0 10px 26px -18px rgba(21, 35, 67, 0.22);
+
+  --font-display: var(--font-sora, ui-sans-serif), ui-sans-serif, system-ui, sans-serif;
+}
+/* Nokta dokusu SABİT bir katmanda: sayfa kaydığında yeniden boyanmaz,
+   yalnızca bir kez çizilir (tam sayfa tekrar eden bir arka planın tek
+   maliyeti buydu). */
+.panel-5a.panel-grid-bg::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background-image: radial-gradient(rgba(23, 145, 91, 0.15) 1.4px, transparent 1.4px);
+  background-size: 26px 26px;
+}
+.panel-5a.panel-grid-bg {
+  isolation: isolate;
+}
+.panel-5a :is(h1, h2, h3, h4) {
+  letter-spacing: -0.02em;
+}
+
+@layer components {
+  .panel-5a .pn-band--mint {
+    --pn-band-fill: var(--pn-mint);
+    --pn-band-line: rgba(23, 145, 91, 0.3);
+  }
+  .panel-5a .pn-band--peach {
+    --pn-band-fill: var(--pn-peach);
+    --pn-band-line: rgba(210, 112, 26, 0.3);
+  }
+  .panel-5a .pn-band--pink {
+    --pn-band-fill: var(--pn-pink);
+    --pn-band-line: rgba(178, 47, 79, 0.22);
+  }
+  .panel-5a .pn-band--blue {
+    --pn-band-fill: var(--pn-blue);
+    --pn-band-line: rgba(36, 55, 166, 0.22);
+  }
+  .panel-5a .pn-band--violet {
+    --pn-band-fill: var(--pn-violet);
+    --pn-band-line: rgba(74, 47, 184, 0.3);
+  }
+  /* Tam tonlu bantta #5B6480 4.5:1'in altına düşüyor; bantta ikincil
+     metin bir ton koyu. */
+  .panel-5a .pn-band .pn-card-sub {
+    color: var(--pn-ink-2);
+  }
+  .panel-5a .pn-card {
+    border-radius: 18px;
+  }
+  .panel-5a .pn-card-title {
+    font-size: 16px;
+    font-weight: 600;
+    letter-spacing: -0.015em;
+  }
+  .panel-5a .pn-row {
+    padding: 8px 9px;
+    border-radius: 9px;
+  }
+}
+
+/* ---- Paket ızgarası ------------------------------------------------------
+   Kolon = hafta, satır = haftanın kaçıncı dersi. Kutunun rengi ders
+   satırının `status`'ından gelir, sırasından değil. */
+.pn-pkg {
+  display: grid;
+  grid-template-columns: auto repeat(var(--pkg-cols, 4), minmax(0, 1fr));
+  column-gap: 8px;
+  row-gap: 5px;
+  align-items: center;
+}
+.pn-pkg-label {
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  text-align: right;
+  padding-right: 4px;
+}
+.pn-pkg-box {
+  display: grid;
+  place-items: center;
+  height: 44px;
+  border-radius: 11px;
+  border: 1.5px solid var(--pkg-line);
+  background: var(--pkg-fill);
+  color: var(--pkg-ink);
+  font-family: var(--font-display);
+  font-size: 16px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  transition: transform var(--pn-dur-fast) var(--pn-ease), box-shadow var(--pn-dur-fast) var(--pn-ease);
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+@media (min-width: 1024px) {
+  .pn-pkg-box {
+    height: 36px;
+    border-radius: 10px;
+    font-size: 15px;
+  }
+}
+button.pn-pkg-box {
+  cursor: pointer;
+}
+button.pn-pkg-box:disabled {
+  cursor: default;
+}
+@media (hover: hover) {
+  button.pn-pkg-box:not(:disabled):hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 14px -6px var(--pkg-line);
+  }
+}
+button.pn-pkg-box:focus-visible {
+  outline: 2px solid var(--color-secondary);
+  outline-offset: 2px;
+}
+.pn-pkg-box[data-state="completed"] {
+  --pkg-fill: #c6f1dc;
+  --pkg-line: rgba(23, 145, 91, 0.45);
+  --pkg-ink: #0b4f30;
+}
+.pn-pkg-box[data-state="now"] {
+  --pkg-fill: #ffe1c4;
+  --pkg-line: #d2701a;
+  --pkg-ink: #9c4a0a;
+  animation: pn-now-amber 2.4s ease-in-out infinite;
+}
+.pn-pkg-box[data-state="planned"] {
+  --pkg-fill: #fffbf2;
+  --pkg-line: rgba(21, 35, 67, 0.22);
+  --pkg-ink: #5b6480;
+}
+.pn-pkg-box[data-state="moved"] {
+  --pkg-fill: #ffd6de;
+  --pkg-line: rgba(178, 47, 79, 0.46);
+  --pkg-ink: #8c1f3b;
+}
+/* Sıradaki işaretlenebilir ders: kontur bir ton koyulaşır — "buraya
+   dokunulur" demenin, bir rozet eklemeden en sessiz yolu. */
+.pn-pkg-box[data-next] {
+  --pkg-line: rgba(36, 55, 166, 0.55);
+  --pkg-ink: #1b2a6b;
+}
+.pn-pkg-date {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  text-align: center;
+  line-height: 1.35;
+  color: var(--color-on-surface-variant);
+  white-space: nowrap;
+}
+.pn-pkg-date[data-current] {
+  color: #9c4a0a;
+}
+.pn-pkg-date-moved {
+  display: block;
+  color: #8c1f3b;
+}
+@keyframes pn-now-amber {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(156, 74, 10, 0.42);
+  }
+  50% {
+    box-shadow: 0 0 0 5px rgba(156, 74, 10, 0);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .pn-pkg-box[data-state="now"] {
+    animation: none;
+  }
+  .pn-tile:hover:not(:disabled),
+  button.pn-pkg-box:not(:disabled):hover {
+    transform: none;
+  }
 }

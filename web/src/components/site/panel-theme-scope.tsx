@@ -30,13 +30,17 @@ const CLASSES = [
  * reaches them. Scoping on <body> itself covers both the normal tree and
  * anything portaled, since <body> is an ancestor of both.
  */
-export function PanelThemeScope() {
+export function PanelThemeScope({ extra = "" }: { extra?: string } = {}) {
   useEffect(() => {
-    document.body.classList.add(...CLASSES);
+    // `extra`: yalnızca bir ağaca ait kapsam sınıfları (panelin 5a dili,
+    // Sora değişkeni). Portallar body'de render edildiği için onlar da
+    // body'ye taşınmak zorunda.
+    const classes = [...CLASSES, ...extra.split(" ").filter(Boolean)];
+    document.body.classList.add(...classes);
     return () => {
-      document.body.classList.remove(...CLASSES);
+      document.body.classList.remove(...classes);
     };
-  }, []);
+  }, [extra]);
 
   return null;
 }

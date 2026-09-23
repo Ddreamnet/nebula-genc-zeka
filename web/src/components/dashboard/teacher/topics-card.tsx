@@ -8,6 +8,7 @@ import { getResourceIcon } from "@/lib/admin/resource-icon";
 import { useGroupTopics, type GroupTopic, type GroupResource } from "@/lib/lesson/use-group-topics";
 import { toggleTopicCompletion as toggleTopicCompletionRpc } from "@/lib/lesson/service";
 import { cn } from "@/lib/cn";
+import { TopicStatusPill, TopicsProgress } from "../topic-status";
 
 interface Member {
   id: string;
@@ -55,7 +56,6 @@ export function TopicsCard({ members, groupName, onOpenLibrary }: Props) {
 
   const heading = groupName ?? members[0]?.profiles.full_name ?? "";
   const done = topics.filter((t) => t.is_completed).length;
-  const ratio = topics.length > 0 ? done / topics.length : 0;
   const firstOpenIndex = topics.findIndex((t) => !t.is_completed);
 
   async function upsertCompletion(studentId: string, resourceId: string, isCompleted: boolean) {
@@ -120,45 +120,24 @@ export function TopicsCard({ members, groupName, onOpenLibrary }: Props) {
 
   return (
     <section className="pn-card min-h-0 flex-1" aria-label={`${heading} için konular`}>
-      <div className="pn-band pn-band--blue">
-        <div className="flex min-w-0 flex-col">
+      <div className="pn-band pn-band--pink gap-3 lg:py-3">
+        <div className="flex min-w-0 shrink-0 flex-col">
           <h2 className="pn-card-title">Konular</h2>
-          <p className="pn-card-sub truncate">
-            {heading}
-            {members.length > 1 ? ` · ${members.length} öğrenci` : ""}
-          </p>
+          {members.length > 1 && <p className="pn-card-sub truncate">{heading} · {members.length} öğrenci</p>}
         </div>
-
-        {/* İlerleme çubuğu SABİT 64px ve BAŞLIĞIN HEMEN YANINDA. İki hata
-            birden düzeltildi: `flex-1` verildiğinde çubuk geniş bir kartta
-            1100px'e uzuyordu (20 konudan 9'unu anlatmak için bandın yarısı),
-            ve sağa yaslandığında "9/20" ile ne'yin 9/20'si olduğu bandın iki
-            ucuna düşüyordu. Sayı etiketinin yanında durur. */}
-        <div className="flex shrink-0 items-center gap-2">
-          <div className="h-1.5 w-16 overflow-hidden rounded-full bg-[color:rgba(21,35,67,.12)]">
-            <div
-              className="h-full rounded-full bg-[color:var(--pn-mint-ink)] transition-[width] duration-[.26s]"
-              style={{ width: `${Math.round(ratio * 100)}%` }}
-            />
-          </div>
-          <span className="shrink-0 font-mono text-[10px] font-semibold tabular-nums text-[color:var(--pn-mint-ink)]">
-            {done}/{topics.length}
-          </span>
-        </div>
-        <span className="flex-1" />
-
+        <TopicsProgress done={done} total={topics.length} />
         <button
           type="button"
           onClick={onOpenLibrary}
-          aria-label="Konu kütüphanesi"
           title="Konu kütüphanesi"
-          className="grid size-9 shrink-0 place-items-center rounded-[10px] border border-[color:var(--pn-blue-line)] bg-[color:var(--pn-blue)] text-[color:var(--pn-blue-ink-strong)] transition-transform duration-[.18s] hover:-translate-y-px pointer-fine:size-[30px]"
+          className="pn-btn pn-btn--sm pn-btn--blue shrink-0"
         >
           <Library className="size-4" strokeWidth={1.9} aria-hidden />
+          Kütüphane
         </button>
       </div>
 
-      <div className="pn-scroll @container flex min-h-0 flex-1 flex-col gap-1.5 p-2.5">
+      <div className="pn-scroll @container flex min-h-0 flex-1 flex-col gap-2 p-3">
         {/* Yalnızca liste henüz BOŞKEN iskelet: bir yeniden okuma sırasında dolu listenin üstünde beliren boş bir blok, konuların bir anlığına aşağı kaymasına yol açıyordu. */}
         {loading && topics.length === 0 && <div className="h-16 animate-pulse rounded-[12px] bg-[color:var(--pn-blue-tint)]" />}
 
@@ -180,13 +159,13 @@ export function TopicsCard({ members, groupName, onOpenLibrary }: Props) {
               className="rounded-[12px] border border-l-[3px]"
               style={{ background: style.bg, borderColor: style.line, borderLeftColor: style.tone }}
             >
-              <div className="flex items-center gap-2 p-2">
+              <div className="flex items-center gap-3 px-3 py-2">
                 <button
                   type="button"
                   onClick={() => toggleTopic(topic)}
                   aria-label={topic.is_completed ? `${topic.title} — tamamlanmadı yap` : `${topic.title} — tamamlandı yap`}
                   aria-pressed={topic.is_completed}
-                  className="grid size-[18px] shrink-0 place-items-center rounded-full border-[1.5px] transition-transform duration-[.18s] hover:scale-110"
+                  className="grid size-[22px] shrink-0 place-items-center rounded-full border-[1.5px] transition-transform duration-[.18s] hover:scale-110"
                   style={{ background: style.dot, borderColor: style.tone }}
                 >
                   <Check
@@ -209,21 +188,19 @@ export function TopicsCard({ members, groupName, onOpenLibrary }: Props) {
                   aria-expanded={isOpen}
                   className="flex min-w-0 flex-1 items-center gap-2 text-left"
                 >
-                  <span className="min-w-0 flex-1 truncate text-[13px] font-semibold text-on-surface">{topic.title}</span>
-                  {/* Sayı çıplak: "3 kaynak" hapı her satırda aynı kelimeyi
-                      tekrar ediyordu ve beş satırda beş dolu hap, listenin
-                      kendisinden daha çok yer kaplıyordu. Kelime aria'da
-                      duruyor; gözün ihtiyacı olan tek şey sayı. */}
+                  <span className="min-w-0 flex-1 truncate py-0.5 text-[14px] font-semibold text-on-surface">{topic.title}</span>
+                  <TopicStatusPill state={state} />
+                  {/* Kaynak sayısı ve durum hapı yalnızca yer varken: yan panel
+                      açılıp kart daralınca önce hap, sonra sayı düşer. */}
                   {topic.resources.length > 0 && (
                     <span
-                      className="hidden shrink-0 font-mono text-[10px] font-semibold tabular-nums text-outline @[300px]:inline"
-                      aria-label={`${topic.resources.length} kaynak`}
+                      className="hidden shrink-0 font-mono text-[11px] font-semibold tabular-nums text-on-surface-variant @[340px]:inline"
                     >
-                      {topic.resources.length}
+                      {topic.resources.length} kaynak
                     </span>
                   )}
                   <ChevronDown
-                    className={cn("size-3.5 shrink-0 text-outline transition-transform duration-[.18s]", isOpen && "rotate-180")}
+                    className={cn("size-3.5 shrink-0 text-on-surface-variant transition-transform duration-[.18s]", isOpen && "rotate-180")}
                     strokeWidth={2}
                     aria-hidden
                   />

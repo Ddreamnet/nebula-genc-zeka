@@ -1,7 +1,7 @@
 "use client";
 
 import { Archive, ChevronDown, Clock, RotateCcw, Settings, UserRound } from "lucide-react";
-import { getDayName, formatTime } from "@/lib/lesson/format";
+import { getShortDayName, formatTime } from "@/lib/lesson/format";
 import { StudentTopicsSection } from "./student-topics-section";
 import { PlaygroundOreButton } from "./playground-ore-button";
 import type { Student, Topic, Resource, Group } from "@/lib/admin/types";
@@ -101,7 +101,7 @@ export function StudentList({
                       {student.lessons.map((lesson) => (
                         <span key={lesson.id} className="pn-chip pn-chip--quiet">
                           <Clock className="size-2.5" strokeWidth={2} aria-hidden />
-                          {getDayName(lesson.dayOfWeek).slice(0, 3)} {formatTime(lesson.startTime)}–
+                          {getShortDayName(lesson.dayOfWeek)} {formatTime(lesson.startTime)}–
                           {formatTime(lesson.endTime)}
                         </span>
                       ))}

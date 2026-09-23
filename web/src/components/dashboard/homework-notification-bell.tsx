@@ -5,8 +5,8 @@ import { Bell, FileText } from "lucide-react";
 import { format } from "date-fns";
 import { tr } from "date-fns/locale";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/panel-ui/popover";
+import { PanelTile } from "@/components/panel-shell/panel-shell";
 import type { HomeworkNotification } from "@/lib/homework/use-notifications";
-import { cn } from "@/lib/cn";
 
 interface Props {
   notifications: HomeworkNotification[];
@@ -14,8 +14,6 @@ interface Props {
   onMarkAllRead: () => void;
   isStudent?: boolean;
   onNotificationClick?: (studentId: string) => void;
-  /** Lacivert barın üstünde mi, krem bir yüzeyde mi duruyor. */
-  variant?: "bar" | "surface";
 }
 
 /**
@@ -34,7 +32,6 @@ export function HomeworkNotificationBell({
   onMarkAllRead,
   isStudent = false,
   onNotificationClick,
-  variant = "surface",
 }: Props) {
   const [open, setOpen] = useState(false);
 
@@ -47,28 +44,21 @@ export function HomeworkNotificationBell({
       }}
     >
       <PopoverTrigger asChild>
-        <button
-          type="button"
+        {/* Barın döşemesi: aynı dil, adı altında. Sayaç döşemenin sağ üst
+            köşesinde, barın lacivertiyle konturlanmış. */}
+        <PanelTile
+          icon={Bell}
+          label="Bildirim"
+          tone="mint"
+          badge={unreadCount}
+          active={open}
+          aria-haspopup="dialog"
           aria-label={unreadCount > 0 ? `Bildirimler — ${unreadCount} okunmamış` : "Bildirimler"}
           title="Bildirimler"
-          className={cn(
-            "relative",
-            // Barda: barın diğer kontrolleriyle AYNI kutu. Eskiden pembe
-            // dolgulu bir kareydi ve yanındaki üç kontrolün hiçbirine
-            // benzemiyordu. Krem bir yüzeyde ise normal ikon butonu.
-            variant === "bar" ? "pn-bar-btn" : "pn-btn pn-btn--icon pn-btn--pink",
-          )}
-        >
-          <Bell className="size-4" strokeWidth={1.9} aria-hidden />
-          {unreadCount > 0 && (
-            <span className={cn("pn-badge", variant === "surface" && "border-[color:var(--color-surface)]")}>
-              {unreadCount > 9 ? "9+" : unreadCount}
-            </span>
-          )}
-        </button>
+        />
       </PopoverTrigger>
 
-      <PopoverContent align="end" sideOffset={8} className="w-[min(22rem,calc(100vw-2rem))] gap-0 p-0">
+      <PopoverContent align="end" sideOffset={10} className="w-[min(22rem,calc(100vw-2rem))] gap-0 p-0">
         <div className="pn-band pn-band--pink justify-between">
           <h3 className="pn-card-title">Bildirimler</h3>
           <span className="pn-chip pn-chip--pink">{unreadCount}</span>

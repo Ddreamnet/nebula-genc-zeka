@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { BookOpen, FileText, Hammer, Phone, Upload, Video } from "lucide-react";
+import { FileText, Phone, Sparkles, Upload, Video } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { useAuth } from "@/contexts/auth-context";
 import { PanelShell, type PanelNavItem } from "@/components/panel-shell/panel-shell";
@@ -10,12 +10,13 @@ import { useStudentTopics } from "@/lib/lesson/use-student-topics";
 import { useHomeworkNotifications } from "@/lib/homework/use-notifications";
 import { useHomeworkBatches } from "@/lib/homework/use-homework-batches";
 import { getDayName, formatTime } from "@/lib/lesson/format";
-import { activeSlot, longDateLabel } from "@/lib/lesson/next-lesson";
+import { activeSlot, longDateLabel, nextSlot } from "@/lib/lesson/next-lesson";
 import { HomeworkNotificationBell } from "./homework-notification-bell";
 import { ContactDialog } from "./contact-dialog";
 import { UploadHomeworkDialog } from "./upload-homework-dialog";
 import { HomeworkBatchList, FilePreviewOverlay } from "./homework/homework-batches";
-import { ProgressRail } from "./student/progress-rail";
+import { PackageGrid } from "./package-grid";
+import { SelectedCard, cardPeachButton } from "./selected-card";
 import { StudentTopicsCard } from "./student/topics-card";
 
 interface TodayLesson {
@@ -26,17 +27,6 @@ interface TodayLesson {
   meetingUrl: string | null;
 }
 
-function initialsOf(name: string): string {
-  return (
-    name
-      .split(/\s+/)
-      .filter(Boolean)
-      .slice(0, 2)
-      .map((part) => part[0]?.toLocaleUpperCase("tr-TR") ?? "")
-      .join("") || "NG"
-  );
-}
-
 export function StudentDashboard({ userId }: { userId: string }) {
   const { profile, signOut } = useAuth();
 
@@ -45,7 +35,7 @@ export function StudentDashboard({ userId }: { userId: string }) {
   // Ödev düğmeleri null olduğu sürece kapalı kalır.
   const [teacherId, setTeacherId] = useState<string | null>(null);
   const [weekNumber, setWeekNumber] = useState<number | null>(null);
-  const [todayLessons, setTodayLessons] = useState<TodayLesson[]>([]);
+  const [lessons, setLessons] = useState<TodayLesson[]>([]);
   const [signingOut, setSigningOut] = useState(false);
   const [drawer, setDrawer] = useState<"homework" | null>(null);
   const [uploadOpen, setUploadOpen] = useState(false);
@@ -66,16 +56,15 @@ export function StudentDashboard({ userId }: { userId: string }) {
 
     const supabase = createClient();
 
-    // Bugünün slotları. `day_of_week` JS'in getDay()'i gibi 0=Pazar olarak
-    // saklanır, dönüşüm gerekmez.
+    // Haftanın bütün slotları: "sıradaki ders" bugünden sonrasını da bilmeli.
+    // `day_of_week` JS'in getDay()'i gibi 0=Pazar olarak saklanır.
     supabase
       .from("student_lessons")
       .select("id, day_of_week, start_time, end_time, meeting_url")
       .eq("student_id", userId)
-      .eq("day_of_week", new Date().getDay())
       .order("start_time")
       .then(({ data }) => {
-        setTodayLessons(
+        setLessons(
           (data ?? []).map((l) => ({
             id: l.id,
             dayOfWeek: l.day_of_week,
@@ -113,20 +102,22 @@ export function StudentDashboard({ userId }: { userId: string }) {
     [topics],
   );
 
+  const todayLessons = lessons.filter((l) => l.dayOfWeek === now.getDay());
   const live = activeSlot(todayLessons, now);
+  const upcoming = nextSlot(lessons, now);
 
   const nav: PanelNavItem[] = [
-    { key: "topics", label: "Konularım", icon: BookOpen, tone: "blue", active: drawer === null, onClick: () => setDrawer(null) },
     {
       key: "homework",
-      label: "Ödevlerim",
+      label: "Ödevler",
+      title: "Ödevlerim",
       icon: FileText,
       tone: "peach",
       active: drawer === "homework",
       onClick: () => setDrawer(drawer === "homework" ? null : "homework"),
     },
-    { key: "contact", label: "İletişim", icon: Phone, tone: "pink", onClick: () => setContactOpen(true) },
-    { key: "playground", label: "Üretim Atölyesi", icon: Hammer, tone: "violet", href: "/playground" },
+    { key: "playground", label: "Atölye", title: "Üretim Atölyesi", icon: Sparkles, tone: "violet", href: "/playground" },
+    { key: "contact", label: "İletişim", icon: Phone, tone: "blue", mobile: "menu", onClick: () => setContactOpen(true) },
   ];
 
   if (loading) {
@@ -141,80 +132,86 @@ export function StudentDashboard({ userId }: { userId: string }) {
 
   return (
     <PanelShell
-      greeting={`Merhaba${studentName ? `, ${studentName.split(" ")[0]}` : ""}`}
+      greeting="Öğrenci paneli"
       subline={`${longDateLabel(now)}${todayLessons.length > 0 ? ` · BUGÜN ${todayLessons.length} DERS` : ""}`}
       nav={nav}
-      initials={initialsOf(studentName)}
-      unreadCount={unreadCount}
       onSignOut={() => {
         setSigningOut(true);
         signOut();
       }}
       signingOut={signingOut}
-      // Barda hafta sayacı YOK. "3 HAFTA" ile "3. hafta" farklı iki şeydir ve
-      // mono bir çip içinde birincisi okunuyordu. Sayı zaten İlerlemem
-      // kartının bandında, ait olduğu bağlamın içinde duruyor.
+      // Barda hafta sayacı YOK: "3. hafta" paket kartının künyesinde, ait
+      // olduğu bağlamın içinde duruyor.
       bell={
         <HomeworkNotificationBell
           notifications={notifications}
           unreadCount={unreadCount}
           onMarkAllRead={markAllAsRead}
           isStudent
-          variant="bar"
           onNotificationClick={() => teacherId && setDrawer("homework")}
         />
       }
     >
-      <div className="grid min-h-0 flex-1 grid-cols-1 items-start gap-3 md:grid-cols-[210px_1fr] lg:items-stretch lg:gap-4">
-        <ProgressRail studentId={userId} weekNumber={weekNumber} />
-
-        <div className="flex min-h-0 min-w-0 flex-col gap-3">
-          {/* Ders gününde bu sayfayı açmanın TEK sebebi derse girmek — o
-              yüzden en üstte ve tek bir düğme. Slotu olmayan günlerde şerit
-              hiç çizilmez; boş bir "bugün ders yok" kutusu yer kaplamaktan
-              başka bir şey yapmazdı. */}
-          {todayLessons.length > 0 && (
-            <section
-              className="flex flex-wrap items-center gap-2.5 rounded-[16px] border border-[color:var(--pn-blue-line)] bg-[color:var(--pn-blue)] p-[13px]"
-              style={{ boxShadow: "0 1px 2px rgba(36,55,166,.06), 0 8px 20px -12px rgba(36,55,166,.24)" }}
-            >
-              <div className="flex min-w-[180px] flex-1 flex-col gap-1">
-                <div className="flex flex-wrap items-center gap-2">
-                  <h2 className="font-display text-[18px] font-semibold leading-tight text-on-surface">Bugün dersin var</h2>
+      <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-3">
+        {(() => {
+          // Ders gününde bu sayfayı açmanın tek sebebi derse girmek: bağlantı
+          // kartın sağında, Ödevler'in yanında. Canlı dersin bağlantısı,
+          // yoksa günün ilk bağlantısı; ders günü değilse düğme yok.
+          const joinUrl =
+            (live && todayLessons.find((l) => l.id === live.slot.id)?.meetingUrl) ??
+            todayLessons.find((l) => l.meetingUrl)?.meetingUrl ??
+            null;
+          const next = live?.slot ?? upcoming?.slot ?? null;
+          return (
+            <SelectedCard
+              ariaLabel="Paketim"
+              title={`Merhaba${studentName ? `, ${studentName.split(" ")[0]}` : ""}`}
+              meta={
+                <>
+                  <span>
+                    {next
+                      ? `${live ? "Şu an" : "Sıradaki ders"}: ${getDayName(next.dayOfWeek)} ${formatTime(next.startTime)}`
+                      : "Ders saatin henüz eklenmedi"}
+                  </span>
                   {live && (
-                    <span className="pn-tag pn-tag--mint">
-                      <span aria-hidden className="pn-pulse size-1.5 rounded-full bg-[color:var(--pn-mint-ink)]" />
+                    <span className="pn-tag pn-tag--peach">
+                      <span aria-hidden className="pn-pulse size-1.5 rounded-full bg-[color:var(--pn-peach-ink)]" />
                       Derste · {live.minutesLeft} dk
                     </span>
                   )}
-                </div>
-                {/* Günün bütün saatleri TEK satırda. Arka arkaya iki 40 dakikalık
-                    ders (40+40) iki ayrı "Bugün dersin var" kartı üretiyordu —
-                    aynı başlık iki kez, iki kat yer. Canlı olan saat koyu
-                    yazılır; ayrı bir kart değil. */}
-                <p className="flex flex-wrap gap-x-3 gap-y-0.5 font-mono text-[11px] font-semibold tabular-nums text-[color:var(--pn-blue-ink-strong)]">
-                  <span>{getDayName(todayLessons[0].dayOfWeek)}</span>
-                  {todayLessons.map((lesson) => (
-                    <span key={lesson.id} className={live?.slot.id === lesson.id ? "text-[color:var(--pn-mint-ink)]" : undefined}>
-                      {formatTime(lesson.startTime)} – {formatTime(lesson.endTime)}
-                    </span>
-                  ))}
-                </p>
-              </div>
-              {(() => {
-                // Bir düğme: canlı dersin bağlantısı, yoksa günün ilk bağlantısı.
-                const url = (live && todayLessons.find((l) => l.id === live.slot.id)?.meetingUrl) ?? todayLessons.find((l) => l.meetingUrl)?.meetingUrl ?? null;
-                return url ? (
-                  <a href={url} target="_blank" rel="noopener noreferrer" className="pn-btn pn-btn--mint w-full sm:w-auto">
-                    <Video className="size-4" strokeWidth={1.9} aria-hidden />
-                    Derse katıl
-                  </a>
-                ) : (
-                  <p className="text-[12px] text-[color:var(--pn-blue-ink-strong)]">Ders linki henüz eklenmedi.</p>
-                );
-              })()}
-            </section>
-          )}
+                  {weekNumber !== null && <span className="pn-tag pn-tag--cream">{weekNumber}. hafta</span>}
+                </>
+              }
+              grid={
+                teacherId ? (
+                  <PackageGrid studentId={userId} teacherId={teacherId} studentName={studentName} now={now} realtime />
+                ) : undefined
+              }
+              actions={
+                <>
+                  {joinUrl && (
+                    <a href={joinUrl} target="_blank" rel="noopener noreferrer" className={`${cardPeachButton} !border-[color:rgba(23,145,91,.4)] !bg-[color:var(--pn-mint)] !text-[color:var(--pn-mint-ink-strong)]`}>
+                      <Video className="size-[18px]" strokeWidth={1.9} aria-hidden />
+                      Derse katıl
+                    </a>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => setDrawer(drawer === "homework" ? null : "homework")}
+                    aria-pressed={drawer === "homework"}
+                    // Dar kartta iki düğme adı ve saati ezer; derse katılma
+                    // günü Ödevler düğmesi çekilir — bardaki ÖDEVLER döşemesi
+                    // aynı paneli açar.
+                    className={`${cardPeachButton} ${joinUrl ? "@max-[860px]:hidden" : ""}`}
+                  >
+                    <FileText className="size-[18px]" strokeWidth={1.9} aria-hidden />
+                    Ödevler
+                  </button>
+                </>
+              }
+            />
+          );
+        })()}
 
           <div className="flex min-h-0 flex-1 items-stretch gap-3">
             <StudentTopicsCard topics={visibleTopics} loading={loading} />
@@ -248,7 +245,6 @@ export function StudentDashboard({ userId }: { userId: string }) {
               />
             </SideDrawer>
           </div>
-        </div>
       </div>
 
       <FilePreviewOverlay preview={homework.preview} onClose={homework.closePreview} />

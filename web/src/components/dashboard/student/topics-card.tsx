@@ -5,6 +5,7 @@ import { BookOpen, Check, ChevronDown, ExternalLink } from "lucide-react";
 import { getResourceIcon } from "@/lib/admin/resource-icon";
 import type { Topic } from "@/lib/admin/types";
 import { cn } from "@/lib/cn";
+import { TopicStatusPill, TopicsProgress } from "../topic-status";
 
 /**
  * Öğrencinin konu listesi — öğretmen panelindeki kartın SALT OKUNUR ikizi.
@@ -25,30 +26,12 @@ export function StudentTopicsCard({ topics, loading }: { topics: Topic[]; loadin
 
   return (
     <section className="pn-card min-h-0 flex-1" aria-label="Öğrendiklerim">
-      <div className="pn-band pn-band--blue">
-        <div className="flex min-w-0 flex-col">
-          <h2 className="pn-card-title">Öğrendiklerim</h2>
-          <p className="pn-card-sub">Konular ve kaynaklar</p>
-        </div>
-        {/* İlerleme çubuğu SABİT 64px ve BAŞLIĞIN HEMEN YANINDA. İki hata
-            birden düzeltildi: `flex-1` verildiğinde çubuk geniş bir kartta
-            1100px'e uzuyordu (20 konudan 9'unu anlatmak için bandın yarısı),
-            ve sağa yaslandığında "9/20" ile ne'yin 9/20'si olduğu bandın iki
-            ucuna düşüyordu. Sayı etiketinin yanında durur. */}
-        <div className="flex shrink-0 items-center gap-2">
-          <div className="h-1.5 w-16 overflow-hidden rounded-full bg-[color:rgba(21,35,67,.12)]">
-            <div
-              className="h-full rounded-full bg-[color:var(--pn-mint-ink)] transition-[width] duration-[.26s]"
-              style={{ width: topics.length > 0 ? `${Math.round((done / topics.length) * 100)}%` : "0%" }}
-            />
-          </div>
-          <span className="shrink-0 font-mono text-[10px] font-semibold tabular-nums text-[color:var(--pn-mint-ink)]">
-            {done}/{topics.length}
-          </span>
-        </div>
+      <div className="pn-band pn-band--pink gap-3 lg:py-3">
+        <h2 className="pn-card-title shrink-0">Öğrendiklerim</h2>
+        <TopicsProgress done={done} total={topics.length} />
       </div>
 
-      <div className="pn-scroll @container flex min-h-0 flex-1 flex-col gap-1.5 p-2.5">
+      <div className="pn-scroll @container flex min-h-0 flex-1 flex-col gap-2 p-3">
         {/* Yalnızca liste henüz BOŞKEN iskelet: bir yeniden okuma sırasında dolu listenin üstünde beliren boş bir blok, konuların bir anlığına aşağı kaymasına yol açıyordu. */}
         {loading && topics.length === 0 && <div className="h-16 animate-pulse rounded-[12px] bg-[color:var(--pn-blue-tint)]" />}
 
@@ -96,11 +79,11 @@ export function StudentTopicsCard({ topics, loading }: { topics: Topic[]; loadin
                   })
                 }
                 aria-expanded={isOpen}
-                className="flex w-full items-center gap-2 p-2 text-left"
+                className="flex w-full items-center gap-3 px-3 py-2 text-left"
               >
                 <span
                   aria-hidden
-                  className="grid size-[18px] shrink-0 place-items-center rounded-full border-[1.5px]"
+                  className="grid size-[22px] shrink-0 place-items-center rounded-full border-[1.5px]"
                   style={{ background: dot, borderColor: tone }}
                 >
                   <Check
@@ -109,17 +92,17 @@ export function StudentTopicsCard({ topics, loading }: { topics: Topic[]; loadin
                     style={{ color: topic.is_completed ? tone : "rgba(21,35,67,.22)" }}
                   />
                 </span>
-                <span className="min-w-0 flex-1 truncate text-[13px] font-semibold text-on-surface">{topic.title}</span>
+                <span className="min-w-0 flex-1 truncate py-0.5 text-[14px] font-semibold text-on-surface">{topic.title}</span>
+                <TopicStatusPill state={state} />
                 {visible.length > 0 && (
                   <span
-                      className="hidden shrink-0 font-mono text-[10px] font-semibold tabular-nums text-outline @[300px]:inline"
-                      aria-label={`${visible.length} kaynak`}
+                      className="hidden shrink-0 font-mono text-[11px] font-semibold tabular-nums text-on-surface-variant @[340px]:inline"
                     >
-                      {visible.length}
+                      {visible.length} kaynak
                     </span>
                 )}
                 <ChevronDown
-                  className={cn("size-3.5 shrink-0 text-outline transition-transform duration-[.18s]", isOpen && "rotate-180")}
+                  className={cn("size-3.5 shrink-0 text-on-surface-variant transition-transform duration-[.18s]", isOpen && "rotate-180")}
                   strokeWidth={2}
                   aria-hidden
                 />

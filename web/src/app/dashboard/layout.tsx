@@ -3,6 +3,7 @@ import { TooltipProvider } from "@/components/panel-ui/tooltip";
 import { Toaster } from "@/components/panel-ui/sonner";
 import { PanelThemeScope } from "@/components/site/panel-theme-scope";
 import { landingFontClass } from "@/lib/landing-fonts";
+import { sora } from "@/lib/panel-fonts";
 
 // Fredoka + Nunito, the "Kâğıt Uzay" pair, shared with the marketing tree via
 // one module so next/font dedupes them into a single request instead of this
@@ -25,8 +26,11 @@ export const metadata: Metadata = {
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   return (
     <TooltipProvider>
-      <div className={`panel-theme panel-grid-bg min-h-dvh bg-surface font-sans text-on-surface ${landingFontClass}`}>
-        <PanelThemeScope />
+      <div className={`panel-theme panel-5a panel-grid-bg min-h-dvh bg-surface font-sans text-on-surface ${landingFontClass} ${sora.variable}`}>
+        {/* panel-5a: yalnızca panellere ait dil (Sora, krem gövde, nane
+            masa). Atölye ve giriş sayfası aynı .panel-theme'i paylaşır ama
+            bu sınıfı taşımaz. */}
+        <PanelThemeScope extra={`panel-5a ${sora.variable}`} />
         {children}
       </div>
       <Toaster theme="light" position="top-center" />

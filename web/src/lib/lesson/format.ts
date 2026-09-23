@@ -14,3 +14,10 @@ export function getDayName(dayOfWeek?: number): string {
   const days = ["Pazar", "Pazartesi", "Salı", "Çarşamba", "Perşembe", "Cuma", "Cumartesi"];
   return dayOfWeek !== undefined ? days[dayOfWeek] : "";
 }
+
+/** Kısa gün adı. `getDayName(d).slice(0, 3)` Pazartesi'yi ve Pazar'ı ikisini
+ *  de "Paz" yapıyordu. */
+export function getShortDayName(dayOfWeek?: number): string {
+  const days = ["Paz", "Pzt", "Sal", "Çar", "Per", "Cum", "Cmt"];
+  return dayOfWeek !== undefined ? days[dayOfWeek] : "";
+}

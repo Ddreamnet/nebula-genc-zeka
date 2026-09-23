@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import dynamic from "next/dynamic";
-import { BookOpen, Calendar, Gem, Hammer, Newspaper, Plus, Users, Wallet } from "lucide-react";
+import { BookOpen, Calendar, Gem, LayoutGrid, Newspaper, Plus, Settings, Sparkles, Users, Wallet } from "lucide-react";
 import { toast } from "sonner";
 import { createClient } from "@/lib/supabase/client";
 import { useAuth } from "@/contexts/auth-context";
@@ -32,6 +32,7 @@ import { GlobalTopicsManager } from "./global-topics-manager";
 const BlogManager = dynamic(() => import("./admin/blog-manager").then((mod) => mod.BlogManager));
 import { NotificationBell } from "./admin/notification-bell";
 import { StudentAboutDialog } from "./student-about-dialog";
+import { SelectedCard, cardIconButton, cardPeachButton } from "./selected-card";
 import type { Teacher, Student, Topic, Resource } from "@/lib/admin/types";
 
 export function AdminDashboard() {
@@ -284,13 +285,16 @@ export function AdminDashboard() {
     );
   }
 
+  // 5a: PROGRAM · BAKİYE · ATÖLYE · YÖNETİM · (zil) · (çıkış). Seyrek
+  // kullanılan üç yönetim işi tek açılır döşemede — sekiz ayrı döşeme barı
+  // ikiye bölerdi.
   const nav: PanelNavItem[] = [
-    { key: "teachers", label: "Öğretmenler", icon: Users, tone: "blue", active: drawer === null, onClick: () => setDrawer(null) },
     {
       key: "schedule",
-      label: "Haftalık program",
+      label: "Program",
+      title: "Haftalık program",
       icon: Calendar,
-      tone: "mint",
+      tone: "blue",
       active: drawer === "schedule",
       onClick: () => setDrawer(drawer === "schedule" ? null : "schedule"),
     },
@@ -299,32 +303,36 @@ export function AdminDashboard() {
       label: "Bakiye",
       icon: Wallet,
       tone: "peach",
+      mobile: "menu",
       active: drawer === "balance",
       onClick: () => setDrawer(drawer === "balance" ? null : "balance"),
     },
-    { key: "playground", label: "Üretim Atölyesi", icon: Hammer, tone: "violet", href: "/playground" },
-    { key: "topics", label: "Konu kütüphanesi", icon: BookOpen, tone: "blue", onClick: () => setShowGlobalTopics(true) },
-    { key: "treasury", label: "Atölye kasası", icon: Gem, tone: "mint", onClick: () => setShowTreasury(true) },
-    { key: "blog", label: "Blog yönetimi", icon: Newspaper, tone: "pink", onClick: () => setShowBlogManager(true) },
+    { key: "playground", label: "Atölye", title: "Üretim Atölyesi", icon: Sparkles, tone: "violet", href: "/playground" },
+    {
+      key: "manage",
+      label: "Yönetim",
+      icon: LayoutGrid,
+      tone: "mint",
+      mobile: "menu",
+      items: [
+        { key: "topics", label: "Konu kütüphanesi", icon: BookOpen, tone: "blue", onClick: () => setShowGlobalTopics(true) },
+        { key: "treasury", label: "Atölye kasası", icon: Gem, tone: "mint", onClick: () => setShowTreasury(true) },
+        { key: "blog", label: "Blog yönetimi", icon: Newspaper, tone: "pink", onClick: () => setShowBlogManager(true) },
+      ],
+    },
   ];
 
   return (
     <PanelShell
       greeting="Yönetim paneli"
+
       subline={longDateLabel(new Date())}
       nav={nav}
-      initials="AD"
       onSignOut={handleSignOut}
       signingOut={signingOut}
-      chip={
-        <span className="pn-bar-btn pn-bar-btn--num" title="Aktif öğretmen sayısı">
-          {teachers.length}
-          <span className="text-[10px] font-normal tracking-wide text-[color:var(--pn-on-navy-dim)]">ÖĞRETMEN</span>
-        </span>
-      }
-      bell={<NotificationBell variant="bar" />}
+      bell={<NotificationBell />}
     >
-      <div className="grid min-h-0 flex-1 grid-cols-1 items-start gap-3 md:grid-cols-[210px_1fr] lg:items-stretch lg:gap-4">
+      <div className="grid min-h-0 flex-1 grid-cols-1 items-start gap-3 md:grid-cols-[228px_1fr] lg:items-stretch lg:gap-3.5">
         <TeacherRail
           teachers={teachers}
           selectedId={selectedTeacherId}
@@ -336,29 +344,51 @@ export function AdminDashboard() {
           onEdit={setEditingTeacher}
         />
 
-        <div className="flex min-h-0 min-w-0 items-stretch gap-3">
+        <div className="flex min-h-0 min-w-0 flex-col gap-3">
+          {selectedTeacher && (
+            <SelectedCard
+              ariaLabel={`${selectedTeacher.full_name} — özet`}
+              title={selectedTeacher.full_name}
+              meta={
+                <span>
+                  {selectedTeacher.students.filter((s) => !s.is_archived).length} aktif öğrenci
+                  {(selectedTeacher.groups?.length ?? 0) > 0 && ` · ${selectedTeacher.groups!.length} grup`}
+                </span>
+              }
+              grid={<WeeklyLoad teacher={selectedTeacher} />}
+              actions={
+                <>
+                  <button
+                    type="button"
+                    onClick={() => setEditingTeacher(selectedTeacher)}
+                    aria-label={`${selectedTeacher.full_name} ayarları`}
+                    title="Öğretmeni düzenle"
+                    className={cardIconButton}
+                  >
+                    <Settings className="size-5" strokeWidth={1.8} aria-hidden />
+                  </button>
+                  <button type="button" onClick={() => setShowManageGroups(true)} title="Gruplar" aria-label="Gruplar" className={cardIconButton}>
+                    <Users className="size-5" strokeWidth={1.8} aria-hidden />
+                  </button>
+                  <button type="button" onClick={() => setShowCreateStudent(true)} className={cardPeachButton}>
+                    <Plus className="size-[18px]" strokeWidth={2} aria-hidden />
+                    Öğrenci
+                  </button>
+                </>
+              }
+            />
+          )}
+
+        <div className="flex min-h-0 min-w-0 flex-1 items-stretch gap-3">
           {drawer !== "schedule" &&
             (selectedTeacher ? (
               <section className="pn-card min-h-0 flex-1" aria-label={`${selectedTeacher.full_name} öğrencileri`}>
-                <div className="pn-band pn-band--blue">
-                  <div className="flex min-w-0 flex-col">
-                    <h2 className="pn-card-title truncate">{selectedTeacher.full_name}</h2>
-                    <p className="pn-card-sub truncate">
-                      {selectedTeacher.students.filter((s) => !s.is_archived).length} aktif öğrenci
-                    </p>
-                  </div>
-                  <span className="flex-1" />
-                  <button type="button" className="pn-btn pn-btn--sm pn-btn--paper" onClick={() => setShowManageGroups(true)}>
-                    <Users className="size-4" strokeWidth={1.9} aria-hidden />
-                    Gruplar
-                  </button>
-                  <button type="button" className="pn-btn pn-btn--sm pn-btn--blue" onClick={() => setShowCreateStudent(true)}>
-                    <Plus className="size-4" strokeWidth={2} aria-hidden />
-                    Öğrenci
-                  </button>
+                <div className="pn-band pn-band--peach lg:py-3">
+                  <h2 className="pn-card-title">Öğrenciler</h2>
+                  <span className="pn-chip pn-chip--cream">{selectedTeacher.students.length}</span>
                 </div>
 
-                <div className="pn-scroll min-h-0 flex-1 p-2.5">
+                <div className="pn-scroll min-h-0 flex-1 p-3">
                   <StudentList
                     students={selectedTeacher.students}
                     groups={selectedTeacher.groups ?? []}
@@ -401,8 +431,8 @@ export function AdminDashboard() {
             ) : (
               // Boş bir yuva, başarısız bir kart değil — kesikli çerçeve
               // "seçim bekliyor" der.
-              <div className="flex min-h-[112px] flex-1 flex-col items-center justify-center gap-1.5 rounded-[16px] border-[1.5px] border-dashed border-[color:rgba(74,47,184,.32)] px-6 py-5 text-center lg:min-h-[220px]">
-                <p className="font-display text-[15px] font-semibold text-[color:var(--pn-violet-ink)]">Bir öğretmen seç</p>
+              <div className="flex min-h-[112px] flex-1 flex-col items-center justify-center gap-1.5 rounded-[16px] border-[1.5px] border-dashed border-[color:rgba(36,55,166,.32)] px-6 py-5 text-center lg:min-h-[220px]">
+                <p className="font-display text-[15px] font-semibold text-[color:var(--pn-blue-ink)]">Bir öğretmen seç</p>
                 <p className="max-w-[240px] text-[12px] text-on-surface-variant">Öğrencileri ve konuları burada görünür.</p>
               </div>
             ))}
@@ -431,10 +461,11 @@ export function AdminDashboard() {
           )}
 
           {!selectedTeacher && drawer !== null && (
-            <div className="flex flex-1 items-center justify-center rounded-[16px] border-[1.5px] border-dashed border-[color:rgba(74,47,184,.32)] px-6 text-center text-[12px] text-on-surface-variant">
+            <div className="flex flex-1 items-center justify-center rounded-[16px] border-[1.5px] border-dashed border-[color:rgba(36,55,166,.32)] px-6 text-center text-[12px] text-on-surface-variant">
               Önce bir öğretmen seç.
             </div>
           )}
+        </div>
         </div>
       </div>
 
@@ -524,5 +555,40 @@ export function AdminDashboard() {
 
       <PlaygroundTreasuryButton open={showTreasury} onOpenChange={setShowTreasury} />
     </PanelShell>
+  );
+}
+
+const DAY_LABELS = ["PZT", "SAL", "ÇAR", "PER", "CUM", "CMT", "PAZ"];
+
+/**
+ * Seçili öğretmenin haftalık ders yükü: gün başına ders slotu. Paket
+ * ızgarasıyla aynı kutu dili (5a §7'nin yönetici uyarlaması) — dolu günler
+ * nane, boş günler krem, bugünün etiketi şeftali.
+ */
+function WeeklyLoad({ teacher }: { teacher: Teacher }) {
+  const counts = [0, 0, 0, 0, 0, 0, 0];
+  for (const student of teacher.students) {
+    if (student.is_archived) continue;
+    for (const lesson of student.lessons) counts[(lesson.dayOfWeek + 6) % 7] += 1;
+  }
+  const today = (new Date().getDay() + 6) % 7;
+  return (
+    <div className="pn-pkg" role="group" aria-label="Haftalık ders yükü" style={{ gridTemplateColumns: "repeat(7, minmax(0, 1fr))" }}>
+      {counts.map((count, day) => (
+        <span
+          key={day}
+          className="pn-pkg-box"
+          data-state={count > 0 ? "completed" : "planned"}
+          aria-label={`${DAY_LABELS[day]}: ${count} ders`}
+        >
+          {count}
+        </span>
+      ))}
+      {DAY_LABELS.map((label, day) => (
+        <span key={label} className="pn-pkg-date" data-current={day === today || undefined}>
+          {label}
+        </span>
+      ))}
+    </div>
   );
 }

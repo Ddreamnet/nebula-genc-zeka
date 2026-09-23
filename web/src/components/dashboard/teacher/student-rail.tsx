@@ -58,10 +58,10 @@ const Row = memo(function Row({
     >
       <span
         aria-hidden
-        className={cn("size-1.5 shrink-0 rounded-full", row.isActive && "pn-pulse")}
+        className={cn("size-[7px] shrink-0 rounded-full", row.isActive && "pn-pulse")}
         style={{ background: tone }}
       />
-      <span className="min-w-0 flex-1 truncate text-[13px] font-semibold text-on-surface">{row.name}</span>
+      <span className="min-w-0 flex-1 truncate text-[14px] font-semibold leading-tight text-on-surface">{row.name}</span>
       {/* Sayaç sıfırken hiç çizilmez. Eskiden görünmez bir düğüm olarak yer
           tutuyordu ("saat kaymasın" diye) — ama saat zaten satırın SON öğesi
           ve sağa yaslı, düğüm yalnızca adın alanından çalıyordu: 195px'lik
@@ -72,7 +72,7 @@ const Row = memo(function Row({
         </span>
       )}
       <span
-        className="shrink-0 whitespace-nowrap font-mono text-[10px] font-semibold tabular-nums"
+        className="shrink-0 whitespace-nowrap font-mono text-[10.5px] font-semibold tabular-nums"
         style={{ color: row.isToday ? tone : "var(--color-on-surface-variant)" }}
       >
         {row.when}
@@ -88,6 +88,9 @@ export interface StudentRailProps {
   onSelect: (key: string) => void;
   query: string;
   onQueryChange: (value: string) => void;
+  /** İşlenen toplam dakika — telefonda bandın sağındaki çip. Masaüstünde
+   *  228px'lik bant buna yetmiyor; orada barın künye satırında yazıyor. */
+  minutes?: number | null;
 }
 
 /** Mobilde katlanmadan önce gösterilen satır sayısı. Dört, çünkü altındaki
@@ -107,7 +110,7 @@ const MOBILE_VISIBLE = 4;
  * sayfanın içine kayan bir kutu koymak, iOS'ta parmağın hangisini kaydırdığı
  * belirsiz kalan tek düzen hatasıdır.
  */
-export function StudentRail({ rows, total, selectedKey, onSelect, query, onQueryChange }: StudentRailProps) {
+export function StudentRail({ rows, total, selectedKey, onSelect, query, onQueryChange, minutes }: StudentRailProps) {
   const [showAll, setShowAll] = useState(false);
 
   const today = rows.filter((r) => r.isToday);
@@ -119,22 +122,46 @@ export function StudentRail({ rows, total, selectedKey, onSelect, query, onQuery
 
   return (
     <section className="pn-card min-h-0" aria-label="Öğrencilerim">
-      <div className="pn-band pn-band--mint relative gap-2">
+      {/* Bant nane (5a): başlık + sayaç + dakika; masaüstünde altında açık
+          bir arama alanı. Telefonda alan yine ikona katlanır — dört satırlık
+          listenin üstünde tam genişlikte bir alan, listenin kendisinden
+          fazla yer kaplardı. */}
+      <div className="pn-band pn-band--mint relative flex-wrap gap-x-2 gap-y-2.5 lg:py-3.5">
         <h2 className="pn-card-title whitespace-nowrap">Öğrencilerim</h2>
-        <span className="pn-chip pn-chip--mint">{total}</span>
+        <span className="pn-chip pn-chip--cream">{total}</span>
         <span className="flex-1" />
-        {/* Alanın kendisi ikon: kapalıyken 36px kare, odaklanınca bandın
-            tamamına yayılır. Dolgusu opak olduğu için yazarken başlığı ve
-            sayacı örter — üstlerinde okunaksız bir katman oluşmaz. */}
+        {minutes !== null && minutes !== undefined && (
+          <span className="pn-chip pn-chip--cream mr-10 lg:hidden" title="İşlenen toplam ders süresi">
+            {minutes}
+            <span className="text-[9px] tracking-[.08em]">DK</span>
+          </span>
+        )}
         <input
           type="search"
-          className="pn-search"
+          className="pn-search lg:hidden"
           placeholder="Ara"
           aria-label="Öğrenci ara"
           value={query}
           onChange={(event) => onQueryChange(event.target.value)}
         />
-        <Search className="pn-search-icon size-3.5 text-[color:var(--pn-mint-ink)]" strokeWidth={2} aria-hidden />
+        <Search className="pn-search-icon size-3.5 text-[color:var(--pn-mint-ink)] lg:hidden" strokeWidth={2} aria-hidden />
+
+        <label className="relative hidden basis-full lg:block">
+          <Search
+            className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-[color:var(--pn-ink-2)]"
+            strokeWidth={1.9}
+            aria-hidden
+          />
+          <input
+            type="search"
+            placeholder="Öğrenci ara"
+            aria-label="Öğrenci ara"
+            value={query}
+            onChange={(event) => onQueryChange(event.target.value)}
+            className="h-10 w-full pl-9 pr-3"
+            style={{ ["--pn-field-fill" as string]: "#fffbf2", ["--pn-field-line" as string]: "rgba(23,145,91,.3)" }}
+          />
+        </label>
       </div>
 
       <div className="pn-rail-list pn-scroll flex min-h-0 flex-1 flex-col gap-0.5 p-2" data-show-all={showAll}>

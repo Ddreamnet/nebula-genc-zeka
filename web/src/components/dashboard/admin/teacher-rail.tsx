@@ -31,12 +31,12 @@ const Row = memo(function Row({
         aria-current={selected ? "true" : undefined}
         className="pn-row pr-10"
         style={{
-          ["--pn-row-stripe" as string]: selected ? "var(--pn-violet-ink)" : "transparent",
-          ["--pn-row-fill" as string]: selected ? "var(--pn-violet-sel)" : "transparent",
-          ["--pn-row-hover" as string]: "var(--pn-violet-tint)",
+          ["--pn-row-stripe" as string]: selected ? "var(--pn-mint-ink)" : "transparent",
+          ["--pn-row-fill" as string]: selected ? "var(--pn-mint-sel)" : "transparent",
+          ["--pn-row-hover" as string]: "var(--pn-mint-tint)",
         }}
       >
-        <span className="min-w-0 flex-1 truncate text-[13px] font-semibold text-on-surface">{teacher.full_name}</span>
+        <span className="min-w-0 flex-1 truncate text-[14px] font-semibold leading-tight text-on-surface">{teacher.full_name}</span>
         <span className="shrink-0 font-mono text-[10px] font-semibold tabular-nums text-on-surface-variant">
           {activeStudents}
         </span>
@@ -49,7 +49,7 @@ const Row = memo(function Row({
         onClick={onEdit}
         aria-label={`${teacher.full_name} ayarları`}
         title="Öğretmen ayarları"
-        className="absolute right-1 top-1/2 grid size-8 -translate-y-1/2 place-items-center rounded-[8px] text-outline transition-colors duration-[.16s] hover:bg-[color:var(--pn-violet)] hover:text-[color:var(--pn-violet-ink-strong)]"
+        className="absolute right-1 top-1/2 grid size-8 -translate-y-1/2 place-items-center rounded-[8px] text-on-surface-variant transition-colors duration-[.16s] hover:bg-[color:var(--pn-mint)] hover:text-[color:var(--pn-mint-ink-strong)]"
       >
         <Settings className="size-3.5" strokeWidth={1.9} aria-hidden />
       </button>
@@ -89,9 +89,9 @@ export function TeacherRail({
 
   return (
     <section className="pn-card min-h-0" aria-label="Öğretmenler">
-      <div className="pn-band pn-band--violet relative gap-2">
+      <div className="pn-band pn-band--mint relative gap-2 lg:py-3.5">
         <h2 className="pn-card-title whitespace-nowrap">Öğretmenler</h2>
-        <span className="pn-chip pn-chip--violet">{teachers.length}</span>
+        <span className="pn-chip pn-chip--cream">{teachers.length}</span>
         <span className="flex-1" />
         <input
           type="search"
@@ -101,7 +101,7 @@ export function TeacherRail({
           value={query}
           onChange={(event) => setQuery(event.target.value)}
         />
-        <Search className="pn-search-icon size-3.5 text-[color:var(--pn-violet-ink)]" strokeWidth={2} aria-hidden />
+        <Search className="pn-search-icon size-3.5 text-[color:var(--pn-mint-ink)]" strokeWidth={2} aria-hidden />
       </div>
 
       <div className="pn-rail-list pn-scroll flex min-h-0 flex-1 flex-col gap-0.5 p-2" data-show-all={showAll}>
@@ -128,7 +128,7 @@ export function TeacherRail({
             type="button"
             onClick={() => setShowAll((value) => !value)}
             aria-expanded={showAll}
-            className="flex min-h-10 w-full items-center justify-center gap-1.5 rounded-[10px] border border-[color:var(--pn-violet-line)] bg-[color:var(--pn-violet-tint)] text-[13px] font-semibold text-[color:var(--pn-violet-ink)]"
+            className="flex min-h-10 w-full items-center justify-center gap-1.5 rounded-[10px] border border-[color:var(--pn-mint-line)] bg-[color:var(--pn-mint-tint)] text-[13px] font-semibold text-[color:var(--pn-mint-ink)]"
           >
             {showAll ? "Daha az göster" : "Tümünü gör"}
             <span className="font-mono text-[10px] font-semibold tabular-nums text-on-surface-variant">{visible.length}</span>
@@ -138,7 +138,7 @@ export function TeacherRail({
       )}
 
       <div className="border-t border-[color:var(--pn-hair)] p-2">
-        <button type="button" onClick={onCreate} className="pn-btn pn-btn--violet pn-btn--sm w-full">
+        <button type="button" onClick={onCreate} className="pn-btn pn-btn--mint pn-btn--sm w-full">
           <Plus className="size-4" strokeWidth={2} aria-hidden />
           Öğretmen ekle
         </button>
