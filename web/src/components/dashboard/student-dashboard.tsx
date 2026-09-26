@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { FileText, Phone, Sparkles, Upload, Video } from "lucide-react";
+import { FileText, Hammer, Phone, Upload, Video } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { useAuth } from "@/contexts/auth-context";
 import { PanelShell, type PanelNavItem } from "@/components/panel-shell/panel-shell";
@@ -10,7 +10,7 @@ import { useStudentTopics } from "@/lib/lesson/use-student-topics";
 import { useHomeworkNotifications } from "@/lib/homework/use-notifications";
 import { useHomeworkBatches } from "@/lib/homework/use-homework-batches";
 import { getDayName, formatTime } from "@/lib/lesson/format";
-import { activeSlot, longDateLabel, nextSlot } from "@/lib/lesson/next-lesson";
+import { activeSlot, nextSlot } from "@/lib/lesson/next-lesson";
 import { HomeworkNotificationBell } from "./homework-notification-bell";
 import { ContactDialog } from "./contact-dialog";
 import { UploadHomeworkDialog } from "./upload-homework-dialog";
@@ -34,7 +34,6 @@ export function StudentDashboard({ userId }: { userId: string }) {
   // diyaloğunun uuid olarak seve seve insert edip 22P02 aldığı bir değerdir.
   // Ödev düğmeleri null olduğu sürece kapalı kalır.
   const [teacherId, setTeacherId] = useState<string | null>(null);
-  const [weekNumber, setWeekNumber] = useState<number | null>(null);
   const [lessons, setLessons] = useState<TodayLesson[]>([]);
   const [signingOut, setSigningOut] = useState(false);
   const [drawer, setDrawer] = useState<"homework" | null>(null);
@@ -77,19 +76,12 @@ export function StudentDashboard({ userId }: { userId: string }) {
 
     supabase
       .from("students")
-      .select("teacher_id, created_at")
+      .select("teacher_id")
       .eq("student_id", userId)
       .single()
       .then(({ data }) => {
         if (!data) return;
         setTeacherId(data.teacher_id);
-        // `students` satırının oluşturulmasından bu yana geçen hafta —
-        // "Tüm Dersleri Sıfırla" bu çapaya dokunmaz (rpc_reset_package
-        // yalnızca student_lesson_tracking/lesson_instances'ı değiştirir),
-        // yani sayaç paket sıfırlamalarında geriye zıplamak yerine artmaya
-        // devam eder.
-        const weeks = Math.floor((Date.now() - new Date(data.created_at).getTime()) / (7 * 24 * 60 * 60 * 1000)) + 1;
-        setWeekNumber(Number.isFinite(weeks) ? weeks : null);
       });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userId]);
@@ -107,16 +99,7 @@ export function StudentDashboard({ userId }: { userId: string }) {
   const upcoming = nextSlot(lessons, now);
 
   const nav: PanelNavItem[] = [
-    {
-      key: "homework",
-      label: "Ödevler",
-      title: "Ödevlerim",
-      icon: FileText,
-      tone: "peach",
-      active: drawer === "homework",
-      onClick: () => setDrawer(drawer === "homework" ? null : "homework"),
-    },
-    { key: "playground", label: "Atölye", title: "Üretim Atölyesi", icon: Sparkles, tone: "violet", href: "/playground" },
+    { key: "playground", label: "Atölye", title: "Üretim Atölyesi", icon: Hammer, tone: "violet", href: "/playground" },
     { key: "contact", label: "İletişim", icon: Phone, tone: "blue", mobile: "menu", onClick: () => setContactOpen(true) },
   ];
 
@@ -133,15 +116,13 @@ export function StudentDashboard({ userId }: { userId: string }) {
   return (
     <PanelShell
       greeting="Öğrenci paneli"
-      subline={`${longDateLabel(now)}${todayLessons.length > 0 ? ` · BUGÜN ${todayLessons.length} DERS` : ""}`}
+      subline={`Hoş geldin${studentName ? `, ${studentName.split(" ")[0]}` : ""}`}
       nav={nav}
       onSignOut={() => {
         setSigningOut(true);
         signOut();
       }}
       signingOut={signingOut}
-      // Barda hafta sayacı YOK: "3. hafta" paket kartının künyesinde, ait
-      // olduğu bağlamın içinde duruyor.
       bell={
         <HomeworkNotificationBell
           notifications={notifications}
@@ -179,7 +160,6 @@ export function StudentDashboard({ userId }: { userId: string }) {
                       Derste · {live.minutesLeft} dk
                     </span>
                   )}
-                  {weekNumber !== null && <span className="pn-tag pn-tag--cream">{weekNumber}. hafta</span>}
                 </>
               }
               grid={
@@ -199,13 +179,14 @@ export function StudentDashboard({ userId }: { userId: string }) {
                     type="button"
                     onClick={() => setDrawer(drawer === "homework" ? null : "homework")}
                     aria-pressed={drawer === "homework"}
+                    aria-label="Ödevler"
+                    // Ödevlerin TEK kapısı bu düğme (barda döşemesi yok).
                     // Dar kartta iki düğme adı ve saati ezer; derse katılma
-                    // günü Ödevler düğmesi çekilir — bardaki ÖDEVLER döşemesi
-                    // aynı paneli açar.
-                    className={`${cardPeachButton} ${joinUrl ? "@max-[860px]:hidden" : ""}`}
+                    // günü yalnızca ikonu kalır.
+                    className={`${cardPeachButton} ${joinUrl ? "@max-[860px]:px-3" : ""}`}
                   >
                     <FileText className="size-[18px]" strokeWidth={1.9} aria-hidden />
-                    Ödevler
+                    <span className={joinUrl ? "@max-[860px]:sr-only" : undefined}>Ödevler</span>
                   </button>
                 </>
               }

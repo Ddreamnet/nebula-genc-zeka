@@ -5,7 +5,7 @@ import { BookOpen, Check, ChevronDown, ExternalLink } from "lucide-react";
 import { getResourceIcon } from "@/lib/admin/resource-icon";
 import type { Topic } from "@/lib/admin/types";
 import { cn } from "@/lib/cn";
-import { TopicStatusPill, TopicsProgress } from "../topic-status";
+import { TopicStatusPill } from "../topic-status";
 
 /**
  * Öğrencinin konu listesi — öğretmen panelindeki kartın SALT OKUNUR ikizi.
@@ -21,14 +21,13 @@ import { TopicStatusPill, TopicsProgress } from "../topic-status";
 export function StudentTopicsCard({ topics, loading }: { topics: Topic[]; loading: boolean }) {
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
 
-  const done = topics.filter((t) => t.is_completed).length;
-  const firstOpenIndex = topics.findIndex((t) => !t.is_completed);
 
+  // İçeriği kadar uzar: iki konuluk liste sayfanın dibine kadar boş bir
+  // kart çizmez. Uzun listede tavan satırın yüksekliği, gerisi kayar.
   return (
-    <section className="pn-card min-h-0 flex-1" aria-label="Öğrendiklerim">
+    <section className="pn-card max-h-full min-h-0 flex-1 self-start" aria-label="Öğrendiklerim">
       <div className="pn-band pn-band--pink gap-3 lg:py-3">
         <h2 className="pn-card-title shrink-0">Öğrendiklerim</h2>
-        <TopicsProgress done={done} total={topics.length} />
       </div>
 
       <div className="pn-scroll @container flex min-h-0 flex-1 flex-col gap-2 p-3">
@@ -45,17 +44,11 @@ export function StudentTopicsCard({ topics, loading }: { topics: Topic[]; loadin
           </div>
         )}
 
-        {topics.map((topic, index) => {
+        {topics.map((topic) => {
           const visible = topic.is_completed ? topic.resources : topic.resources.filter((r) => r.is_completed);
-          const state = topic.is_completed ? "done" : index === firstOpenIndex ? "current" : "next";
-          const tone =
-            state === "done"
-              ? "var(--pn-mint-ink)"
-              : state === "current"
-                ? "var(--pn-peach-ink)"
-                : "var(--color-on-surface-variant)";
-          const dot =
-            state === "done" ? "var(--pn-mint)" : state === "current" ? "var(--pn-peach)" : "var(--pn-blue-tint)";
+          const state = topic.is_completed ? "done" : "next";
+          const tone = state === "done" ? "var(--pn-mint-ink)" : "var(--color-on-surface-variant)";
+          const dot = state === "done" ? "var(--pn-mint)" : "var(--pn-blue-tint)";
           const isOpen = expanded.has(topic.id);
 
           return (
@@ -63,8 +56,8 @@ export function StudentTopicsCard({ topics, loading }: { topics: Topic[]; loadin
               key={topic.id}
               className="rounded-[12px] border border-l-[3px]"
               style={{
-                background: state === "current" ? "var(--pn-peach-sel)" : "var(--color-surface-container)",
-                borderColor: state === "current" ? "var(--pn-peach-line)" : "var(--pn-hair)",
+                background: "var(--color-surface-container)",
+                borderColor: "var(--pn-hair)",
                 borderLeftColor: tone,
               }}
             >

@@ -138,6 +138,9 @@ function put(body: RequestBody, key: string, value: unknown) {
 /* Bodies                                                              */
 /* ------------------------------------------------------------------ */
 
+/** Tokens a reasoning model may spend thinking before a capped answer — see buildTextBody. */
+const REASONING_HEADROOM = 1024;
+
 /** POST /chat/completions — text, and the audio tools that ride the same endpoint. */
 export function buildTextBody(args: { tool: PlaygroundTool; params: StudioParams; messages: ChatMessage[]; stream?: boolean }): RequestBody {
   const { tool, params, messages } = args;
@@ -169,6 +172,13 @@ export function buildTextBody(args: { tool: PlaygroundTool; params: StudioParams
   if (has("response_format") && params.jsonMode === true) body.response_format = { type: "json_object" };
   if (has("reasoning") && params.reasoning === true) {
     body.reasoning = has("reasoning_effort") && typeof params.reasoningEffort === "string" ? { enabled: true, effort: params.reasoningEffort } : { enabled: true };
+    // OpenAI-style models bill their thinking inside the same cap. A "Kısa"
+    // (400-token) answer with thinking on came back with no text at all —
+    // measured 26 Sep 2026 on GPT-5 Mini, which spent the whole budget
+    // reasoning — and the route reports that as a failed generation. The
+    // student's cap still bounds the visible answer; the headroom is for the
+    // thinking that precedes it.
+    if (maxTokens !== null) put(body, has("max_tokens") ? "max_tokens" : "max_completion_tokens", maxTokens + REASONING_HEADROOM);
   }
   // A PDF in the conversation switches the file parser on. Models whose
   // catalog entry lists "file" read the PDF themselves (`native`, billed as

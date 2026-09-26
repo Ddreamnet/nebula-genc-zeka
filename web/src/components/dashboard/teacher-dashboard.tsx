@@ -1,18 +1,18 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Calendar, Sparkles, Wallet } from "lucide-react";
+import { Calendar, Hammer, Wallet } from "lucide-react";
 import { toast } from "sonner";
 import { createClient } from "@/lib/supabase/client";
 import { useAuth } from "@/contexts/auth-context";
 import { PanelShell, type PanelNavItem } from "@/components/panel-shell/panel-shell";
 import { SideDrawer } from "@/components/panel-shell/side-drawer";
 import { useHomeworkNotifications } from "@/lib/homework/use-notifications";
-import { activeSlot, longDateLabel, nextSlot, slotLabel, type SlotRef } from "@/lib/lesson/next-lesson";
+import { activeSlot, nextSlot, slotLabel, type SlotRef } from "@/lib/lesson/next-lesson";
 import { HomeworkNotificationBell } from "./homework-notification-bell";
 import { GlobalTopicsManager } from "./global-topics-manager";
 import { StudentAboutDialog } from "./student-about-dialog";
-import { WeeklyScheduleGrid } from "./weekly-schedule-grid";
+import { TeacherWeekView } from "./teacher-week-view";
 import { StudentRail, type RailRow } from "./teacher/student-rail";
 import { NowStrip } from "./teacher/now-strip";
 import { TopicsCard } from "./teacher/topics-card";
@@ -41,7 +41,6 @@ export function TeacherDashboard({ userId }: { userId: string }) {
 
   const [students, setStudents] = useState<Student[]>([]);
   const [groupNameById, setGroupNameById] = useState<Map<string, string>>(new Map());
-  const [balanceMinutes, setBalanceMinutes] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   const [signingOut, setSigningOut] = useState(false);
 
@@ -68,7 +67,7 @@ export function TeacherDashboard({ userId }: { userId: string }) {
   const fetchStudents = useCallback(async () => {
     const supabase = createClient();
     try {
-      const [studentsRes, lessonsRes, groupsRes, balanceRes] = await Promise.all([
+      const [studentsRes, lessonsRes, groupsRes] = await Promise.all([
         supabase
           .from("students")
           .select("id, student_id, is_archived, about_text, group_id, profiles!students_student_id_fkey(full_name, email)")
@@ -76,7 +75,6 @@ export function TeacherDashboard({ userId }: { userId: string }) {
           .eq("is_archived", false),
         supabase.from("student_lessons").select("id, student_id, day_of_week, start_time, end_time").eq("teacher_id", userId),
         supabase.from("groups").select("id, name").eq("teacher_id", userId),
-        supabase.from("teacher_balance").select("total_minutes").eq("teacher_id", userId).maybeSingle(),
       ]);
       if (studentsRes.error) throw studentsRes.error;
       if (lessonsRes.error) throw lessonsRes.error;
@@ -98,7 +96,6 @@ export function TeacherDashboard({ userId }: { userId: string }) {
         })),
       );
       setGroupNameById(new Map((groupsRes.data ?? []).map((g) => [g.id, g.name])));
-      setBalanceMinutes(balanceRes.data?.total_minutes ?? 0);
     } catch {
       toast.error("Öğrenciler yüklenemedi");
     } finally {
@@ -190,7 +187,7 @@ export function TeacherDashboard({ userId }: { userId: string }) {
       active: drawer === "balance",
       onClick: () => setDrawer(drawer === "balance" ? null : "balance"),
     },
-    { key: "playground", label: "Atölye", title: "Üretim Atölyesi", icon: Sparkles, tone: "violet", href: "/playground" },
+    { key: "playground", label: "Atölye", title: "Üretim Atölyesi", icon: Hammer, tone: "violet", href: "/playground" },
   ];
 
   if (loading) {
@@ -202,15 +199,11 @@ export function TeacherDashboard({ userId }: { userId: string }) {
   }
 
   const teacherName = profile?.full_name ?? "";
-  const lessonsToday = rows.filter((row) => {
-    const next = nextSlot(rowSlots(row), now);
-    return !!activeSlot(rowSlots(row), now) || (!!next && next.minutesUntil < minutesUntilEndOfDay(now));
-  }).length;
 
   return (
     <PanelShell
-      greeting={`İyi dersler${teacherName ? `, ${teacherName.split(" ")[0]}` : ""}`}
-      subline={`${longDateLabel(now)} · BUGÜN ${lessonsToday} DERS${balanceMinutes !== null ? ` · ${balanceMinutes} DK İŞLENDİ` : ""}`}
+      greeting="Öğretmen paneli"
+      subline={`Hoş geldin${teacherName ? `, ${teacherName.split(" ")[0]}` : ""}`}
       nav={nav}
       onSignOut={() => {
         setSigningOut(true);
@@ -239,7 +232,6 @@ export function TeacherDashboard({ userId }: { userId: string }) {
           onSelect={(key) => setSelectedKey(key)}
           query={query}
           onQueryChange={setQuery}
-          minutes={balanceMinutes}
         />
 
         <div className="flex min-h-0 min-w-0 flex-col gap-3">
@@ -296,8 +288,8 @@ export function TeacherDashboard({ userId }: { userId: string }) {
 
             <BalanceDrawer open={drawer === "balance"} onClose={() => setDrawer(null)} teacherId={userId} />
 
-            {/* Program tam genişlik ister: haftalık ızgara 376px'e sığmaz.
-                `wide` konular kartının yerine geçmesini sağlar. */}
+            {/* Program gün kartlarıyla iki-üç sütuna açılır; 376px'lik
+                dar panel yetmez. `wide` konular kartının yerine geçer. */}
             {drawer === "schedule" && (
               <SideDrawer
                 open
@@ -307,12 +299,7 @@ export function TeacherDashboard({ userId }: { userId: string }) {
                 title="Haftalık program"
                 subtitle="Dersleri buradan işaretleyebilirsin"
               >
-                {/* Izgara kendi kutusunda yatay kayar. Sayfanın gövdesi
-                    asla yatay kaymaz — mobilde bu, dokunmanın hangi ekseni
-                    sürüklediğini belirsiz bırakan tek hatadır. */}
-                <div className="min-w-0 overflow-x-auto">
-                  <WeeklyScheduleGrid teacherId={userId} />
-                </div>
+                <TeacherWeekView teacherId={userId} />
               </SideDrawer>
             )}
           </div>

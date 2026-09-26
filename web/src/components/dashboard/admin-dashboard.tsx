@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import dynamic from "next/dynamic";
-import { BookOpen, Calendar, Gem, LayoutGrid, Newspaper, Plus, Settings, Sparkles, Users, Wallet } from "lucide-react";
+import { BookOpen, Calendar, Gem, LayoutGrid, Newspaper, Plus, Settings, Hammer, Users, Wallet } from "lucide-react";
 import { toast } from "sonner";
 import { createClient } from "@/lib/supabase/client";
 import { useAuth } from "@/contexts/auth-context";
@@ -307,7 +307,7 @@ export function AdminDashboard() {
       active: drawer === "balance",
       onClick: () => setDrawer(drawer === "balance" ? null : "balance"),
     },
-    { key: "playground", label: "Atölye", title: "Üretim Atölyesi", icon: Sparkles, tone: "violet", href: "/playground" },
+    { key: "playground", label: "Atölye", title: "Üretim Atölyesi", icon: Hammer, tone: "violet", href: "/playground" },
     {
       key: "manage",
       label: "Yönetim",

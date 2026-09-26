@@ -390,13 +390,17 @@ export const CATEGORIES: PlaygroundCategory[] = [
       {
         id: "gemma-4",
         name: "Gemma 4",
-        description: "Google'ın herkese açık, ücretsiz küçük modeli — bilgisayarına indirip çalıştırabileceğin türden.",
+        description: "Google'ın herkese açık, ağırlıkları ücretsiz küçük modeli — bilgisayarına indirip çalıştırabileceğin türden.",
         icon: MessageSquareText,
         status: "live",
         modality: "text",
         provider: "google",
-        providerModel: "google/gemma-4-31b-it:free",
-        oreCost: 0,
+        // Not the ":free" endpoint: it answered 429 "temporarily rate-limited
+        // upstream" on 26 Sep 2026 and free endpoints carry no uptime promise,
+        // so it was one of the "sometimes doesn't work" tools. The paid
+        // endpoint is $0.09/M in, $0.34/M out — a fraction of a cent a message.
+        providerModel: "google/gemma-4-31b-it",
+        oreCost: 0.05,
       },
       {
         id: "perplexity-sonar",
@@ -613,21 +617,20 @@ export const CATEGORIES: PlaygroundCategory[] = [
         maxImageInputs: 3,
       },
       {
-        // OpenRouter answers 403 for every Muse model until the account holder
-        // confirms they are 18+ (checked live 17 Sep 2026: "This model requires
-        // you to complete the following before use: 18+ age confirmation").
-        // Both recorded attempts failed for exactly that reason. Kept as a
-        // logo the curriculum can point at; flip to live only after the
-        // attestation is made on the OpenRouter account and a test image lands.
+        // Every Muse model answers 403 until the OpenRouter account holder has
+        // confirmed they are 18+ (the two failed attempts on 12 and 16 Sep
+        // 2026 were exactly that). Fatih made the attestation on 26 Sep 2026;
+        // a test image then landed in 9 s at $0.01 (webp), which is where the
+        // ore price comes from — the catalog publishes no price for it.
         id: "muse-image",
         name: "Meta Muse",
-        description: "Meta'nın (Instagram ve WhatsApp'ın sahibi) görsel modeli — kendi uygulamalarındaki üretimlerin arkasındaki aile.",
+        description: "Meta'nın (Instagram ve WhatsApp'ın sahibi) görsel modeli — kendi uygulamalarındaki üretimlerin arkasındaki aile; en ucuz görsel araçlarından.",
         icon: Box,
-        status: "soon",
+        status: "live",
         modality: "image",
         provider: "meta",
-        providerModel: "",
-        oreCost: 0,
+        providerModel: "meta/muse-image",
+        oreCost: 0.25,
       },
       {
         id: "seedream-5-pro",

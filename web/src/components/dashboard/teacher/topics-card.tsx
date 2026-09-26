@@ -8,7 +8,7 @@ import { getResourceIcon } from "@/lib/admin/resource-icon";
 import { useGroupTopics, type GroupTopic, type GroupResource } from "@/lib/lesson/use-group-topics";
 import { toggleTopicCompletion as toggleTopicCompletionRpc } from "@/lib/lesson/service";
 import { cn } from "@/lib/cn";
-import { TopicStatusPill, TopicsProgress } from "../topic-status";
+import { TopicStatusPill } from "../topic-status";
 
 interface Member {
   id: string;
@@ -23,11 +23,9 @@ interface Props {
   onOpenLibrary: () => void;
 }
 
-/** Konu durumunun üç tonu. Sıra sayılara değil, KONUNUN kendi durumuna bağlı:
- *  bitti · şu an çalışılan (ilk bitmemiş) · sırada. */
+/** Konu durumunun iki tonu — KONUNUN kendi durumuna bağlı: bitti · sırada. */
 const TONE = {
   done: { tone: "var(--pn-mint-ink)", dot: "var(--pn-mint)", bg: "var(--color-surface-container)", line: "var(--pn-hair)" },
-  current: { tone: "var(--pn-peach-ink)", dot: "var(--pn-peach)", bg: "var(--pn-peach-sel)", line: "var(--pn-peach-line)" },
   next: { tone: "var(--color-on-surface-variant)", dot: "var(--pn-blue-tint)", bg: "var(--color-surface-container)", line: "var(--pn-hair)" },
 } as const;
 
@@ -55,8 +53,6 @@ export function TopicsCard({ members, groupName, onOpenLibrary }: Props) {
   }, [memberKey]);
 
   const heading = groupName ?? members[0]?.profiles.full_name ?? "";
-  const done = topics.filter((t) => t.is_completed).length;
-  const firstOpenIndex = topics.findIndex((t) => !t.is_completed);
 
   async function upsertCompletion(studentId: string, resourceId: string, isCompleted: boolean) {
     const supabase = createClient();
@@ -125,7 +121,7 @@ export function TopicsCard({ members, groupName, onOpenLibrary }: Props) {
           <h2 className="pn-card-title">Konular</h2>
           {members.length > 1 && <p className="pn-card-sub truncate">{heading} · {members.length} öğrenci</p>}
         </div>
-        <TopicsProgress done={done} total={topics.length} />
+        <span className="flex-1" />
         <button
           type="button"
           onClick={onOpenLibrary}
@@ -148,8 +144,8 @@ export function TopicsCard({ members, groupName, onOpenLibrary }: Props) {
           </div>
         )}
 
-        {topics.map((topic, index) => {
-          const state = topic.is_completed ? "done" : index === firstOpenIndex ? "current" : "next";
+        {topics.map((topic) => {
+          const state = topic.is_completed ? "done" : "next";
           const style = TONE[state];
           const isOpen = expanded.has(topic.id);
 

@@ -130,7 +130,19 @@ function allowed(role: Role, min: Role): boolean {
  * append keeps the guard rails and still teaches what a system message is.
  */
 export const PERSONAS: { value: string; label: string; hint: string; prompt: string }[] = [
-  { value: "default", label: "Nebula", hint: "Varsayılan yardımcı", prompt: "" },
+  // "none" is the dial's default: the model speaks as itself. The old default
+  // was a "Nebula" entry with an empty prompt, which made the product's name
+  // read as the assistant's — and the student got "Ben Sen Nebula".
+  { value: "none", label: "Yok", hint: "Model kendi adıyla konuşur", prompt: "" },
+  {
+    value: "nova",
+    label: "Nova",
+    hint: "Nebula'nın maskotu, meraklı astronot",
+    // Written as a role brief, not "Sen X'sin" — an opening "Sen ..." is what
+    // models echo back as part of their own name.
+    prompt:
+      "Bu sohbette Nova rolündesin: Nebula Genç Zeka'nın maskotu, uzayı ve yeni fikirleri seven, meraklı ve neşeli küçük bir astronot. Kendini yalnızca 'Nova' olarak tanıt; başka isim ya da unvan ekleme. Kısa cümlelerle, sıcak ve oyuncu konuş; arada uzay benzetmeleri kullan ama abartma. Öğrenciyi sorularla meraklandır, hazır cevap yerine birlikte keşfetmeyi öner. Emojiyi çok seyrek kullan.",
+  },
   {
     value: "ogretmen",
     label: "Öğretmen",
@@ -192,7 +204,7 @@ export function studioFields(tool: PlaygroundTool, role: Role): StudioField[] {
       label: "Karakter",
       tier: "core",
       spec: { control: "choice", options: PERSONAS.map((p) => ({ value: p.value, label: p.label, hint: p.hint })) },
-      default: "default",
+      default: "none",
       doc: doc("persona"),
     });
 

@@ -88,9 +88,6 @@ export interface StudentRailProps {
   onSelect: (key: string) => void;
   query: string;
   onQueryChange: (value: string) => void;
-  /** İşlenen toplam dakika — telefonda bandın sağındaki çip. Masaüstünde
-   *  228px'lik bant buna yetmiyor; orada barın künye satırında yazıyor. */
-  minutes?: number | null;
 }
 
 /** Mobilde katlanmadan önce gösterilen satır sayısı. Dört, çünkü altındaki
@@ -110,7 +107,7 @@ const MOBILE_VISIBLE = 4;
  * sayfanın içine kayan bir kutu koymak, iOS'ta parmağın hangisini kaydırdığı
  * belirsiz kalan tek düzen hatasıdır.
  */
-export function StudentRail({ rows, total, selectedKey, onSelect, query, onQueryChange, minutes }: StudentRailProps) {
+export function StudentRail({ rows, total, selectedKey, onSelect, query, onQueryChange }: StudentRailProps) {
   const [showAll, setShowAll] = useState(false);
 
   const today = rows.filter((r) => r.isToday);
@@ -130,12 +127,6 @@ export function StudentRail({ rows, total, selectedKey, onSelect, query, onQuery
         <h2 className="pn-card-title whitespace-nowrap">Öğrencilerim</h2>
         <span className="pn-chip pn-chip--cream">{total}</span>
         <span className="flex-1" />
-        {minutes !== null && minutes !== undefined && (
-          <span className="pn-chip pn-chip--cream mr-10 lg:hidden" title="İşlenen toplam ders süresi">
-            {minutes}
-            <span className="text-[9px] tracking-[.08em]">DK</span>
-          </span>
-        )}
         <input
           type="search"
           className="pn-search lg:hidden"

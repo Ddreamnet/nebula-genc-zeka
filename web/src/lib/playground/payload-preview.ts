@@ -129,7 +129,7 @@ export function buildPayloadPreview(input: PayloadInput): PayloadPreview {
     // The real system message, assembled by the same function the route uses
     // — persona and a teacher's extra instruction included, so a student can
     // see that picking "Hikâyeci" really did add a line.
-    const system = showSystem ? systemPromptFor(tool, categoryId, params) : "<Nebula sistem promptu>";
+    const system = showSystem ? systemPromptFor(tool, categoryId, params) : "<Atölye sistem promptu>";
     const messages: ChatMessage[] = [
       { role: "system", content: system },
       // The same builder the route uses, in stub mode: a PDF prints as its

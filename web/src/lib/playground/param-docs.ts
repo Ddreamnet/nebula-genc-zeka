@@ -26,8 +26,8 @@ export interface ParamDoc {
 export const PARAM_DOCS: Record<string, ParamDoc> = {
   // ---- Text -----------------------------------------------------------
   persona: {
-    kid: "Modele nasıl biri olacağını söyler: öğretmen gibi mi anlatsın, hikâye mi yazsın, kısa mı kessin.",
-    tech: "system mesajının sonuna eklenen karakter talimatı · Nebula sistem promptu her zaman korunur",
+    kid: "Modele nasıl biri olacağını söyler: Nova gibi mi konuşsun, öğretmen gibi mi anlatsın, hikâye mi yazsın, kısa mı kessin. Seçmezsen model kendi adıyla konuşur.",
+    tech: "system mesajının sonuna eklenen karakter talimatı · Atölye sistem promptu her zaman korunur",
   },
   systemExtra: {
     kid: "Modele en baştan verilen ek talimat — her cevapta geçerli olur.",

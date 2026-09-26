@@ -3,7 +3,7 @@
  *
  * Written by `node scripts/sync-catalog.mjs` from OpenRouter's live catalog
  * (/models, /images/models, /videos/models and each image model's /endpoints).
- * Last sync: 2026-09-17 — 71 models.
+ * Last sync: 2026-09-26 — 71 models.
  *
  * Machine facts only: which parameters a model accepts, their ranges and
  * enums, its price SKUs and its provider passthrough list. Every product
@@ -83,7 +83,7 @@ export const MODEL_CAPS: Record<string, ModelCaps> = {
       "image"
     ],
     "contextLength": 1048576,
-    "maxCompletionTokens": 384000,
+    "maxCompletionTokens": 943718,
     "pricing": {
       "prompt": 3e-7,
       "completion": 0.0000012
@@ -191,6 +191,7 @@ export const MODEL_CAPS: Record<string, ModelCaps> = {
       "response_format",
       "stop",
       "structured_outputs",
+      "tool_choice",
       "tools",
       "verbosity"
     ],
@@ -236,10 +237,10 @@ export const MODEL_CAPS: Record<string, ModelCaps> = {
       "text"
     ],
     "contextLength": 1310720,
-    "maxCompletionTokens": 943717,
+    "maxCompletionTokens": 131072,
     "pricing": {
-      "prompt": 0.0000014,
-      "completion": 0.0000044
+      "prompt": 3.794e-7,
+      "completion": 0.0000011924
     }
   },
   "x-ai/grok-4.6": {
@@ -587,8 +588,8 @@ export const MODEL_CAPS: Record<string, ModelCaps> = {
     "contextLength": 262144,
     "maxCompletionTokens": 235929,
     "pricing": {
-      "prompt": 7.062e-7,
-      "completion": 0.00000321
+      "prompt": 6.562e-7,
+      "completion": 0.0000033
     }
   },
   "minimax/minimax-m3": {
@@ -626,17 +627,27 @@ export const MODEL_CAPS: Record<string, ModelCaps> = {
       "completion": 0.0000012
     }
   },
-  "google/gemma-4-31b-it:free": {
+  "google/gemma-4-31b-it": {
     "kind": "text",
     "supported": [
+      "frequency_penalty",
       "include_reasoning",
+      "logit_bias",
+      "logprobs",
       "max_tokens",
+      "min_p",
+      "presence_penalty",
       "reasoning",
+      "repetition_penalty",
       "response_format",
       "seed",
+      "stop",
+      "structured_outputs",
       "temperature",
       "tool_choice",
       "tools",
+      "top_k",
+      "top_logprobs",
       "top_p"
     ],
     "inputModalities": [
@@ -645,10 +656,10 @@ export const MODEL_CAPS: Record<string, ModelCaps> = {
       "video"
     ],
     "contextLength": 262144,
-    "maxCompletionTokens": 32768,
+    "maxCompletionTokens": 16384,
     "pricing": {
-      "prompt": 0,
-      "completion": 0
+      "prompt": 9e-8,
+      "completion": 3.4e-7
     }
   },
   "google/lyria-3-pro-preview": {
@@ -2729,6 +2740,57 @@ export const MODEL_CAPS: Record<string, ModelCaps> = {
       "fast_pretreatment"
     ]
   },
+  "bytedance/seedance-2.0": {
+    "kind": "video",
+    "durations": [
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11,
+      12,
+      13,
+      14,
+      15
+    ],
+    "resolutions": [
+      "480p",
+      "720p",
+      "1080p",
+      "4K"
+    ],
+    "aspectRatios": [
+      "1:1",
+      "3:4",
+      "9:16",
+      "4:3",
+      "16:9",
+      "21:9",
+      "9:21"
+    ],
+    "frameImages": [
+      "first_frame",
+      "last_frame"
+    ],
+    "generateAudio": true,
+    "seed": true,
+    "priceSkus": {
+      "video_tokens": 0.000007,
+      "video_tokens_4k": 0.000004,
+      "video_tokens_1080p": 0.0000077,
+      "video_tokens_without_audio": 0.000007,
+      "video_tokens_with_video_input": 0.0000043,
+      "video_tokens_4k_with_video_input": 0.0000024,
+      "video_tokens_1080p_with_video_input": 0.0000047
+    },
+    "passthrough": [
+      "watermark",
+      "req_key"
+    ]
+  },
   "bytedance/seedance-2.0-fast": {
     "kind": "video",
     "durations": [
@@ -2816,57 +2878,6 @@ export const MODEL_CAPS: Record<string, ModelCaps> = {
       "video",
       "videos",
       "images"
-    ]
-  },
-  "bytedance/seedance-2.0": {
-    "kind": "video",
-    "durations": [
-      4,
-      5,
-      6,
-      7,
-      8,
-      9,
-      10,
-      11,
-      12,
-      13,
-      14,
-      15
-    ],
-    "resolutions": [
-      "480p",
-      "720p",
-      "1080p",
-      "4K"
-    ],
-    "aspectRatios": [
-      "1:1",
-      "3:4",
-      "9:16",
-      "4:3",
-      "16:9",
-      "21:9",
-      "9:21"
-    ],
-    "frameImages": [
-      "first_frame",
-      "last_frame"
-    ],
-    "generateAudio": true,
-    "seed": true,
-    "priceSkus": {
-      "video_tokens": 0.000007,
-      "video_tokens_4k": 0.000004,
-      "video_tokens_1080p": 0.0000077,
-      "video_tokens_without_audio": 0.000007,
-      "video_tokens_with_video_input": 0.0000043,
-      "video_tokens_4k_with_video_input": 0.0000024,
-      "video_tokens_1080p_with_video_input": 0.0000047
-    },
-    "passthrough": [
-      "watermark",
-      "req_key"
     ]
   },
   "openai/sora-2-pro": {
